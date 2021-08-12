@@ -64,3 +64,43 @@ summary(wealth) # summarize the distribution of wealth
 summary(flomarriage~edges+nodecov('wealth')) # observed statistics for the model
 flomodel.03 <- ergm(flomarriage~edges+nodecov('wealth'))
 summary(flomodel.03)
+
+# nodal covariates: homophily
+data(faux.mesa.high) 
+mesa <- faux.mesa.high
+
+set.seed(1)
+mesa
+
+# plot mesa edges with color by grade
+par(mfrow=c(1,1)) # Back to 1-panel plots
+plot(mesa, vertex.col='Grade')
+legend('bottomleft',fill=7:12,
+       legend=paste('Grade',7:12),cex=0.75)
+
+# create first model with grade and race and also accounting for the similarity of the two between nodes
+fauxmodel.01 <- ergm(mesa ~edges + 
+                             nodefactor('Grade') + nodematch('Grade',diff=T) +
+                             nodefactor('Race') + nodematch('Race',diff=T))
+
+summary(fauxmodel.01)
+
+table(mesa %v% 'Race') # Frequencies of race
+
+mixingmatrix(mesa, "Race")
+
+summary(mesa ~edges  + 
+                nodefactor('Grade') + nodematch('Grade',diff=T) +
+                nodefactor('Race') + nodematch('Race',diff=T))
+
+# Directed ties
+set.seed(2)
+data(samplk) 
+ls() # directed data: Sampson's Monks
+
+samplk3
+plot(samplk3)
+summary(samplk3~edges+mutual)
+set.seed(3)
+sampmodel.01 <- ergm(samplk3~edges+mutual)
+summary(sampmodel.01)
