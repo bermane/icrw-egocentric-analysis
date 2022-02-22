@@ -5,6 +5,7 @@ library(janitor)
 library(tidyverse)
 library(readxl)
 library(igraph)
+library(readstata13)
 
 #########################################
 ### LOAD EGO AND ALTER DATA AND CLEAN ###
@@ -13,7 +14,9 @@ library(igraph)
 # load ego and alter cleaned data
 ego <- read_excel(path = "data/ego_clean_11012022.xlsx")
 alter <-read_excel(path = "data/alter_clean_11012022.xlsx")
-# ego <- read.dta13(file = 'data/ego_clean_12012022de.dta', convert.factors = F)
+
+# load dta stata file to get PC data for egos
+ego_pc <- read.dta13(file = 'data/ego_clean_12012022de.dta', convert.factors = F)
 # alter <- read.dta13(file = 'data/alter_clean_12012022de.dta', convert.factors = F)
 
 # load list of duplicate ids
@@ -128,10 +131,25 @@ rm(alter_know)
 ### ORGANIZE EGO-ALTER NETWORK DATA (EGO SURVEY ONLY) AND IMPORT INTO EGOR AND IGRAPH ###
 #########################################################################################
 
-# create tibble of ego attributes (later need to find all the PC survey attr)
+# create tibble of ego attributes
 ego_df <- as_tibble(ego) %>% 
   select(district_name:contra_neighbour_type_other) %>% 
   add_column(ego_id = ego$woman_id, .before = 1)
+
+# sort ego data and PC data by woman ID so can merge
+ego_df %<>% arrange(ego_id)
+ego_pc %<>% arrange(qe6) # qe6 is woman_id
+
+# make sure ego_ids match
+sum(ego_pc$qe6 == ego_df$ego_id)
+
+# bind PC columns of interest
+ego_df %<>% bind_cols(ego_pc %>% select(pcq102, 
+                                        pcq103, 
+                                        pcq111) %>%
+                        rename(ego_age = pcq102, 
+                               ego_edu = pcq103, 
+                               ego_caste = pcq111))
 
 # convert all character variables to factor
 ego_df %<>% 
@@ -242,10 +260,10 @@ for(i in 1:NROW(ego)){
 }
 
 # change duplicate ids so we know same person
-for(i in 1:NROW(dup_id)){
-  alter_attr[alter_attr == dup_id$duplicate_id[i]] <- dup_id$id[i]
-  alter_ties[alter_ties == dup_id$duplicate_id[i]] <- dup_id$id[i]
-}
+# for(i in 1:NROW(dup_id)){
+#   alter_attr[alter_attr == dup_id$duplicate_id[i]] <- dup_id$id[i]
+#   alter_ties[alter_ties == dup_id$duplicate_id[i]] <- dup_id$id[i]
+# }
 
 # check freq table of alter tie weights
 alter_ties %>% tabyl(weight) 
@@ -464,3 +482,63 @@ for (i in seq_along(gr_list_a_alt)) {
 
 # Save all data to file
 save(alter_df, aalter_attr, gr_list_a, gr_list_a_alt, file="data/alter_igraph.rda")
+
+###############################################
+### COMBINE NETWORKS USING A LARGE EDGELIST ###
+###############################################
+
+# extract edgelists from ego igraph objects and combine
+for(i in seq_along(gr_list_ego)){
+  if(i == 1){
+    edge <- as_edgelist(gr_list_ego[[i]])
+  } else{
+      edge <- rbind(edge, as_edgelist(gr_list_ego[[i]]))
+    }
+}
+
+# change ego names in edge list
+edge %<>% as_tibble
+edge$V2[edge$V2 == 'ego'] <- str_sub(edge$V1[edge$V2 == 'ego'], start = 1, end = -2)
+
+# extract edgelists from alter igraph objects and combine
+for(i in seq_along(gr_list_a_alt)){
+  if(i == 1){
+    edge_alt <- as_edgelist(gr_list_a_alt[[i]])
+  } else{
+    edge_alt <- rbind(edge_alt, as_edgelist(gr_list_a_alt[[i]]))
+  }
+}
+
+# change ego names in edge list
+edge_alt %<>% as_tibble
+edge_alt$V2[edge_alt$V2 == 'ego'] <- str_sub(edge_alt$V1[edge_alt$V2 == 'ego'], start = 1, end = -2)
+
+# combine edgelists
+edge <- rbind(edge, edge_alt)
+rm (edge_alt)
+
+# change duplicate ids so we know same person
+for(i in 1:NROW(dup_id)){
+  edge[edge == dup_id$duplicate_id[i]] <- dup_id$id[i]
+}
+
+# create igraph object using edgelist
+gr_comb <- graph_from_edgelist(edge %>% as.matrix, directed = F)
+gr_comb
+
+# create a tibble with ids and district and block
+v_attr <- tibble(id = names(V(gr_comb)))
+v_attr$district <- NA
+v_attr$block <- NA
+
+for(i in 1:NROW(v_attr)){
+  v_attr$district[i] <- ego_df$district_name[ego_df$ego_id %>% as.character == str_sub(v_attr$id[i], 1, 9)] %>% as.character
+  v_attr$block[i] <- ego_df$block_name[ego_df$ego_id %>% as.character == str_sub(v_attr$id[i], 1, 9)] %>% as.character
+}
+
+# set vertex attributes
+gr_comb %<>% set_vertex_attr(name = 'district', value = v_attr$district)
+gr_comb %<>% set_vertex_attr(name = 'block', value = v_attr$block)
+
+# Save data to file
+save(gr_comb, file="data/combined_igraph.rda")
