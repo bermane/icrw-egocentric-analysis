@@ -1,5 +1,5 @@
-# this code loads csv data of ego and alter interviews and builds a network object
-# using the edgelist method
+# this code loads network objects for ego and alter and generates network metrics
+# and related figures
 
 # load packages
 library(tidyverse)

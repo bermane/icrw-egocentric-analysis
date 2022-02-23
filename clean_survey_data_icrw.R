@@ -1,3 +1,6 @@
+# this code loads csv data of ego and alter interviews and builds network objects to
+# be used for future analyses
+
 # load packages
 library(magrittr)
 library(egor)
@@ -146,10 +149,12 @@ sum(ego_pc$qe6 == ego_df$ego_id)
 # bind PC columns of interest
 ego_df %<>% bind_cols(ego_pc %>% select(pcq102, 
                                         pcq103, 
-                                        pcq111) %>%
+                                        pcq111,
+                                        pcq314) %>%
                         rename(ego_age = pcq102, 
                                ego_edu = pcq103, 
-                               ego_caste = pcq111))
+                               ego_caste = pcq111,
+                               ego_using_fp = pcq314))
 
 # convert all character variables to factor
 ego_df %<>% 
@@ -158,7 +163,13 @@ ego_df %<>%
 # create empty tibble of alter attributes
 alter_attr <- tibble(alter_id = character(),
                      ego_id = character(),
-                     alter_num = numeric())
+                     alter_num = numeric(),
+                     relationship = character(),
+                     sex = character(),
+                     age = character(),
+                     talk_freq = character(),
+                     preg = character(),
+                     using_fp = character())
 
 # create empty tibble of alter-alter ties
 alter_ties <- tibble(from = character(),
@@ -173,27 +184,57 @@ for(i in 1:NROW(ego)){
   if(is.na(ego$alter1[i]) == F){
     alter_attr %<>% add_row(alter_id = str_c(ego$woman_id[i], '1'),
                             ego_id = ego$woman_id[i], 
-                            alter_num = 1)
+                            alter_num = 1,
+                            relationship = ego$alter1r[i],
+                            sex = ego$alter1_sex[i],
+                            age = ego$alter1_age[i],
+                            talk_freq = ego$alter1_talk_freq[i],
+                            preg = ego$alter1_preg[i],
+                            using_fp = ego$alter1_using_fp[i])
   } 
   if(is.na(ego$alter2[i]) == F){
     alter_attr %<>% add_row(alter_id = str_c(ego$woman_id[i], '2'),
                             ego_id = ego$woman_id[i], 
-                            alter_num = 2)
+                            alter_num = 2,
+                            relationship = ego$alter2r[i],
+                            sex = ego$alter2_sex[i],
+                            age = ego$alter2_age[i],
+                            talk_freq = ego$alter2_talk_freq[i],
+                            preg = ego$alter2_preg[i],
+                            using_fp = ego$alter2_using_fp[i])
   } 
   if(is.na(ego$alter3[i]) == F){
     alter_attr %<>% add_row(alter_id = str_c(ego$woman_id[i], '3'),
                             ego_id = ego$woman_id[i], 
-                            alter_num = 3)
+                            alter_num = 3,
+                            relationship = ego$alter3r[i],
+                            sex = ego$alter3_sex[i],
+                            age = ego$alter3_age[i],
+                            talk_freq = ego$alter3_talk_freq[i],
+                            preg = ego$alter3_preg[i],
+                            using_fp = ego$alter3_using_fp[i])
   } 
   if(is.na(ego$alter4[i]) == F){
     alter_attr %<>% add_row(alter_id = str_c(ego$woman_id[i], '4'),
                             ego_id = ego$woman_id[i], 
-                            alter_num = 4)
+                            alter_num = 4,
+                            relationship = ego$alter4r[i],
+                            sex = ego$alter4_sex[i],
+                            age = ego$alter4_age[i],
+                            talk_freq = ego$alter4_talk_freq[i],
+                            preg = ego$alter4_preg[i],
+                            using_fp = ego$alter4_using_fp[i])
   } 
   if(is.na(ego$alter5[i]) == F){
     alter_attr %<>% add_row(alter_id = str_c(ego$woman_id[i], '5'),
                             ego_id = ego$woman_id[i], 
-                            alter_num = 5)
+                            alter_num = 5,
+                            relationship = ego$alter5r[i],
+                            sex = ego$alter5_sex[i],
+                            age = ego$alter5_age[i],
+                            talk_freq = ego$alter5_talk_freq[i],
+                            preg = ego$alter5_preg[i],
+                            using_fp = ego$alter5_using_fp[i])
   } 
   
   # go through alter-alter ties and add to edgelist
@@ -258,6 +299,9 @@ for(i in 1:NROW(ego)){
                             weight = ego$know45[i])
   }
 }
+
+# convert character vars to numeric
+alter_attr %<>% mutate(across(c(sex, age, talk_freq, preg, using_fp), as.numeric))
 
 # change duplicate ids so we know same person
 # for(i in 1:NROW(dup_id)){
@@ -331,7 +375,13 @@ alter_df %<>%
 # create empty tibble of aalter attributes
 aalter_attr <- tibble(aalter_id = character(),
                       alter_id = character(),
-                      aalter_num = numeric())
+                      aalter_num = numeric(),
+                      relationship = character(),
+                      sex = character(),
+                      age = character(),
+                      talk_freq = character(),
+                      preg = character(),
+                      using_fp = character())
 
 # create empty tibble of aalter-aalter ties
 aalter_ties <- tibble(from = character(),
@@ -346,27 +396,57 @@ for(i in 1:NROW(alter)){
   if(is.na(alter$alter1[i]) == F){
     aalter_attr %<>% add_row(aalter_id = str_c(alter$alter_id[i], '1'),
                              alter_id = alter$alter_id[i], 
-                             aalter_num = 1)
+                             aalter_num = 1,
+                             relationship = alter$alter1r[i],
+                             sex = alter$alter1_sex[i],
+                             age = alter$alter1_age[i],
+                             talk_freq = alter$alter1_talk_freq[i],
+                             preg = alter$alter1_preg[i],
+                             using_fp = alter$alter1_using_fp[i])
   } 
   if(is.na(alter$alter2[i]) == F){
     aalter_attr %<>% add_row(aalter_id = str_c(alter$alter_id[i], '2'),
                              alter_id = alter$alter_id[i], 
-                             aalter_num = 2)
+                             aalter_num = 2,
+                             relationship = alter$alter2r[i],
+                             sex = alter$alter2_sex[i],
+                             age = alter$alter2_age[i],
+                             talk_freq = alter$alter2_talk_freq[i],
+                             preg = alter$alter2_preg[i],
+                             using_fp = alter$alter2_using_fp[i])
   } 
   if(is.na(alter$alter3[i]) == F){
     aalter_attr %<>% add_row(aalter_id = str_c(alter$alter_id[i], '3'),
                              alter_id = alter$alter_id[i], 
-                             aalter_num = 3)
+                             aalter_num = 3,
+                             relationship = alter$alter3r[i],
+                             sex = alter$alter3_sex[i],
+                             age = alter$alter3_age[i],
+                             talk_freq = alter$alter3_talk_freq[i],
+                             preg = alter$alter3_preg[i],
+                             using_fp = alter$alter3_using_fp[i])
   } 
   if(is.na(alter$alter4[i]) == F){
     aalter_attr %<>% add_row(aalter_id = str_c(alter$alter_id[i], '4'),
                              alter_id = alter$alter_id[i], 
-                             aalter_num = 4)
+                             aalter_num = 4,
+                             relationship = alter$alter4r[i],
+                             sex = alter$alter4_sex[i],
+                             age = alter$alter4_age[i],
+                             talk_freq = alter$alter4_talk_freq[i],
+                             preg = alter$alter4_preg[i],
+                             using_fp = alter$alter4_using_fp[i])
   } 
   if(is.na(alter$alter5[i]) == F){
     aalter_attr %<>% add_row(aalter_id = str_c(alter$alter_id[i], '5'),
                              alter_id = alter$alter_id[i], 
-                             aalter_num = 5)
+                             aalter_num = 5,
+                             relationship = alter$alter5r[i],
+                             sex = alter$alter5_sex[i],
+                             age = alter$alter5_age[i],
+                             talk_freq = alter$alter5_talk_freq[i],
+                             preg = alter$alter5_preg[i],
+                             using_fp = alter$alter5_using_fp[i])
   } 
   
   # go through aalter-aalter ties and add to edgelist
@@ -431,6 +511,9 @@ for(i in 1:NROW(alter)){
                              weight = alter$know45[i])
   }
 }
+
+# convert character vars to numeric
+aalter_attr %<>% mutate(across(c(sex, age, talk_freq, preg, using_fp), as.numeric))
 
 # check freq table of alter tie weights
 aalter_ties %>% tabyl(weight) 
@@ -517,28 +600,186 @@ edge_alt$V2[edge_alt$V2 == 'ego'] <- str_sub(edge_alt$V1[edge_alt$V2 == 'ego'], 
 edge <- rbind(edge, edge_alt)
 rm (edge_alt)
 
+# add edge weights to edge list
+edge$weight <- NA
+
+# ego to ego weight 2
+edge$weight[str_length(edge$V1) == 9 & str_length(edge$V2) == 9] <- 2
+
+#ego to alter weight 2
+edge$weight[str_length(edge$V1) == 9 & str_length(edge$V2) == 10] <- 2
+edge$weight[str_length(edge$V1) == 10 & str_length(edge$V2) == 9] <- 2
+
+#alter to aalter weight 2
+edge$weight[str_length(edge$V1) == 11 & str_length(edge$V2) == 10] <- 2
+edge$weight[str_length(edge$V1) == 10 & str_length(edge$V2) == 11] <- 2
+
+#alter to alter weight 1
+edge$weight[str_length(edge$V1) == 10 & str_length(edge$V2) == 10] <- 1
+
+#aalter to aalter weight 1
+edge$weight[str_length(edge$V1) == 11 & str_length(edge$V2) == 11] <- 1
+
 # change duplicate ids so we know same person
 for(i in 1:NROW(dup_id)){
   edge[edge == dup_id$duplicate_id[i]] <- dup_id$id[i]
 }
 
 # create igraph object using edgelist
-gr_comb <- graph_from_edgelist(edge %>% as.matrix, directed = F)
+gr_comb <- graph_from_edgelist(edge[,1:2] %>% as.matrix, directed = F)
 gr_comb
 
-# create a tibble with ids and district and block
+# create a tibble of node attributes
 v_attr <- tibble(id = names(V(gr_comb)))
 v_attr$district <- NA
 v_attr$block <- NA
+v_attr$relationship <- NA
+v_attr$sex <- NA
+v_attr$age <- NA
+v_attr$using_fp <- NA
+
+# fill sex for ego
+v_attr$sex[str_length(v_attr$id) == 9] <- 'Female'
 
 for(i in 1:NROW(v_attr)){
   v_attr$district[i] <- ego_df$district_name[ego_df$ego_id %>% as.character == str_sub(v_attr$id[i], 1, 9)] %>% as.character
   v_attr$block[i] <- ego_df$block_name[ego_df$ego_id %>% as.character == str_sub(v_attr$id[i], 1, 9)] %>% as.character
+  
+  # fill other attributes for ego
+  if(str_length(v_attr$id[i]) == 9){
+    v_attr$age[i] <- ego_df$ego_age[ego_df$ego_id == v_attr$id[i]]
+    v_attr$using_fp[i] <- ego_df$ego_using_fp[ego_df$ego_id == v_attr$id[i]]
+  }
+  
+  # fill other attributes for alter
+  if(str_length(v_attr$id[i]) == 10){
+    v_attr$relationship[i] <- alter_attr$relationship[alter_attr$alter_id == v_attr$id[i]] %>% as.character
+    v_attr$sex[i] <- alter_attr$sex[alter_attr$alter_id == v_attr$id[i]]
+    v_attr$age[i] <- alter_attr$age[alter_attr$alter_id == v_attr$id[i]]
+    v_attr$using_fp[i] <- alter_attr$using_fp[alter_attr$alter_id == v_attr$id[i]]
+    
+    # if alter was interviewed and gave age use that
+    if(v_attr$id[i] %in% alter_df$alter_id){
+      v_attr$age[i] <- alter_df$age[alter_df$alter_id == v_attr$id[i]]
+    }
+  }
+  
+  # fill other attributes for alter's alter
+  if(str_length(v_attr$id[i]) == 11){
+    v_attr$relationship[i] <- aalter_attr$relationship[aalter_attr$aalter_id == v_attr$id[i]] %>% as.character
+    v_attr$sex[i] <- aalter_attr$sex[aalter_attr$aalter_id == v_attr$id[i]]
+    v_attr$age[i] <- aalter_attr$age[aalter_attr$aalter_id == v_attr$id[i]]
+    v_attr$using_fp[i] <- aalter_attr$using_fp[aalter_attr$aalter_id == v_attr$id[i]]
+  
+  }
 }
 
-# set vertex attributes
+# clean up sex vales
+v_attr$sex[v_attr$sex %in% c('1', '1.0')] <- 'Male'
+v_attr$sex[v_attr$sex %in% c('2', '2.0')] <- 'Female'
+
+# clean up relationship values
+v_attr$relationship <- str_remove_all(v_attr$relationship, "[^[\\da-zA-Z\\-]]")
+
+# create groups of relationship types
+fam <- c('Husband', 'Mother-in-law', 'Mother', 'Sister-in-law', 'Sister',
+         'Brother-in-law', 'OtherRelative', 'Father', 'Father-in-law', 'HusbandWife',
+         'OthRelative', 'Brother', 'Daughter', 'Son')
+
+nonfam <- c('Friend', 'Neighbor', 'Landlord', 'Acquaintance', 'Neighbour', 'Blockmanager')
+
+health <- c('ASHA', 'Doctor', 'ANM', 'AWW', 'Docter', 'Dactor', 'Dr', 'BahnoiDoctor', 'DR',
+            'Nurse', 'AnmFaciletor')
+
+Other <- c('Chachisash', 'Chachi', 'Bhagnee', 'Chacherisas', 'Bhabi', 'Beti', 'Beta',
+           'Bahu', 'Chacha', 'Bhu', 'Chacherisash', 'Jija', 'Bohu', 'Shgvolentear',
+           'Jethanikalarka', 'Buasas', 'Aunty', 'Chachaji', 'Trainer', 'Awwsahsyika',
+           'Saheli', 'Bhabhi', 'Mausisash', 'Bcm', 'Bhaganee', 'Buaa', 'Mami',
+           'Dadi', 'Patoh', 'Facilator', 'Councilor', 'Faciletor', 'Barebeta',
+           'Chhotibeti', 'Barebeti', 'Barebahu', 'Chhotebahu', 'Bahan', 'VCM',
+           'Facilater', 'Chhotebeti')
+
+# clean up using_fp
+v_attr$using_fp[v_attr$using_fp == 1] <- 'Yes'
+v_attr$using_fp[v_attr$using_fp == 2] <- 'No'
+v_attr$using_fp[v_attr$using_fp == 9] <- "Do Not Know"
+
+# if husband set using_fp to same as ego or alter
+for(i in 1:NROW(v_attr)){
+  if(v_attr$relationship[i] == 'Husband' & is.na(v_attr$relationship[i]) == F){
+    v_attr$using_fp[i] <- v_attr$using_fp[v_attr$id == str_sub(v_attr$id[i], 1, str_length(v_attr$id[i])-1)]
+  }
+}
+
+# add group
+v_attr$group <- NA
+v_attr$group[str_length(v_attr$id) == 9] <- 'Ego'
+v_attr$group[str_length(v_attr$id) == 10] <- 'Alter'
+v_attr$group[str_length(v_attr$id) == 11] <- 'AAlter'
+
+# add whether interviewed or not
+v_attr$intv <- 'No'
+v_attr$intv[str_length(v_attr$id) == 9] <- 'Yes'
+v_attr$intv[v_attr$id %in% alter_df$alter_id] <- 'Yes'
+
+# set nodes attributes
 gr_comb %<>% set_vertex_attr(name = 'district', value = v_attr$district)
 gr_comb %<>% set_vertex_attr(name = 'block', value = v_attr$block)
+gr_comb %<>% set_vertex_attr(name = 'relationship', value = v_attr$relationship)
+gr_comb %<>% set_vertex_attr(name = 'sex', value = v_attr$sex)
+gr_comb %<>% set_vertex_attr(name = 'age', value = v_attr$age)
+gr_comb %<>% set_vertex_attr(name = 'using_fp', value = v_attr$using_fp)
+gr_comb %<>% set_vertex_attr(name = 'group', value = v_attr$group)
+gr_comb %<>% set_vertex_attr(name = 'intv', value = v_attr$intv)
+
+# add additional edge attributes
+edge$talk_freq <- NA
+edge$discuss_fp <- NA
+
+for(i in 1:NROW(edge)){
+  if(str_length(edge$V1[i]) == 10 & str_length(edge$V2[i]) == 9){
+    edge$talk_freq[i] <- alter_attr$talk_freq[alter_attr$alter_id == edge$V1[i]]
+    edge$discuss_fp[i] <- alter_attr$preg[alter_attr$alter_id == edge$V1[i]]
+  }
+  if(str_length(edge$V1[i]) == 9 & str_length(edge$V2[i]) == 10){
+    edge$talk_freq[i] <- alter_attr$talk_freq[alter_attr$alter_id == edge$V2[i]]
+    edge$discuss_fp[i] <- alter_attr$preg[alter_attr$alter_id == edge$V2[i]]
+  }
+  if(str_length(edge$V1[i]) == 11 & str_length(edge$V2[i]) == 10){
+    edge$talk_freq[i] <- aalter_attr$talk_freq[aalter_attr$aalter_id == edge$V1[i]]
+    edge$discuss_fp[i] <- aalter_attr$preg[aalter_attr$aalter_id == edge$V1[i]]
+  }
+  if(str_length(edge$V1[i]) == 10 & str_length(edge$V2[i]) == 11){
+    edge$talk_freq[i] <- aalter_attr$talk_freq[aalter_attr$aalter_id == edge$V2[i]]
+    edge$discuss_fp[i] <- aalter_attr$preg[aalter_attr$aalter_id == edge$V2[i]]
+  }
+}
+
+# reset values
+edge %<>% mutate(talk_freq = recode(talk_freq,
+                                   `1` = 'Daily',
+                                   `2` = '3xW',
+                                   `3` = '1xW',
+                                   `4` = '1xM',
+                                   `5` = '1x3M',
+                                   `6` = '1x6M',
+                                   `7` = '1xY'), 
+                discuss_fp = recode(discuss_fp, 
+                                    `1` = 'Yes Talked',
+                                    `2` = 'Yes Heard',
+                                    `3` = 'No',
+                                    `4` = 'DKDR'))
+
+# set edge attributes 
+gr_comb %<>% set_edge_attr(name = 'weight', value = edge$weight)
+gr_comb %<>% set_edge_attr(name = 'talk_freq', value = edge$talk_freq)
+gr_comb %<>% set_edge_attr(name = 'discuss_fp', value = edge$discuss_fp)
+
+# # check if all duplicates are from the same block
+# # can only check if don't remove the duplicates above
+# for(i in 1:NROW(dup_id)){
+#   print(v_attr$block[v_attr$id == dup_id$id[i]] == v_attr$block[v_attr$id == dup_id$duplicate_id[i]])
+# }
 
 # Save data to file
 save(gr_comb, file="data/combined_igraph.rda")
