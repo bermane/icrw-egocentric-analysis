@@ -769,6 +769,14 @@ ggraph(gr_list_ego[[81]], 'dh') +
 
 ggsave(filename = 'results/plots/ego_net_81.png')
 
+####################################################################
+### BLOCK AND DISTRICT LEVEL TIE INTENSITY AND STRENGTH MEASURES ###
+####################################################################
+
+# start with years known
+ego_df$alter1
+
+
 # ######################################
 # ### CALCULATE EGO DEGREE CENTALITY ###
 # ######################################
