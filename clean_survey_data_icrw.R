@@ -150,13 +150,21 @@ sum(ego_pc$qe6 == ego_df$ego_id)
 ego_df %<>% bind_cols(ego_pc %>% select(pcq102, 
                                         pcq103, 
                                         pcq111,
-                                        pcq314,
-                                        pcq201b) %>%
+                                        pcq311,
+                                        pcq201b,
+                                        pcq209,
+                                        pcq119,
+                                        pcq106,
+                                        pcq107) %>%
                         rename(ego_age = pcq102, 
                                ego_edu = pcq103, 
                                ego_caste = pcq111,
-                               ego_using_fp = pcq314,
-                               ego_age_married = pcq201b))
+                               ego_using_fp = pcq311,
+                               ego_age_married = pcq201b,
+                               ego_parity = pcq209,
+                               ego_hus_mig = pcq119,
+                               ego_ever_worked = pcq106,
+                               ego_worked_lastyr = pcq107))
 
 # convert all character variables to factor
 ego_df %<>% 
@@ -791,27 +799,27 @@ v_attr$relationship <- str_remove_all(v_attr$relationship, "[^[\\da-zA-Z\\-]]")
 # create groups of relationship types
 fam <- c('Husband', 'Mother-in-law', 'Mother', 'Sister-in-law', 'Sister',
          'Brother-in-law', 'OtherRelative', 'Father', 'Father-in-law', 'HusbandWife',
-         'OthRelative', 'Brother', 'Daughter', 'Son')
+         'OthRelative', 'Brother', 'Daughter', 'Son', 'Beti', 'Barebeti', 'Beta',
+         'Chachisash', 'Chachi',
+         'Bhagnee', 'Chacherisas', 'Bhabi', 'Beta',
+         'Bahu', 'Chacha', 'Bhu', 'Chacherisash', 'Jija', 'Bohu',
+         'Jethanikalarka', 'Buasas', 'Chachaji', 'Awwsahsyika', 
+         'Bhabhi', 'Mausisash', 'Bhaganee', 'Buaa', 'Mami',
+         'Dadi', 'Patoh', 'Barebeta',
+         'Chhotibeti', 'Barebahu', 'Chhotebahu', 'Bahan', 'Chhotebeti')
 
-nonfam <- c('Friend', 'Neighbor', 'Landlord', 'Acquaintance', 'Neighbour', 'Blockmanager')
+nonfam <- c('Friend', 'Neighbor', 'Landlord', 'Acquaintance', 'Neighbour', 'Blockmanager',
+            'Shgvolentear', 'Trainer', 'Saheli', 'Bcm', 'Aunty', 'VCM',
+            'Facilator', 'Councilor', 'Faciletor', 'Facilater')
 
 health <- c('ASHA', 'Doctor', 'ANM', 'AWW', 'Docter', 'Dactor', 'Dr', 'BahnoiDoctor', 'DR',
             'Nurse', 'AnmFaciletor')
-
-other <- c('Chachisash', 'Chachi', 'Bhagnee', 'Chacherisas', 'Bhabi', 'Beti', 'Beta',
-           'Bahu', 'Chacha', 'Bhu', 'Chacherisash', 'Jija', 'Bohu', 'Shgvolentear',
-           'Jethanikalarka', 'Buasas', 'Aunty', 'Chachaji', 'Trainer', 'Awwsahsyika',
-           'Saheli', 'Bhabhi', 'Mausisash', 'Bcm', 'Bhaganee', 'Buaa', 'Mami',
-           'Dadi', 'Patoh', 'Facilator', 'Councilor', 'Faciletor', 'Barebeta',
-           'Chhotibeti', 'Barebeti', 'Barebahu', 'Chhotebahu', 'Bahan', 'VCM',
-           'Facilater', 'Chhotebeti')
 
 # recode relationship vals
 v_attr$rela_vals <- v_attr$relationship
 v_attr$rela_vals[v_attr$rela_vals %in% fam] <- 'Family'
 v_attr$rela_vals[v_attr$rela_vals %in% nonfam] <- 'Non-Family'
 v_attr$rela_vals[v_attr$rela_vals %in% health] <- 'Health Worker'
-v_attr$rela_vals[v_attr$rela_vals %in% other] <- 'Other'
 v_attr$rela_vals[str_length(v_attr$id) == 9] <- 'Ego'
 
 # clean up using_fp

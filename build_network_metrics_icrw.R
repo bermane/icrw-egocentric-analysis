@@ -15,6 +15,9 @@ library(magrittr)
 # load ego igraph objects
 load("data/ego_igraph.rda")
 
+# set dir for output
+setwd('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis')
+
 # measures based on ego
 # ego degree centrality
 ego_ego_met <- gr_list_ego %>%
@@ -39,12 +42,108 @@ ego_df %<>% arrange(ego_id)
 # make sure ego_ids match
 sum(ego_ego_met$ego_id == ego_df$ego_id)
   
-# add district, block, age, education, caste columns to ego_ego_met
+# add district, block, age, education, caste, parity, husband migrant columns to ego_ego_met
 ego_ego_met %<>% add_column(district = ego_df$district_name,
                             block = ego_df$block_name,
                             age = ego_df$ego_age,
                             edu = ego_df$ego_edu,
-                            caste = ego_df$ego_caste)
+                            caste = ego_df$ego_caste,
+                            parity = ego_df$ego_parity,
+                            husband_migrant = ego_df$ego_hus_mig,
+                            ever_worked = ego_df$ego_ever_worked,
+                            worked_last_year = ego_df$ego_worked_lastyr)
+
+# calculate degree centrality by ego age
+# two groups, 18-21 and 22-24
+ego_ego_met %>%
+  select(deg, age) %>%
+  mutate(age = case_when(age <= 21 ~ '18-21',
+                         age > 21 ~ '22-24')) %>%
+  tabyl(age, deg) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns()
+
+write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_age.csv', row.names = F)
+
+# calculate degree centrality by ego parity
+# NA, 0, 1, 2
+ego_ego_met %>%
+  select(deg, parity) %>%
+  tabyl(parity, deg) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns()
+
+write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_parity.csv', row.names = F)
+
+# calculate degree centrality by ego education
+# 0, 1-8, 9+
+ego_ego_met %>%
+  select(deg, edu) %>%
+  mutate(edu = case_when(edu == 0 ~ 'None',
+                         edu > 0 & edu <= 8 ~ '1-8',
+                         edu > 8 ~ '9+')) %>%
+  mutate(edu = ordered(edu, levels = c('None', '1-8', '9+'))) %>%
+  tabyl(edu, deg) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns()
+
+write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_edu.csv', row.names = F)
+
+# calculate degree centrality by ego caste
+# 0, 1-8, 9+
+ego_ego_met %>%
+  select(deg, caste) %>%
+  mutate(caste = case_when(caste == 1 ~ 'Scheduled Caste',
+                           caste == 2 ~ 'Scheduled Tribe',
+                           caste == 3 ~ 'Other Backward Class',
+                           caste == 4 ~ 'None of Them')) %>%
+  mutate(caste = ordered(caste, levels = c('Scheduled Caste', 'Scheduled Tribe', 
+                                       'Other Backward Class', 'None of Them'))) %>%
+  tabyl(caste, deg) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns()
+
+write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_caste.csv', row.names = F)
+
+# calculate degree centrality by ego employment
+# worked ever, 1 = yes, 2 = no
+ego_ego_met %>%
+  select(deg, ever_worked) %>%
+  tabyl(ever_worked, deg) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns()
+
+write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_ever_worked.csv', row.names = F)
+
+# worked in the last year, 1-3 = yes, 2 or NA = no
+ego_ego_met %>%
+  select(deg, worked_last_year) %>%
+  mutate(worked_last_year = case_when(worked_last_year >= 1 & worked_last_year <= 3 ~ 'Yes',
+                                      worked_last_year == 4 | is.na(worked_last_year)  ~ 'No')) %>%
+  tabyl(worked_last_year, deg) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns()
+
+write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_worked_last_year.csv', row.names = F)
+
+# calculate degree centrality by ego's husband migrant
+# yes = 3-7, no = 1-2
+ego_ego_met %>%
+  select(deg, husband_migrant) %>%
+  mutate(husband_migrant = case_when(husband_migrant < 3 ~ 'No',
+                                     husband_migrant >= 3 & husband_migrant <= 7 ~ 'Yes')) %>%
+  tabyl(husband_migrant, deg) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns()
+
+write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_husband_migrant.csv', row.names = F)
 
 # write ego table by block
 write.csv(ego_ego_met %>% 
@@ -296,7 +395,7 @@ ggplot(deg_sum, aes(x = deg %>% as.factor, y = perc*100, fill = ordered(group, l
   geom_bar(stat = 'identity',
            position = position_dodge()) +
   theme_bw() +
-  labs(x = 'Degree', y = 'Percent', fill = 'Group') +
+  labs(x = 'Degree', y = 'Percent by Group', fill = 'Group') +
   colscale_egoalt +  xlim('0', '1', '2', '3', '4', '5') +
   ggtitle('Degree Centrality of Ego and Alter') +
   theme(text = element_text(size=20))
@@ -358,7 +457,7 @@ ggplot(deg_ego_age, aes(x = deg %>% as.factor, y = perc*100, fill = age)) +
            position = position_dodge()) +
   theme_bw() +
   colscale_egoage + 
-  labs(x = 'Degree', y = 'Percent of Age Group', fill = 'Age') +  
+  labs(x = 'Degree', y = 'Percent by Age Group', fill = 'Age') +  
   xlim('0', '1', '2', '3', '4', '5') +
   ggtitle('Degree Centrality of Ego by Age') +
   theme(text = element_text(size=20))
@@ -422,7 +521,7 @@ ggplot(deg_alt_age, aes(x = deg %>% as.factor, y = perc*100, fill = age)) +
            position = position_dodge()) +
   theme_bw() +
   colscale_altage + 
-  labs(x = 'Degree', y = 'Percent of Age Group', fill = 'Age') +  
+  labs(x = 'Degree', y = 'Percent by Age Group', fill = 'Age') +  
   xlim('0', '1', '2', '3', '4', '5') +
   ggtitle('Degree Centrality of Alter by Age') +
   theme(text = element_text(size=20))
@@ -500,7 +599,7 @@ ggplot(deg_ego_caste, aes(x = deg %>% as.factor,
            position = position_dodge()) +
   theme_bw() +
   colscale_caste + 
-  labs(x = 'Degree', y = 'Percent of Caste Group', fill = 'Caste') +  
+  labs(x = 'Degree', y = 'Percent by Caste Group', fill = 'Caste') +  
   xlim('0', '1', '2', '3', '4', '5') +
   ggtitle('Degree Centrality of Ego by Caste') +
   theme(text = element_text(size=20))
@@ -569,7 +668,7 @@ ggplot(deg_alt_caste, aes(x = deg %>% as.factor,
            position = position_dodge()) +
   theme_bw() +
   colscale_caste + 
-  labs(x = 'Degree', y = 'Percent of Caste Group', fill = 'Caste') +  
+  labs(x = 'Degree', y = 'Percent by Caste Group', fill = 'Caste') +  
   xlim('0', '1', '2', '3', '4', '5') +
   ggtitle('Degree Centrality of Alter by Caste') +
   theme(text = element_text(size=20))
@@ -647,7 +746,7 @@ ggplot(deg_ego_edu, aes(x = deg %>% as.factor,
            position = position_dodge()) +
   theme_bw() +
   colscale_edu + 
-  labs(x = 'Degree', y = 'Percent of Education Group', fill = 'Education') +  
+  labs(x = 'Degree', y = 'Percent by Education Group', fill = 'Education') +  
   xlim('0', '1', '2', '3', '4', '5') +
   ggtitle('Degree Centrality of Ego by Education') +
   theme(text = element_text(size=20))
@@ -716,7 +815,7 @@ ggplot(deg_alt_edu, aes(x = deg %>% as.factor,
            position = position_dodge()) +
   theme_bw() +
   colscale_edu + 
-  labs(x = 'Degree', y = 'Percent of Education Group', fill = 'Education') +  
+  labs(x = 'Degree', y = 'Percent by Education Group', fill = 'Education') +  
   xlim('0', '1', '2', '3', '4', '5') +
   ggtitle('Degree Centrality of Alter by Education') +
   theme(text = element_text(size=20))
