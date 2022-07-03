@@ -1908,12 +1908,54 @@ for(i in 1:NROW(using_fp)){
   }
 }
 
+# create single col if ego has EVER used FP from list of questions pcq303a-l
+# create df of all rows of interest
+ego_ever_used_fp <- ego_pc %>% select(pcq303a, pcq303b, pcq303c, pcq303d, pcq303e,
+                                      pcq303f, pcq303g, pcq303h, pcq303i, pcq303j,
+                                      pcq303k, pcq303l)
+
+# sum if all columns are NA
+ego_ever_used_fp_na <- rowSums(is.na(ego_ever_used_fp), na.rm = T)
+
+# create na mask
+ego_ever_used_fp_na[ego_ever_used_fp_na < NCOL(ego_ever_used_fp)] <- 0
+ego_ever_used_fp_na[ego_ever_used_fp_na == NCOL(ego_ever_used_fp)] <- 1
+
+# sum if ever used
+ego_ever_used_fp <- rowSums(ego_ever_used_fp == 1, na.rm = T)
+
+# set all ever used to 1 and never used to 2
+ego_ever_used_fp[ego_ever_used_fp > 0] <- "Yes"
+ego_ever_used_fp[ego_ever_used_fp == 0] <- "No"
+
+# set to NA if all answers are NA
+ego_ever_used_fp[ego_ever_used_fp_na == 1] <- NA
+
+# put back into ego_pc
+ego_pc$ego_ever_used_fp <- ego_ever_used_fp
+rm(ego_ever_used_fp_na, ego_ever_used_fp)
+
+# if ego EVER USED FP AND ALTER IS HUSBAND add Yes to answer
+# replace with ego values if Husband
+for(i in 1:NROW(df)){
+  # if value is missing
+  if(is.na(df$value[i])){
+    
+    # if alter is husband
+    if(is.na(df_r$value[i]) == F){    
+      if(str_detect(df_r$value[i], 'Husband')){
+        df$value[i] <- ego_pc$ego_ever_used_fp[ego_pc$qe6 == df$woman_id[i]]
+      }}
+    
+  }
+}
+
 # drop na for consistency
 df <- na.omit(df)
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/ego_ever_used_fp_some_issues_with_question.csv',
+          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/ego_ever_used_fp.csv',
           row.names = F)
 
 ######################

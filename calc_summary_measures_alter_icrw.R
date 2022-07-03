@@ -1914,12 +1914,55 @@ for(i in 1:NROW(using_fp)){
   }
 }
 
+# create single col if alter has EVER used FP from list of questions 302a-l from alter survey
+# create df of all rows of interest
+alt_ever_used_fp <- alter %>% select(used_female_ster, used_male_ster, used_iucd,
+                                     used_inj, used_pill, used_ecp, used_condom,
+                                     used_stan_days, used_lam, used_rhy,
+                                     used_withd, used_other)
+
+# sum if all columns are NA
+alt_ever_used_fp_na <- rowSums(is.na(alt_ever_used_fp), na.rm = T)
+
+# create na mask
+alt_ever_used_fp_na[alt_ever_used_fp_na < NCOL(alt_ever_used_fp)] <- 0
+alt_ever_used_fp_na[alt_ever_used_fp_na == NCOL(alt_ever_used_fp)] <- 1
+
+# sum if ever used
+alt_ever_used_fp <- rowSums(alt_ever_used_fp == '1.0', na.rm = T)
+
+# set all ever used to 1 and never used to 2
+alt_ever_used_fp[alt_ever_used_fp > 0] <- "Yes"
+alt_ever_used_fp[alt_ever_used_fp == 0] <- "No"
+
+# set to NA if all answers are NA
+alt_ever_used_fp[alt_ever_used_fp == 1] <- NA
+
+# put back into ego_pc
+alter$alt_ever_used_fp <- alt_ever_used_fp
+rm(alt_ever_used_fp_na, alt_ever_used_fp)
+
+# if alter EVER USED FP AND ALTER IS HUSBAND add Yes to answer
+# replace with ego values if Husband
+for(i in 1:NROW(df)){
+  # if value is missing
+  if(is.na(df$value[i])){
+    
+    # if alter is husband
+    if(is.na(df_r$value[i]) == F){    
+      if(str_detect(df_r$value[i], 'Husband')){
+        df$value[i] <- alter$alt_ever_used_fp[alter$alter_id == df$alter_id[i]]
+      }}
+    
+  }
+}
+
 # drop na for consistency
 df <- na.omit(df)
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_ever_used_fp_some_issues_with_question.csv',
+          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_ever_used_fp.csv',
           row.names = F)
 
 ######################

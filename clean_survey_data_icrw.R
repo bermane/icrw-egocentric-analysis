@@ -9,18 +9,24 @@ library(tidyverse)
 library(readxl)
 library(igraph)
 library(readstata13)
+library(writexl)
 
 #########################################
 ### LOAD EGO AND ALTER DATA AND CLEAN ###
 #########################################
 
-# load ego and alter cleaned data
-ego <- read_excel(path = "data/ego_clean_11012022.xlsx")
-alter <-read_excel(path = "data/alter_clean_11012022.xlsx")
+# load ego and alter cleaned and completre data
+ego <- read_excel(path = "data/ego_clean_complete_11012022.xlsx")
+alter <-read_excel(path = "data/alter_clean_complete_11012022.xlsx")
 
-# load dta stata file to get PC data for egos
-ego_pc <- read.dta13(file = 'data/ego_clean_12012022de.dta', convert.factors = F)
-# alter <- read.dta13(file = 'data/alter_clean_12012022de.dta', convert.factors = F)
+# # load dta stata file to get PC data for egos
+# ego_pc <- read.dta13(file = 'data/ego_clean_12012022de.dta', convert.factors = F)
+# 
+# # write to file as xlsx
+# write_xlsx(ego_pc, "data/ego_pc_complete_12012022.xlsx")
+
+# load pc data for egos
+ego_pc <- read_excel(path = 'data/ego_pc_complete_12012022.xlsx')
 
 # load list of duplicate ids
 dup_id <- read_excel(path = 'data/duplicate_ids_02022022.xlsx')
@@ -146,6 +152,32 @@ ego_pc %<>% arrange(qe6) # qe6 is woman_id
 # make sure ego_ids match
 sum(ego_pc$qe6 == ego_df$ego_id)
 
+# create single col if ego has EVER used FP from list of questions pcq303a-l
+# create df of all rows of interest
+ego_ever_used_fp <- ego_pc %>% select(pcq303a, pcq303b, pcq303c, pcq303d, pcq303e,
+                           pcq303f, pcq303g, pcq303h, pcq303i, pcq303j,
+                           pcq303k, pcq303l)
+
+# sum if all columns are NA
+ego_ever_used_fp_na <- rowSums(is.na(ego_ever_used_fp), na.rm = T)
+
+# create na mask
+ego_ever_used_fp_na[ego_ever_used_fp_na < NCOL(ego_ever_used_fp)] <- 0
+ego_ever_used_fp_na[ego_ever_used_fp_na == NCOL(ego_ever_used_fp)] <- 1
+
+# sum if ever used
+ego_ever_used_fp <- rowSums(ego_ever_used_fp==1, na.rm = T)
+
+# set all ever used to 1 and never used to 2
+ego_ever_used_fp[ego_ever_used_fp > 0] <- 1
+ego_ever_used_fp[ego_ever_used_fp == 0] <- 2
+
+# set to NA if all answers are NA
+ego_ever_used_fp[ego_ever_used_fp_na == 1] <- NA
+
+# add back to PC data
+ego_pc$ego_ever_used_fp <- ego_ever_used_fp
+
 # bind PC columns of interest
 ego_df %<>% bind_cols(ego_pc %>% select(pcq102, 
                                         pcq103, 
@@ -155,7 +187,8 @@ ego_df %<>% bind_cols(ego_pc %>% select(pcq102,
                                         pcq209,
                                         pcq119,
                                         pcq106,
-                                        pcq107) %>%
+                                        pcq107,
+                                        ego_ever_used_fp) %>%
                         rename(ego_age = pcq102, 
                                ego_edu = pcq103, 
                                ego_caste = pcq111,
@@ -897,7 +930,7 @@ edge %<>% mutate(talk_freq = recode(talk_freq,
                                     `1` = 'Yes Talked',
                                     `2` = 'Yes Heard',
                                     `3` = 'No',
-                                    `4` = 'DKDR'))
+                                    `9` = 'DKDR'))
 
 # Create categories for freq_talk
 edge$talk_freq[is.na(edge$talk_freq)] <- 'NA'

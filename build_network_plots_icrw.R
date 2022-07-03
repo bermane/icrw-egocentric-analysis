@@ -55,8 +55,27 @@ ggraph(gr_comb, layout = "stress") +
 ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/',
              'results/network_plots/general/whole_network.png'))
 
+##########################
+### CREATE MANUAL PLOT ###
+##########################
+
+### 113041KAB|113040SAV
+
+# looking in block 9 since there is an example of 1 alter to 2 egos
+i <- 9
+
+# subset graph based on block
+gr <- induced_subgraph(gr_comb, 
+                       vids = which(V(gr_comb)$block == blocks[i]), 
+                       impl = 'create_from_scratch')
+
+# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
+gr <- induced_subgraph(gr, 
+                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "113041KAB|113040SAV")), 
+                       impl = 'create_from_scratch')
+
 # plot using ggraph
-ggraph(gr_comb, layout = "stress") + 
+ggraph(gr, layout = "stress") + 
   geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
                   edge_colour = "grey66", edge_width = 0.5) + 
   geom_node_point(aes(fill = group %>% as.factor, 
@@ -67,9 +86,114 @@ ggraph(gr_comb, layout = "stress") +
                              values = c('1' = 'dashed', '2' = 'solid'),
                              labels = c('1' = 'Indirect', '2' = 'Direct')) +
   theme(text = element_text(size=20)) +
-  ggtitle(str_c('Networks Within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
+  ggtitle(str_c('Network of 113041KAB|113040SAV within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
   colscale_group + shape_rela +
   guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
+
+ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/',
+             'results/network_plots/manual/113041KAB-113040SAV.png'))
+
+### 119060CHA|119058DRO|119061NAN
+### Block "Ghanshyampur"
+
+i <- which(blocks == "Ghanshyampur")
+
+# subset graph based on block
+gr <- induced_subgraph(gr_comb, 
+                       vids = which(V(gr_comb)$block == blocks[i]), 
+                       impl = 'create_from_scratch')
+
+# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
+gr <- induced_subgraph(gr, 
+                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "119060CHA|119058DRO|119061NAN")), 
+                       impl = 'create_from_scratch')
+
+# plot using ggraph
+ggraph(gr, layout = "stress") + 
+  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
+                  edge_colour = "grey66", edge_width = 0.5) + 
+  geom_node_point(aes(fill = group %>% as.factor, 
+                      stroke = intv_stroke,
+                      shape = rela_vals %>% as.factor), size = 6) +
+  theme_graph() + 
+  scale_edge_linetype_manual(name = 'Tie Strength', 
+                             values = c('1' = 'dashed', '2' = 'solid'),
+                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
+  theme(text = element_text(size=20)) +
+  ggtitle(str_c('Network of 119060CHA|119058DRO|119061NAN within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
+  colscale_group + shape_rela +
+  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
+
+ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/',
+             'results/network_plots/manual/119060CHA-119058DRO-119061NAN.png'))
+
+### 233112MEE|233113LAL
+### Block "Bagaha"
+
+i <- which(blocks == "Bagaha")
+
+# subset graph based on block
+gr <- induced_subgraph(gr_comb, 
+                       vids = which(V(gr_comb)$block == blocks[i]), 
+                       impl = 'create_from_scratch')
+
+# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
+gr <- induced_subgraph(gr, 
+                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "233112MEE|233113LAL")), 
+                       impl = 'create_from_scratch')
+
+# plot using ggraph
+ggraph(gr, layout = "stress") + 
+  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
+                  edge_colour = "grey66", edge_width = 0.5) + 
+  geom_node_point(aes(fill = group %>% as.factor, 
+                      stroke = intv_stroke,
+                      shape = rela_vals %>% as.factor), size = 6) +
+  theme_graph() + 
+  scale_edge_linetype_manual(name = 'Tie Strength', 
+                             values = c('1' = 'dashed', '2' = 'solid'),
+                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
+  theme(text = element_text(size=20)) +
+  ggtitle(str_c('Network of 233112MEE|233113LAL within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
+  colscale_group + shape_rela +
+  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
+
+ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/',
+             'results/network_plots/manual/233112MEE-233113LAL.png'))
+
+### 230102BAB|230100SOB|230101BIN|235239NEH
+### Block "Narkatiaganj"
+
+i <- which(blocks == "Narkatiaganj")
+
+# subset graph based on block
+gr <- induced_subgraph(gr_comb, 
+                       vids = which(V(gr_comb)$block == blocks[i]), 
+                       impl = 'create_from_scratch')
+
+# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
+gr <- induced_subgraph(gr, 
+                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "230102BAB|230100SOB|230101BIN|235239NEH")), 
+                       impl = 'create_from_scratch')
+
+# plot using ggraph
+ggraph(gr, layout = "stress") + 
+  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
+                  edge_colour = "grey66", edge_width = 0.5) + 
+  geom_node_point(aes(fill = group %>% as.factor, 
+                      stroke = intv_stroke,
+                      shape = rela_vals %>% as.factor), size = 6) +
+  theme_graph() + 
+  scale_edge_linetype_manual(name = 'Tie Strength', 
+                             values = c('1' = 'dashed', '2' = 'solid'),
+                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
+  theme(text = element_text(size=20)) +
+  ggtitle(str_c('Network of 230102BAB|230100SOB|230101BIN|235239NEH within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
+  colscale_group + shape_rela +
+  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
+
+ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/',
+             'results/network_plots/manual/230102BAB-230100SOB-230101BIN-235239NEH.png'))
 
 ####################
 ### GENERAL PLOT ###
