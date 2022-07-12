@@ -1,6 +1,8 @@
 # this code loads csv data of ego and alter interviews
 # and calculates homophily and homogeneity metrics for alter and aalter network
 
+# round 2 UP data!
+
 # load packages
 library(magrittr)
 library(egor)
@@ -17,19 +19,21 @@ library(readstata13)
 # set wd
 setwd('/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis')
 
-# load ego and alter cleaned data
-ego <- read_excel(path = "data/ego_clean_complete_11012022.xlsx")
-alter <-read_excel(path = "data/alter_clean_complete_11012022.xlsx")
+# load ego and alter cleaned and completre data
+ego <- read_excel(path = "data/SNA study_EGO_clean_Uttar Pradesh_30June2022.xlsx")
+alter <-read_excel(path = "data/SNA study_ALTER_clean_Uttar Pradesh_09Jul2022.xlsx")
 
-# load pc data
-ego_pc <- read_excel(path = "data/ego_pc_complete_12012022.xlsx")
+# # load dta stata file to get PC data for egos
+# ego_pc <- read.dta13(file = 'data/PC_EGO_data_Merge_Uttar Pradesh.dta', convert.factors = F)
+# 
+# # write to file as xlsx
+# write_xlsx(ego_pc, "data/ego_pc_complete_up_07122022.xlsx")
+
+# load pc data for egos
+ego_pc <- read_excel(path = 'data/ego_pc_complete_up_07122022.xlsx')
 
 # load list of duplicate ids
-dup_id <- read_excel(path = 'data/duplicate_ids_02022022.xlsx')
-
-# remove first row with 'qe' names
-ego <- ego[-1,]
-alter <- alter[-1,]
+dup_id <- read_excel(path = 'data/duplicate_ids_up_07112022.xlsx')
 
 # clean column names only keep part after last "."
 ego_names <- sapply(colnames(ego), FUN = function(x){
@@ -56,17 +60,24 @@ rm(ego_names, alter_names)
 ego <- ego[,str_detect(colnames(ego), 'note') == F]
 alter <- alter[,str_detect(colnames(alter), 'note') == F]
 
+# convert date columns to character
+inx <- sapply(ego, function(x) inherits(x, "Date") || inherits(x, "POSIXt"))
+ego[inx] <- lapply(ego[inx], as.character)
+
+inx <- sapply(alter, function(x) inherits(x, "Date") || inherits(x, "POSIXt"))
+alter[inx] <- lapply(alter[inx], as.character)
+
 # replace character NA values with NA
 ego[ego == "NA"] <- NA
 alter[alter == "NA"] <- NA
 
-# fix district, block and village in alter data
-alter$district_name <- alter$`district name_clean`
-alter$block_name <- alter$`block name_clean`
-alter$village_name <- alter$`village name_clean`
+# # fix district, block and village in alter data
+# alter$district_name <- alter$`district name_clean`
+# alter$block_name <- alter$`block name_clean`
+# alter$village_name <- alter$`village name_clean`
 
-# remove "clean" columns
-alter <- alter %>% select(-c(`district name_clean`, `block name_clean`, `village name_clean`))
+# # remove "clean" columns
+# alter <- alter %>% select(-c(`district name_clean`, `block name_clean`, `village name_clean`))
 
 # add alter-alter tie columns to ego dataset so we can build edgelist below
 # let's first extract the correct question so easier to look at
@@ -135,6 +146,9 @@ rm(alter_know)
 ##################################
 ### HOMOPHILY ALTER AND AALTER ###
 ##################################
+
+# set wd
+setwd('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis')
 
 # gender
 # education
@@ -645,7 +659,7 @@ sex <- ea$ego_sex == ea$alt_sex
 sex <- tabyl(sex)
 
 write.csv(sex, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/alt_gender.csv',
+          'results_up/homophily/alt_gender.csv',
           row.names = F)
 
 #############
@@ -668,7 +682,7 @@ caste <- ea$ego_caste == ea$alt_caste
 caste <- tabyl(caste)
 
 write.csv(caste, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/alt_caste.csv',
+          'results_up/homophily/alt_caste.csv',
           row.names = F)
 
 #################
@@ -699,7 +713,7 @@ fam <- tibble(mean_fam = mean(fam, na.rm = T),
               n = length(fam[is.na(fam) == F]))
 
 write.csv(fam, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/alt_fam_bias.csv',
+          'results_up/homophily/alt_fam_bias.csv',
           row.names = F)
 
 # create formula to calculate sd homophily
@@ -718,7 +732,7 @@ fam_sd <- tibble(avg_eucli_dist_fam = fam_sd[1],
                  n = fam_sd[2])
 
 write.csv(fam_sd, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/alt_fam_sd.csv',
+          'results_up/homophily/alt_fam_sd.csv',
           row.names = F)
 
 #######################################
@@ -757,7 +771,7 @@ friends_neigh <- tibble(mean_friends = mean(friends, na.rm = T),
                         n_friends_neigh = length(friends_neigh[is.na(friends_neigh) == F]))
 
 write.csv(friends_neigh, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/alt_friends_neighbors_bias.csv',
+          'results_up/homophily/alt_friends_neighbors_bias.csv',
           row.names = F)
 
 # calculate sd homophily
@@ -772,7 +786,7 @@ friends_neigh_sd_out <- tibble(avg_eucli_dist_friends = friends_sd[1],
                                n_friends_neigh = friends_neigh_sd[2])
 
 write.csv(friends_neigh_sd_out, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/alt_friends_neighbors_sd.csv',
+          'results_up/homophily/alt_friends_neighbors_sd.csv',
           row.names = F)
 
 #####################
@@ -808,7 +822,7 @@ using_fp <- ea$ego_using_fp == ea$alt_using_fp
 using_fp <- tabyl(using_fp)
 
 write.csv(using_fp,
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/alt_using_fp.csv',
+          'results_up/homophily/alt_using_fp.csv',
           row.names = F)
 
 ###############################
@@ -1105,7 +1119,7 @@ children_bias <- tibble(mean_sons = mean(sons, na.rm = T),
                         n_children = length(children[is.na(children) == F]))
 
 write.csv(children_bias,
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/alt_children_bias.csv',
+          'results_up/homophily/alt_children_bias.csv',
           row.names = F)
 
 # calculate sd homophily
@@ -1120,7 +1134,7 @@ children_sd_out <- tibble(avg_eucli_dist_sons = sons_sd[1],
                                n_children = children_sd[2])
 
 write.csv(children_sd_out,
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/alt_children_sd.csv',
+          'results_up/homophily/alt_children_sd.csv',
           row.names = F)
 
 ##############################################
@@ -1141,7 +1155,7 @@ ea %<>% mutate(alt_residence = recode(alt_residence,
 alt_residence <- ea %>% tabyl(alt_residence)
 
 write.csv(alt_residence, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/alt_aalt_residence.csv',
+          'results_up/homophily/alt_aalt_residence.csv',
           row.names = F)
 
 #####################################
@@ -1176,7 +1190,7 @@ sex = tibble(sex_blau = sex[1],
              k = sex[3])
 
 write.csv(sex, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_gender.csv',
+          'results_up/heterogeneity/alt_gender.csv',
           row.names = F)
 
 #############
@@ -1198,7 +1212,7 @@ caste = tibble(caste_blau = caste[1],
                k = caste[3])
 
 write.csv(caste, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_caste.csv',
+          'results_up/heterogeneity/alt_caste.csv',
           row.names = F)
 
 ################################
@@ -1213,7 +1227,7 @@ fam <- tibble(fam_sd = sd(ea$alt_fam, na.rm = T) %>% round(2),
               n = length(ea$alt_fam[is.na(ea$alt_fam) == F]))
 
 write.csv(fam, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_fam.csv',
+          'results_up/heterogeneity/alt_fam.csv',
           row.names = F)
 
 #######################################
@@ -1233,7 +1247,7 @@ friends_neigh <- tibble(friends_sd = sd(ea$alt_friends, na.rm = T) %>% round(2),
               friends_neigh_n = length((ea$alt_friends + ea$alt_neigh)[is.na((ea$alt_friends + ea$alt_neigh)) == F]))
 
 write.csv(friends_neigh, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_friends_neigh.csv',
+          'results_up/heterogeneity/alt_friends_neigh.csv',
           row.names = F)
 
 #####################
@@ -1257,7 +1271,7 @@ using_fp <- tibble(using_fp_blau = using_fp[1],
                    k = using_fp[3])
 
 write.csv(using_fp,
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_using_fp.csv',
+          'results_up/heterogeneity/alt_using_fp.csv',
           row.names = F)
 
 ###############################
@@ -1420,7 +1434,7 @@ children <- tibble(sons_sd = sd(ea$alt_sons, na.rm = T) %>% round(2),
               children_n = length((ea$alt_sons + ea$alt_daughters)[is.na((ea$alt_sons + ea$alt_daughters)) == F]))
 
 write.csv(children,
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_children.csv',
+          'results_up/heterogeneity/alt_children.csv',
           row.names = F)
 
 ##########################
@@ -1438,7 +1452,7 @@ res <- tibble(residence_blau = res[1],
               k = res[3])
 
 write.csv(res, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_residence.csv',
+          'results_up/heterogeneity/alt_residence.csv',
           row.names = F)
 
 #######################
@@ -1487,7 +1501,7 @@ social_learning <- tibble(get_along_with_family_blau = a[1],
                          fp_methods_n = g[3])
 
 write.csv(social_learning, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_social_learning.csv',
+          'results_up/heterogeneity/alt_social_learning.csv',
           row.names = F)
 
 ###########################
@@ -1505,7 +1519,7 @@ fp <- tibble(encourage_fp_blau = fp[1],
               k = fp[3])
 
 write.csv(fp, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_encourage_fp.csv',
+          'results_up/heterogeneity/alt_encourage_fp.csv',
           row.names = F)
 
 #################################
@@ -1523,7 +1537,7 @@ fp <- tibble(discuss_fp_freely_blau = fp[1],
              k = fp[3])
 
 write.csv(fp, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_discuss_fp_freely.csv',
+          'results_up/heterogeneity/alt_discuss_fp_freely.csv',
           row.names = F)
 
 ###########################
@@ -1541,7 +1555,7 @@ fp <- tibble(aalt_help_advise_alt_blau = fp[1],
              k = fp[3])
 
 write.csv(fp, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_helped_advised_by_aalt.csv',
+          'results_up/heterogeneity/alt_helped_advised_by_aalt.csv',
           row.names = F)
 
 ###########################
@@ -1559,7 +1573,7 @@ fp <- tibble(alt_help_advise_aalt_blau = fp[1],
              k = fp[3])
 
 write.csv(fp, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_help_advise_aalt.csv',
+          'results_up/heterogeneity/alt_help_advise_aalt.csv',
           row.names = F)
 
 ############################
@@ -1577,7 +1591,7 @@ fp <- tibble(alt_against_advice_blau = fp[1],
              k = fp[3])
 
 write.csv(fp, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_against_advice.csv',
+          'results_up/heterogeneity/alt_against_advice.csv',
           row.names = F)
 
 ###################################
@@ -1595,6 +1609,6 @@ fp <- tibble(alt_support_no_child_blau = fp[1],
              k = fp[3])
 
 write.csv(fp, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/alt_support_no_child.csv',
+          'results_up/heterogeneity/alt_support_no_child.csv',
           row.names = F)
 

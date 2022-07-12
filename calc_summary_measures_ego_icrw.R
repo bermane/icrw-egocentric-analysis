@@ -16,12 +16,11 @@ library(reshape2)
 #########################################
 
 # load ego and alter cleaned data
-ego <- read_excel(path = "data/ego_clean_11012022.xlsx")
-alter <-read_excel(path = "data/alter_clean_11012022.xlsx")
+ego <- read_excel(path = "data/ego_clean_complete_11012022.xlsx")
+alter <-read_excel(path = "data/alter_clean_complete_11012022.xlsx")
 
-# load dta stata file to get PC data for egos
-ego_pc <- read.dta13(file = 'data/ego_clean_12012022de.dta', convert.factors = F)
-# alter <- read.dta13(file = 'data/alter_clean_12012022de.dta', convert.factors = F)
+# load pc data
+ego_pc <- read_excel(path = "data/ego_pc_complete_12012022.xlsx")
 
 # load list of duplicate ids
 dup_id <- read_excel(path = 'data/duplicate_ids_02022022.xlsx')
@@ -1748,7 +1747,7 @@ df <- cbind(df, tibble(children = df3$value))
 tab <- tibble(mean_fut_sons = mean(df$sons, na.rm = T),
               sd_fu_sons = sd(df$sons, na.rm = T),
               med_fu_sons = median(df$sons, na.rm = T),
-              n_fu_sons = NROW(df[is.na(df$daughters) == F,]),
+              n_fu_sons = NROW(df[is.na(df$sons) == F,]),
               mean_fu_daughters = mean(df$daughters, na.rm = T),
               sd_fu_daughters = sd(df$daughters, na.rm = T),
               med_fu_daughters = median(df$daughters, na.rm = T),

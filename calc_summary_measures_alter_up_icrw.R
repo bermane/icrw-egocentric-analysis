@@ -1,6 +1,8 @@
 # this code loads csv data of ego and alter interviews
 # and calculates summary measures
 
+# round 2 UP data!
+
 # load packages
 library(magrittr)
 library(egor)
@@ -15,19 +17,24 @@ library(reshape2)
 ### LOAD EGO AND ALTER DATA AND CLEAN ###
 #########################################
 
-# load ego and alter cleaned data
-ego <- read_excel(path = "data/ego_clean_complete_11012022.xlsx")
-alter <-read_excel(path = "data/alter_clean_complete_11012022.xlsx")
+# set wd
+setwd('/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis')
 
-# load pc data
-ego_pc <- read_excel(path = "data/ego_pc_complete_12012022.xlsx")
+# load ego and alter cleaned and completre data
+ego <- read_excel(path = "data/SNA study_EGO_clean_Uttar Pradesh_30June2022.xlsx")
+alter <-read_excel(path = "data/SNA study_ALTER_clean_Uttar Pradesh_09Jul2022.xlsx")
+
+# # load dta stata file to get PC data for egos
+# ego_pc <- read.dta13(file = 'data/PC_EGO_data_Merge_Uttar Pradesh.dta', convert.factors = F)
+# 
+# # write to file as xlsx
+# write_xlsx(ego_pc, "data/ego_pc_complete_up_07122022.xlsx")
+
+# load pc data for egos
+ego_pc <- read_excel(path = 'data/ego_pc_complete_up_07122022.xlsx')
 
 # load list of duplicate ids
-dup_id <- read_excel(path = 'data/duplicate_ids_02022022.xlsx')
-
-# remove first row with 'qe' names
-ego <- ego[-1,]
-alter <- alter[-1,]
+dup_id <- read_excel(path = 'data/duplicate_ids_up_07112022.xlsx')
 
 # clean column names only keep part after last "."
 ego_names <- sapply(colnames(ego), FUN = function(x){
@@ -54,17 +61,24 @@ rm(ego_names, alter_names)
 ego <- ego[,str_detect(colnames(ego), 'note') == F]
 alter <- alter[,str_detect(colnames(alter), 'note') == F]
 
+# convert date columns to character
+inx <- sapply(ego, function(x) inherits(x, "Date") || inherits(x, "POSIXt"))
+ego[inx] <- lapply(ego[inx], as.character)
+
+inx <- sapply(alter, function(x) inherits(x, "Date") || inherits(x, "POSIXt"))
+alter[inx] <- lapply(alter[inx], as.character)
+
 # replace character NA values with NA
 ego[ego == "NA"] <- NA
 alter[alter == "NA"] <- NA
 
-# fix district, block and village in alter data
-alter$district_name <- alter$`district name_clean`
-alter$block_name <- alter$`block name_clean`
-alter$village_name <- alter$`village name_clean`
+# # fix district, block and village in alter data
+# alter$district_name <- alter$`district name_clean`
+# alter$block_name <- alter$`block name_clean`
+# alter$village_name <- alter$`village name_clean`
 
-# remove "clean" columns
-alter <- alter %>% select(-c(`district name_clean`, `block name_clean`, `village name_clean`))
+# # remove "clean" columns
+# alter <- alter %>% select(-c(`district name_clean`, `block name_clean`, `village name_clean`))
 
 # add alter-alter tie columns to ego dataset so we can build edgelist below
 # let's first extract the correct question so easier to look at
@@ -133,6 +147,9 @@ rm(alter_know)
 #############################################
 ### CAN TALK FREELY ABOUT PERSONAL ISSUES ###
 #############################################
+
+# set wd
+setwd('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis')
 
 # create df with data needed
 df <- alter %>% select(alter_id, 
@@ -229,7 +246,7 @@ stat_cat %<>% mutate(mean = mean %>% round(2),
 
 # write
 write.csv(stat_cat, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talk_freely_personal_by_alt_category.csv',
+          'results_up/summary_stats/alt_talk_freely_personal_by_alt_category.csv',
           row.names = F)
 
 # calculate overall by category
@@ -237,7 +254,7 @@ overall_cat <- df %>% tabyl(rela_cat)
 
 # write
 write.csv(overall_cat, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talk_freely_personal_overall_category.csv',
+          'results_up/summary_stats/alt_talk_freely_personal_overall_category.csv',
           row.names = F)
 
 # now by relationship
@@ -387,7 +404,7 @@ stat_r %<>% mutate(mean = mean %>% round(2),
 
 # write
 write.csv(stat_r, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talk_freely_personal_by_alt_relationship.csv',
+          'results_up/summary_stats/alt_talk_freely_personal_by_alt_relationship.csv',
           row.names = F)
 
 # calculate overall by category
@@ -398,7 +415,7 @@ overall_r %<>% mutate(relationship = recode(relationship, 'Husband' = 'Husband/W
 
 # write
 write.csv(overall_r, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talk_freely_personal_overall_relationship.csv',
+          'results_up/summary_stats/alt_talk_freely_personal_overall_relationship.csv',
           row.names = F)
 
 ###############################################
@@ -500,7 +517,7 @@ stat_cat %<>% mutate(mean = mean %>% round(2),
 
 # write
 write.csv(stat_cat, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talk_advice_fp_by_alt_category.csv',
+          'results_up/summary_stats/alt_talk_advice_fp_by_alt_category.csv',
           row.names = F)
 
 # calculate overall by category
@@ -508,7 +525,7 @@ overall_cat <- df %>% tabyl(rela_cat)
 
 # write
 write.csv(overall_cat, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talk_advice_fp_overall_category.csv',
+          'results_up/summary_stats/alt_talk_advice_fp_overall_category.csv',
           row.names = F)
 
 # now by relationship
@@ -658,7 +675,7 @@ stat_r %<>% mutate(mean = mean %>% round(2),
 
 # write
 write.csv(stat_r, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talk_advice_fp_by_alt_relationship.csv',
+          'results_up/summary_stats/alt_talk_advice_fp_by_alt_relationship.csv',
           row.names = F)
 
 # calculate overall by category
@@ -669,7 +686,7 @@ overall_r %<>% mutate(relationship = recode(relationship, 'Husband' = 'Husband/W
 
 # write
 write.csv(overall_r, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talk_advice_fp_overall_relationship.csv',
+          'results_up/summary_stats/alt_talk_advice_fp_overall_relationship.csv',
           row.names = F)
 
 ############################
@@ -771,7 +788,7 @@ stat_cat %<>% mutate(mean = mean %>% round(2),
 
 # write
 write.csv(stat_cat, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_value_opinion_by_alt_category.csv',
+          'results_up/summary_stats/alt_value_opinion_by_alt_category.csv',
           row.names = F)
 
 # calculate overall by category
@@ -779,7 +796,7 @@ overall_cat <- df %>% tabyl(rela_cat)
 
 # write
 write.csv(overall_cat, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_value_opinion_overall_category.csv',
+          'results_up/summary_stats/alt_value_opinion_overall_category.csv',
           row.names = F)
 
 # now by relationship
@@ -929,7 +946,7 @@ stat_r %<>% mutate(mean = mean %>% round(2),
 
 # write
 write.csv(stat_r, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_value_opinion_by_alt_relationship.csv',
+          'results_up/summary_stats/alt_value_opinion_by_alt_relationship.csv',
           row.names = F)
 
 # calculate overall by category
@@ -940,7 +957,7 @@ overall_r %<>% mutate(relationship = recode(relationship, 'Husband' = 'Husband/W
 
 # write
 write.csv(overall_r, 
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_value_opinion_overall_relationship.csv',
+          'results_up/summary_stats/alt_value_opinion_overall_relationship.csv',
           row.names = F)
 
 ##########################
@@ -972,7 +989,7 @@ df %<>% mutate(residence = recode(residence,
 
 # write table
 write.csv(df %>% tabyl(residence),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_residence.csv',
+          'results_up/summary_stats/alt_residence.csv',
           row.names = F)
 
 ######################
@@ -1005,7 +1022,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_mode_travel.csv',
+          'results_up/summary_stats/alt_mode_travel.csv',
           row.names = F)
 
 ######################
@@ -1037,7 +1054,7 @@ write.csv(tibble(mean_time = mean(df$value),
                  sd_time = sd(df$value),
                  med_time = median(df$value),
                  n = NROW(df)),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_travel_time.csv',
+          'results_up/summary_stats/alt_travel_time.csv',
           row.names = F)
 
 ####################
@@ -1068,7 +1085,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talk_method.csv',
+          'results_up/summary_stats/alt_talk_method.csv',
           row.names = F)
 
 ########################################
@@ -1140,7 +1157,7 @@ tab <- df %>% tabyl(talk_freq, talk_freq_fp) %>%
   adorn_totals(c("col", "row"), fill = "-", na.rm = TRUE, name = "Total")
 
 write.csv(tab,
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talk_freq_vs_talk_freq_fp.csv',
+          'results_up/summary_stats/alt_talk_freq_vs_talk_freq_fp.csv',
           row.names = F)
 
 #################################
@@ -1168,7 +1185,7 @@ df$sum_things_learned <- str_count(df$value, ',') + 1
 
 # write total
 write.csv(df %>% tabyl(sum_things_learned),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_sum_things_learned.csv',
+          'results_up/summary_stats/alt_sum_things_learned.csv',
           row.names = F)
 
 # table of individual things
@@ -1203,7 +1220,7 @@ tab %<>% mutate(learned_perc = learned_perc %>% round(2))
 
 # write table
 write.csv(tab,
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_things_learned.csv',
+          'results_up/summary_stats/alt_things_learned.csv',
           row.names = F)
 
 ###############################
@@ -1235,7 +1252,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talked_fp_methods.csv',
+          'results_up/summary_stats/alt_talked_fp_methods.csv',
           row.names = F)
 
 ############################
@@ -1263,7 +1280,7 @@ df$sum_fp_methods_discussed <- str_count(df$value, ',') + 1
 
 # write total
 write.csv(df %>% tabyl(sum_fp_methods_discussed),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_sum_fp_methods_discussed.csv',
+          'results_up/summary_stats/alt_sum_fp_methods_discussed.csv',
           row.names = F)
 
 # table of individual things
@@ -1310,7 +1327,7 @@ tab %<>% mutate(discussed_perc = discussed_perc %>% round(2))
 
 # write table
 write.csv(tab,
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_fp_methods_discussed.csv',
+          'results_up/summary_stats/alt_fp_methods_discussed.csv',
           row.names = F)
 
 ############################
@@ -1341,7 +1358,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_where_get_fp.csv',
+          'results_up/summary_stats/alt_where_get_fp.csv',
           row.names = F)
 
 ############################
@@ -1372,7 +1389,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_side_effects_fp.csv',
+          'results_up/summary_stats/alt_side_effects_fp.csv',
           row.names = F)
 
 ###################
@@ -1400,7 +1417,7 @@ df$sum_talk_topics <- str_count(df$value, ',') + 1
 
 # write total
 write.csv(df %>% tabyl(sum_talk_topics),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_sum_talk_topics.csv',
+          'results_up/summary_stats/alt_sum_talk_topics.csv',
           row.names = F)
 
 # table of individual things
@@ -1438,7 +1455,7 @@ tab %<>% mutate(topic_perc = topic_perc %>% round(2))
 
 # write table
 write.csv(tab,
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talk_topics.csv',
+          'results_up/summary_stats/alt_talk_topics.csv',
           row.names = F)
 
 ################################
@@ -1469,7 +1486,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_talked_num_children_have.csv',
+          'results_up/summary_stats/alt_talked_num_children_have.csv',
           row.names = F)
 
 #################################
@@ -1500,7 +1517,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_discuss_fp_freely.csv',
+          'results_up/summary_stats/alt_discuss_fp_freely.csv',
           row.names = F)
 
 #####################
@@ -1531,7 +1548,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_fp_encouraged.csv',
+          'results_up/summary_stats/alt_fp_encouraged.csv',
           row.names = F)
 
 ################################
@@ -1562,7 +1579,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_support_no_child_2_years.csv',
+          'results_up/summary_stats/alt_support_no_child_2_years.csv',
           row.names = F)
 
 #########################
@@ -1593,7 +1610,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_say_bad_things_fp.csv',
+          'results_up/summary_stats/alt_say_bad_things_fp.csv',
           row.names = F)
 
 ##################################
@@ -1670,7 +1687,7 @@ tab %<>% round(2)
 
 # write table
 write.csv(tab,
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_num_current_children.csv',
+          'results_up/summary_stats/alt_num_current_children.csv',
           row.names = F)
 
 #######################################
@@ -1696,7 +1713,11 @@ unique(df1$value)
 # change to numeric
 df1$value <- as.numeric(df1$value)
 
-# set 99 to NA
+# save before removing 97 and 99
+df1_hold <- df1
+
+# set 97 and 99 to NA
+df1$value[df1$value == 97] <- NA
 df1$value[df1$value == 99] <- NA
 
 # daughters
@@ -1718,7 +1739,11 @@ unique(df2$value)
 # change to numeric
 df2$value <- as.numeric(df2$value)
 
-# set 99 to NA
+# save before removing 97 and 99
+df2_hold <- df2
+
+# set 97 and 99 to NA
+df2$value[df2$value == 97] <- NA
 df2$value[df2$value == 99] <- NA
 
 # cbind dataframes
@@ -1744,8 +1769,12 @@ unique(df3$value)
 # change to numeric
 df3$value <- as.numeric(df3$value)
 
-# set 99 to NA
-#df2$value[df2$value == 99] <- NA
+# save before removing 97 and 99
+df3_hold <- df3
+
+# set 97 and 99 to NA
+df3$value[df3$value == 97] <- NA
+df3$value[df3$value == 99] <- NA
 
 # cbind dataframes
 df <- cbind(df, tibble(children = df3$value))
@@ -1757,26 +1786,28 @@ df <- cbind(df, tibble(children = df3$value))
 tab <- tibble(mean_fut_sons = mean(df$sons, na.rm = T),
               sd_fu_sons = sd(df$sons, na.rm = T),
               med_fu_sons = median(df$sons, na.rm = T),
-              n_fu_sons = NROW(df[is.na(df$daughters) == F,]),
+              n_fu_sons = NROW(df[is.na(df$sons) == F,]),
+              n_wants_sons_dont_know_how_many_more = length(df1_hold$value[df1_hold$value %in% 97]),
+              n_doesnt_know_how_many_more_sons = length(df1_hold$value[df1_hold$value %in% 99]),
               mean_fu_daughters = mean(df$daughters, na.rm = T),
               sd_fu_daughters = sd(df$daughters, na.rm = T),
               med_fu_daughters = median(df$daughters, na.rm = T),
               n_fu_daughters = NROW(df[is.na(df$daughters) == F,]),
-              mean_fu_children = mean(df$children[is.na(df$children) == F & !(df$children %in% c(97,98,99))], na.rm = T),
-              sd_fu_children = sd(df$children[is.na(df$children) == F & !(df$children %in% c(97,98,99))], na.rm = T),
-              med_fu_children = median(df$children[is.na(df$children) == F & !(df$children %in% c(97,98,99))], na.rm = T),
-              n_fu_children = NROW(df[is.na(df$children) == F & !(df$children %in% c(97,98,99)),]),
-              n_wants_children_dont_know_how_many = length(df$children[df$children %in% 97]),
-              doesnt_want_more_children = length(df$children[df$children %in% 98]),
-              dont_know = length(df$children[df$children %in% 99]),
-              n_total = NROW(df[is.na(df$daughters) == F,]) + NROW(df[is.na(df$children) == F,]))
+              n_wants_daughters_dont_know_how_many_more = length(df2_hold$value[df2_hold$value %in% 97]),
+              n_doesnt_know_how_many_more_daughters = length(df2_hold$value[df2_hold$value %in% 99]),
+              mean_fu_children = mean(df$children, na.rm = T),
+              sd_fu_children = sd(df$children, na.rm = T),
+              med_fu_children = median(df$children, na.rm = T),
+              n_fu_children = NROW(df[is.na(df$children) == F,]),
+              n_wants_children_dont_know_how_many = length(df3_hold$value[df3_hold$value %in% 97]),
+              n_doesnt_know_how_many_more_children = length(df3_hold$value[df3_hold$value %in% 99]))
 
-tab %<>% round(2)
+tab %<>% round(2) %>% t
 
 # write table
 write.csv(tab,
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_num_future_children_some_issues_w_question.csv',
-          row.names = F)
+          'results_up/summary_stats/alt_num_future_children.csv',
+          row.names = T)
 
 ################
 ### USING FP ###
@@ -1872,7 +1903,7 @@ df <- na.omit(df)
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_currently_using_fp.csv',
+          'results_up/summary_stats/alt_currently_using_fp.csv',
           row.names = F)
 
 # save df values because we need them for ever using fp
@@ -1962,7 +1993,7 @@ df <- na.omit(df)
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_ever_used_fp.csv',
+          'results_up/summary_stats/alt_ever_used_fp.csv',
           row.names = F)
 
 ######################
@@ -1993,7 +2024,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_get_help_advice.csv',
+          'results_up/summary_stats/alt_get_help_advice.csv',
           row.names = F)
 
 ###########################
@@ -2024,7 +2055,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_give_help_advice.csv',
+          'results_up/summary_stats/alt_give_help_advice.csv',
           row.names = F)
 
 ####################################
@@ -2056,7 +2087,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_easy_difficult_follow_advice.csv',
+          'results_up/summary_stats/alt_easy_difficult_follow_advice.csv',
           row.names = F)
 
 #########################
@@ -2087,7 +2118,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_discuss_fp_freely.csv',
+          'results_up/summary_stats/alt_discuss_fp_freely.csv',
           row.names = F)
 
 #########################
@@ -2118,7 +2149,7 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_say_bad_things_fp.csv',
+          'results_up/summary_stats/alt_say_bad_things_fp.csv',
           row.names = F)
 
 #####################
@@ -2149,6 +2180,6 @@ df %<>% mutate(value = recode(value,
 
 # write table
 write.csv(df %>% tabyl(value),
-          '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/summary_stats/alt_borrow_rupees.csv',
+          'results_up/summary_stats/alt_borrow_rupees.csv',
           row.names = F)
 

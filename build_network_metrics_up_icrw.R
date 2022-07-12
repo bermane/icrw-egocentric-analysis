@@ -1,6 +1,8 @@
 # this code loads network objects for ego and alter and generates network metrics
 # and related figures
 
+# round 2 UP data!
+
 # load packages
 library(tidyverse)
 library(igraph)
@@ -13,7 +15,7 @@ library(magrittr)
 #######################################
 
 # load ego igraph objects
-load("data/ego_igraph.rda")
+load("data/ego_igraph_up.rda")
 
 # set dir for output
 setwd('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis')
@@ -27,13 +29,13 @@ ego_ego_met <- gr_list_ego %>%
           .id = 'ego_id')
 
 # write ego degree centrality table
-write.csv(ego_ego_met %>% tabyl(deg) %>% round(2), file = 'results/not_grouped/ego_deg_cen.csv', row.names = F)
+write.csv(ego_ego_met %>% tabyl(deg) %>% round(2), file = 'results_up/not_grouped/ego_deg_cen.csv', row.names = F)
 
 # write ego betweeness centrality table
-write.csv(ego_ego_met %>% tabyl(bet) %>% round(2), file = 'results/not_grouped/ego_bet.csv', row.names = F)
+write.csv(ego_ego_met %>% tabyl(bet) %>% round(2), file = 'results_up/not_grouped/ego_bet.csv', row.names = F)
 
 # write ego closeness table
-write.csv(ego_ego_met %>% tabyl(clo) %>% round(2), file = 'results/not_grouped/ego_clo.csv', row.names = F)
+write.csv(ego_ego_met %>% tabyl(clo) %>% round(2), file = 'results_up/not_grouped/ego_clo.csv', row.names = F)
 
 # sort ego_df and ego_ego_met by ego_id
 ego_ego_met %<>% arrange(ego_id)
@@ -64,7 +66,7 @@ ego_ego_met %>%
   adorn_pct_formatting(digits = 2) %>%
   adorn_ns()
 
-write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_age.csv', row.names = F)
+write.csv(.Last.value, file = 'results_up/not_grouped/ego_deg_cen_age.csv', row.names = F)
 
 # calculate degree centrality by ego parity
 # NA, 0, 1, 2
@@ -75,7 +77,7 @@ ego_ego_met %>%
   adorn_pct_formatting(digits = 2) %>%
   adorn_ns()
 
-write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_parity.csv', row.names = F)
+write.csv(.Last.value, file = 'results_up/not_grouped/ego_deg_cen_parity.csv', row.names = F)
 
 # calculate degree centrality by ego education
 # 0, 1-8, 9+
@@ -90,7 +92,7 @@ ego_ego_met %>%
   adorn_pct_formatting(digits = 2) %>%
   adorn_ns()
 
-write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_edu.csv', row.names = F)
+write.csv(.Last.value, file = 'results_up/not_grouped/ego_deg_cen_edu.csv', row.names = F)
 
 # calculate degree centrality by ego caste
 # 0, 1-8, 9+
@@ -107,7 +109,7 @@ ego_ego_met %>%
   adorn_pct_formatting(digits = 2) %>%
   adorn_ns()
 
-write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_caste.csv', row.names = F)
+write.csv(.Last.value, file = 'results_up/not_grouped/ego_deg_cen_caste.csv', row.names = F)
 
 # calculate degree centrality by ego employment
 # worked ever, 1 = yes, 2 = no
@@ -118,7 +120,7 @@ ego_ego_met %>%
   adorn_pct_formatting(digits = 2) %>%
   adorn_ns()
 
-write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_ever_worked.csv', row.names = F)
+write.csv(.Last.value, file = 'results_up/not_grouped/ego_deg_cen_ever_worked.csv', row.names = F)
 
 # worked in the last year, 1-3 = yes, 2 or NA = no
 ego_ego_met %>%
@@ -130,7 +132,7 @@ ego_ego_met %>%
   adorn_pct_formatting(digits = 2) %>%
   adorn_ns()
 
-write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_worked_last_year.csv', row.names = F)
+write.csv(.Last.value, file = 'results_up/not_grouped/ego_deg_cen_worked_last_year.csv', row.names = F)
 
 # calculate degree centrality by ego's husband migrant
 # yes = 3-7, no = 1-2
@@ -143,7 +145,7 @@ ego_ego_met %>%
   adorn_pct_formatting(digits = 2) %>%
   adorn_ns()
 
-write.csv(.Last.value, file = 'results/not_grouped/ego_deg_cen_husband_migrant.csv', row.names = F)
+write.csv(.Last.value, file = 'results_up/not_grouped/ego_deg_cen_husband_migrant.csv', row.names = F)
 
 # write ego table by block
 write.csv(ego_ego_met %>% 
@@ -152,7 +154,7 @@ write.csv(ego_ego_met %>%
                       bet = mean(bet, na.rm = T) %>% round(2),
                       clo = mean(clo, na.rm = T) %>% round(2)) %>%
             mutate(n = ego_ego_met %>% group_by(block) %>% tally() %>% .$n),
-          file = 'results/by_block/ego_metrics_by_block.csv', row.names = F)
+          file = 'results_up/by_block/ego_metrics_by_block.csv', row.names = F)
 
 # write ego table by district
 write.csv(ego_ego_met %>% 
@@ -161,7 +163,7 @@ write.csv(ego_ego_met %>%
                       bet = mean(bet, na.rm = T) %>% round(2),
                       clo = mean(clo, na.rm = T) %>% round(2)) %>%
             mutate(n = ego_ego_met %>% group_by(district) %>% tally() %>% .$n),
-          file = 'results/by_district/ego_metrics_by_district.csv', row.names = F)
+          file = 'results_up/by_district/ego_metrics_by_district.csv', row.names = F)
                                               
 # measures based on alter
 # alter degree centrality
@@ -175,16 +177,16 @@ ego_alt_met <- gr_list %>%
           .id = 'ego_id')
 
 # write alter mean degree table
-write.csv(ego_alt_met %>% tabyl(mean_deg) %>% round(2), file = 'results/not_grouped/ego_alt_mean_deg.csv', row.names = F)
+write.csv(ego_alt_met %>% tabyl(mean_deg) %>% round(2), file = 'results_up/not_grouped/ego_alt_mean_deg.csv', row.names = F)
 
 # write alter mean betweeness table
-write.csv(ego_alt_met %>% tabyl(mean_bet) %>% round(2), file = 'results/not_grouped/ego_alt_mean_bet.csv', row.names = F)
+write.csv(ego_alt_met %>% tabyl(mean_bet) %>% round(2), file = 'results_up/not_grouped/ego_alt_mean_bet.csv', row.names = F)
 
 # write alter mean closeness table
-write.csv(ego_alt_met %>% tabyl(mean_clo) %>% round(2), file = 'results/not_grouped/ego_alt_mean_clo.csv', row.names = F)
+write.csv(ego_alt_met %>% tabyl(mean_clo) %>% round(2), file = 'results_up/not_grouped/ego_alt_mean_clo.csv', row.names = F)
 
 # write alter density table
-write.csv(ego_alt_met %>% tabyl(dens) %>% round(2), file = 'results/not_grouped/ego_alt_dens.csv', row.names = F)
+write.csv(ego_alt_met %>% tabyl(dens) %>% round(2), file = 'results_up/not_grouped/ego_alt_dens.csv', row.names = F)
 
 # sort ego_df and ego_alt_met by ego_id
 ego_alt_met %<>% arrange(ego_id)
@@ -205,7 +207,7 @@ write.csv(ego_alt_met %>%
                       clo = mean(mean_clo, na.rm = T) %>% round(2),
                       dens = mean(dens, na.rm = T) %>% round(2)) %>%
             mutate(n = ego_alt_met %>% group_by(block) %>% tally() %>% .$n),
-          file = 'results/by_block/ego_alt_metrics_by_block.csv', row.names = F)
+          file = 'results_up/by_block/ego_alt_metrics_by_block.csv', row.names = F)
 
 # write ego_alt table by district
 write.csv(ego_alt_met %>% 
@@ -215,18 +217,18 @@ write.csv(ego_alt_met %>%
                       clo = mean(mean_clo, na.rm = T) %>% round(2),
                       dens = mean(dens, na.rm = T) %>% round(2)) %>%
             mutate(n = ego_alt_met %>% group_by(district) %>% tally() %>% .$n),
-          file = 'results/by_district/ego_alt_metrics_by_district.csv', row.names = F)
+          file = 'results_up/by_district/ego_alt_metrics_by_district.csv', row.names = F)
 
 ########################################
 ### ALTER NETWORK DATA BASIC METRICS ###
 ########################################
 
 # load alter igraph objects
-load("/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/alter_igraph.rda")
+load("/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/alter_igraph_up.rda")
 
 # create table of unique blocks showing district as well
 write.csv(alter_df %>% select(district_name, block_name) %>% distinct(block_name, .keep_all = T), 
-          file = 'results/alter_district_block.csv', row.names = F)
+          file = 'results_up/alter_district_block.csv', row.names = F)
 
 # measures based on alter
 # alter degree centrality
@@ -237,13 +239,13 @@ alt_alt_met <- gr_list_a_alt %>%
           .id = 'alter_id')
 
 # write alter degree centrality table
-write.csv(alt_alt_met %>% tabyl(deg) %>% round(2), file = 'results/not_grouped/alt_deg_cen.csv', row.names = F)
+write.csv(alt_alt_met %>% tabyl(deg) %>% round(2), file = 'results_up/not_grouped/alt_deg_cen.csv', row.names = F)
 
 # write alter betweeness centrality table
-write.csv(alt_alt_met %>% tabyl(bet) %>% round(2), file = 'results/not_grouped/alt_bet.csv', row.names = F)
+write.csv(alt_alt_met %>% tabyl(bet) %>% round(2), file = 'results_up/not_grouped/alt_bet.csv', row.names = F)
 
 # write alter closeness table
-write.csv(alt_alt_met %>% tabyl(clo) %>% round(2), file = 'results/not_grouped/alt_clo.csv', row.names = F)
+write.csv(alt_alt_met %>% tabyl(clo) %>% round(2), file = 'results_up/not_grouped/alt_clo.csv', row.names = F)
 
 # sort alter_df and alt_alt_met by ego_id
 alt_alt_met %<>% arrange(alter_id)
@@ -266,7 +268,7 @@ write.csv(alt_alt_met %>%
                       bet = mean(bet, na.rm = T) %>% round(2),
                       clo = mean(clo, na.rm = T) %>% round(2)) %>%
             mutate(n = alt_alt_met %>% group_by(block) %>% tally() %>% .$n),
-          file = 'results/by_block/alt_alt_metrics_by_block.csv', row.names = F)
+          file = 'results_up/by_block/alt_alt_metrics_by_block.csv', row.names = F)
 
 # write alt_alt table by district
 write.csv(alt_alt_met %>% 
@@ -275,7 +277,7 @@ write.csv(alt_alt_met %>%
                       bet = mean(bet, na.rm = T) %>% round(2),
                       clo = mean(clo, na.rm = T) %>% round(2)) %>%
             mutate(n = alt_alt_met %>% group_by(district) %>% tally() %>% .$n),
-          file = 'results/by_district/alt_alt_metrics_by_district.csv', row.names = F)
+          file = 'results_up/by_district/alt_alt_metrics_by_district.csv', row.names = F)
 
 # measures based on aalter
 # aalter degree centrality
@@ -289,16 +291,16 @@ alt_aalt_met <- gr_list_a %>%
           .id = 'alter_id')
 
 # write alter mean degree table
-write.csv(alt_aalt_met %>% tabyl(mean_deg) %>% round(2), file = 'results/not_grouped/alt_aalt_mean_deg.csv', row.names = F)
+write.csv(alt_aalt_met %>% tabyl(mean_deg) %>% round(2), file = 'results_up/not_grouped/alt_aalt_mean_deg.csv', row.names = F)
 
 # write alter mean betweeness table
-write.csv(alt_aalt_met %>% tabyl(mean_bet) %>% round(2), file = 'results/not_grouped/alt_aalt_mean_bet.csv', row.names = F)
+write.csv(alt_aalt_met %>% tabyl(mean_bet) %>% round(2), file = 'results_up/not_grouped/alt_aalt_mean_bet.csv', row.names = F)
 
 # write alter mean closeness table
-write.csv(alt_aalt_met %>% tabyl(mean_clo) %>% round(2), file = 'results/not_grouped/alt_aalt_mean_clo.csv', row.names = F)
+write.csv(alt_aalt_met %>% tabyl(mean_clo) %>% round(2), file = 'results_up/not_grouped/alt_aalt_mean_clo.csv', row.names = F)
 
 # write alter density table
-write.csv(alt_aalt_met %>% tabyl(dens) %>% round(2), file = 'results/not_grouped/alt_aalt_dens.csv', row.names = F)
+write.csv(alt_aalt_met %>% tabyl(dens) %>% round(2), file = 'results_up/not_grouped/alt_aalt_dens.csv', row.names = F)
 
 # sort alter_df and alt_aalt_met by ego_id
 alt_aalt_met %<>% arrange(alter_id)
@@ -319,7 +321,7 @@ write.csv(alt_aalt_met %>%
                       clo = mean(mean_clo, na.rm = T) %>% round(2),
                       dens = mean(dens, na.rm = T) %>% round(2)) %>%
             mutate(n = alt_aalt_met %>% group_by(block) %>% tally() %>% .$n),
-          file = 'results/by_block/alt_aalt_metrics_by_block.csv', row.names = F)
+          file = 'results_up/by_block/alt_aalt_metrics_by_block.csv', row.names = F)
 
 # write alt_aalt table by district
 write.csv(alt_aalt_met %>% 
@@ -329,7 +331,7 @@ write.csv(alt_aalt_met %>%
                       clo = mean(mean_clo, na.rm = T) %>% round(2),
                       dens = mean(dens, na.rm = T) %>% round(2)) %>%
             mutate(n = alt_aalt_met %>% group_by(district) %>% tally() %>% .$n),
-          file = 'results/by_district/alt_aalt_metrics_by_district.csv', row.names = F)
+          file = 'results_up/by_district/alt_aalt_metrics_by_district.csv', row.names = F)
 
 ############################################
 ### FIGURES OF DEGREE CENTRALITY OVERALL ###
@@ -383,7 +385,7 @@ ggplot(deg_sum, aes(x = deg %>% as.factor, y = n, fill = ordered(group, levels =
   ggtitle('Degree Centrality of Ego and Alter') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_ego_alt_plot_n.png')
+ggsave('results_up/figures/deg_cent_ego_alt_plot_n.png')
 
 # plot degree by perc
 deg_sum$perc <- NA
@@ -400,7 +402,7 @@ ggplot(deg_sum, aes(x = deg %>% as.factor, y = perc*100, fill = ordered(group, l
   ggtitle('Degree Centrality of Ego and Alter') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_ego_alt_plot_perc.png')
+ggsave('results_up/figures/deg_cent_ego_alt_plot_perc.png')
 
 ########################################
 ### FIGURES OF DEG CENTRALITY BY AGE ###
@@ -443,7 +445,7 @@ ggplot(deg_ego_age, aes(x = deg %>% as.factor, y = n, fill = age)) +
   ggtitle('Degree Centrality of Ego by Age') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_ego_age_plot_n.png')
+ggsave('results_up/figures/deg_cent_ego_age_plot_n.png')
 
 # plot degree by perc
 deg_ego_age$perc <- NA
@@ -462,7 +464,7 @@ ggplot(deg_ego_age, aes(x = deg %>% as.factor, y = perc*100, fill = age)) +
   ggtitle('Degree Centrality of Ego by Age') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_ego_age_plot_perc.png')
+ggsave('results_up/figures/deg_cent_ego_age_plot_perc.png')
 
 # segment df by alter age
 deg_alt_age <- deg %>% 
@@ -507,7 +509,7 @@ ggplot(deg_alt_age, aes(x = deg %>% as.factor, y = n, fill = age)) +
   ggtitle('Degree Centrality of Alter by Age') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_alt_age_plot_n.png')
+ggsave('results_up/figures/deg_cent_alt_age_plot_n.png')
 
 # plot degree by perc
 deg_alt_age$perc <- NA
@@ -526,7 +528,7 @@ ggplot(deg_alt_age, aes(x = deg %>% as.factor, y = perc*100, fill = age)) +
   ggtitle('Degree Centrality of Alter by Age') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_alt_age_plot_perc.png')
+ggsave('results_up/figures/deg_cent_alt_age_plot_perc.png')
 
 ##########################################
 ### FIGURES OF DEG CENTRALITY BY CASTE ###
@@ -580,7 +582,7 @@ ggplot(deg_ego_caste, aes(x = deg %>% as.factor,
   ggtitle('Degree Centrality of Ego by Caste') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_ego_caste_plot_n.png')
+ggsave('results_up/figures/deg_cent_ego_caste_plot_n.png')
 
 # plot degree by perc
 deg_ego_caste$perc <- NA
@@ -604,7 +606,7 @@ ggplot(deg_ego_caste, aes(x = deg %>% as.factor,
   ggtitle('Degree Centrality of Ego by Caste') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_ego_caste_plot_perc.png')
+ggsave('results_up/figures/deg_cent_ego_caste_plot_perc.png')
 
 # segment df by alter caste
 deg_alt_caste <- deg %>% 
@@ -649,7 +651,7 @@ ggplot(deg_alt_caste, aes(x = deg %>% as.factor,
   ggtitle('Degree Centrality of Alter by Caste') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_alt_caste_plot_n.png')
+ggsave('results_up/figures/deg_cent_alt_caste_plot_n.png')
 
 # plot degree by perc
 deg_alt_caste$perc <- NA
@@ -673,7 +675,7 @@ ggplot(deg_alt_caste, aes(x = deg %>% as.factor,
   ggtitle('Degree Centrality of Alter by Caste') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_alt_caste_plot_perc.png')
+ggsave('results_up/figures/deg_cent_alt_caste_plot_perc.png')
 
 ##############################################
 ### FIGURES OF DEG CENTRALITY BY EDUCATION ###
@@ -727,7 +729,7 @@ ggplot(deg_ego_edu, aes(x = deg %>% as.factor,
   ggtitle('Degree Centrality of Ego by Education') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_ego_edu_plot_n.png')
+ggsave('results_up/figures/deg_cent_ego_edu_plot_n.png')
 
 # plot degree by perc
 deg_ego_edu$perc <- NA
@@ -751,7 +753,7 @@ ggplot(deg_ego_edu, aes(x = deg %>% as.factor,
   ggtitle('Degree Centrality of Ego by Education') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_ego_edu_plot_perc.png')
+ggsave('results_up/figures/deg_cent_ego_edu_plot_perc.png')
 
 # segment df by alter education
 deg_alt_edu <- deg %>% 
@@ -796,7 +798,7 @@ ggplot(deg_alt_edu, aes(x = deg %>% as.factor,
   ggtitle('Degree Centrality of Alter by Education') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_alt_edu_plot_n.png')
+ggsave('results_up/figures/deg_cent_alt_edu_plot_n.png')
 
 # plot degree by perc
 deg_alt_edu$perc <- NA
@@ -820,7 +822,7 @@ ggplot(deg_alt_edu, aes(x = deg %>% as.factor,
   ggtitle('Degree Centrality of Alter by Education') +
   theme(text = element_text(size=20))
 
-ggsave('results/figures/deg_cent_alt_edu_plot_perc.png')
+ggsave('results_up/figures/deg_cent_alt_edu_plot_perc.png')
 
 ##################################
 ### PLOTS OF NETWORK STRUCTURE ###
@@ -836,9 +838,9 @@ ggraph(gr_list_ego[[1]], 'dh') +
   theme_graph(base_family = 'Helvetica') +
   scale_edge_linetype_manual(values = c('dotted', 'solid')) + 
   theme(legend.position="none") +
-  ggtitle('Ego-Alter Network (Density = 1)')
+  ggtitle('Ego-Alter Network (Density = 0.7)')
 
-ggsave(filename = 'results/figures/ego_net_1.png')
+ggsave(filename = 'results_up/figures/ego_net_1.png')
 
 # density of 1st net
 ego_alt_met$dens[109]
@@ -850,23 +852,23 @@ ggraph(gr_list_ego[[109]], 'dh') +
   theme_graph(base_family = 'Helvetica') +
   scale_edge_linetype_manual(values = c('dotted', 'solid')) + 
   theme(legend.position="none") +
-  ggtitle('Ego-Alter Network (Density = 0.7)')
+  ggtitle('Ego-Alter Network (Density = 1)')
 
-ggsave(filename = 'results/figures/ego_net_109.png')
+ggsave(filename = 'results_up/figures/ego_net_109.png')
 
 # density of 1st net
-ego_alt_met$dens[81]
+ego_alt_met$dens[147]
 
 # basic plot2
-ggraph(gr_list_ego[[81]], 'dh') +
+ggraph(gr_list_ego[[147]], 'dh') +
   geom_edge_link(aes(linetype = as.factor(weight))) +
   geom_node_label(aes(label = name)) + 
   theme_graph(base_family = 'Helvetica') +
   scale_edge_linetype_manual(values = c('dotted', 'solid')) + 
   theme(legend.position="none") +
-  ggtitle('Ego-Alter Network (Density = 0.6)')
+  ggtitle('Ego-Alter Network (Density = 0.67)')
 
-ggsave(filename = 'results/figures/ego_net_81.png')
+ggsave(filename = 'results_up/figures/ego_net_147.png')
 
 ####################################################################
 ### BLOCK AND DISTRICT LEVEL TIE INTENSITY AND STRENGTH MEASURES ###

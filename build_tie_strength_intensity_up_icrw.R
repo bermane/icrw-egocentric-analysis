@@ -1,6 +1,8 @@
 # this code loads csv data of ego and alter interviews
 # and calculates tie intensity and strength
 
+# round 2 UP data!
+
 # load packages
 library(magrittr)
 library(egor)
@@ -17,19 +19,21 @@ library(readstata13)
 # set wd
 setwd('/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis')
 
-# load ego and alter cleaned data
-ego <- read_excel(path = "data/ego_clean_complete_11012022.xlsx")
-alter <-read_excel(path = "data/alter_clean_complete_11012022.xlsx")
+# load ego and alter cleaned and completre data
+ego <- read_excel(path = "data/SNA study_EGO_clean_Uttar Pradesh_30June2022.xlsx")
+alter <-read_excel(path = "data/SNA study_ALTER_clean_Uttar Pradesh_09Jul2022.xlsx")
 
-# load pc data
-ego_pc <- read_excel(path = "data/ego_pc_complete_12012022.xlsx")
+# # load dta stata file to get PC data for egos
+# ego_pc <- read.dta13(file = 'data/PC_EGO_data_Merge_Uttar Pradesh.dta', convert.factors = F)
+# 
+# # write to file as xlsx
+# write_xlsx(ego_pc, "data/ego_pc_complete_up_07122022.xlsx")
+
+# load pc data for egos
+ego_pc <- read_excel(path = 'data/ego_pc_complete_up_07122022.xlsx')
 
 # load list of duplicate ids
-dup_id <- read_excel(path = 'data/duplicate_ids_02022022.xlsx')
-
-# remove first row with 'qe' names
-ego <- ego[-1,]
-alter <- alter[-1,]
+dup_id <- read_excel(path = 'data/duplicate_ids_up_07112022.xlsx')
 
 # clean column names only keep part after last "."
 ego_names <- sapply(colnames(ego), FUN = function(x){
@@ -56,17 +60,24 @@ rm(ego_names, alter_names)
 ego <- ego[,str_detect(colnames(ego), 'note') == F]
 alter <- alter[,str_detect(colnames(alter), 'note') == F]
 
+# convert date columns to character
+inx <- sapply(ego, function(x) inherits(x, "Date") || inherits(x, "POSIXt"))
+ego[inx] <- lapply(ego[inx], as.character)
+
+inx <- sapply(alter, function(x) inherits(x, "Date") || inherits(x, "POSIXt"))
+alter[inx] <- lapply(alter[inx], as.character)
+
 # replace character NA values with NA
 ego[ego == "NA"] <- NA
 alter[alter == "NA"] <- NA
 
-# fix district, block and village in alter data
-alter$district_name <- alter$`district name_clean`
-alter$block_name <- alter$`block name_clean`
-alter$village_name <- alter$`village name_clean`
+# # fix district, block and village in alter data
+# alter$district_name <- alter$`district name_clean`
+# alter$block_name <- alter$`block name_clean`
+# alter$village_name <- alter$`village name_clean`
 
-# remove "clean" columns
-alter <- alter %>% select(-c(`district name_clean`, `block name_clean`, `village name_clean`))
+# # remove "clean" columns
+# alter <- alter %>% select(-c(`district name_clean`, `block name_clean`, `village name_clean`))
 
 # add alter-alter tie columns to ego dataset so we can build edgelist below
 # let's first extract the correct question so easier to look at
@@ -135,6 +146,8 @@ rm(alter_know)
 ##########
 ## EGO ###
 ##########
+
+setwd('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis')
 
 ######################################################
 ### BUILD TIBBLE OF ATTRIBUTES OF INTEREST FOR EGO ###
@@ -235,7 +248,7 @@ ties <- ego_tie %>%
                                  mean_yrs_known_perc_age = mean(yrs_known/ego_age, na.rm = T),
                                  med_yrs_known_perc_age = median(yrs_known/ego_age, na.rm = T))
 
-write.csv(ties, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/ego_yrs_known.csv',
+write.csv(ties, 'results_up/tie_strength_intensity/ego_yrs_known.csv',
           row.names = F)
 
 # calculate summary data by block
@@ -247,7 +260,7 @@ ties_block <- ego_tie %>%
             mean_yrs_known_perc_age = mean(yrs_known/ego_age, na.rm = T),
             med_yrs_known_perc_age = median(yrs_known/ego_age, na.rm = T))
 
-write.csv(ties_block, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/ego_yrs_known_block.csv',
+write.csv(ties_block, 'results_up/tie_strength_intensity/ego_yrs_known_block.csv',
           row.names = F)
 
 #################################
@@ -270,14 +283,14 @@ ego_tie %<>% mutate(talk_freq = recode(talk_freq,
 # overall summary
 talk_freq <- ego_tie %>% tabyl(talk_freq)
 
-write.csv(talk_freq, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/ego_talk_freq.csv',
+write.csv(talk_freq, 'results_up/tie_strength_intensity/ego_talk_freq.csv',
           row.names = F)
 
 # summary by block
 talk_freq_block <- ego_tie %>% tabyl(block, talk_freq)
 # ego_tie %>% split(.$block) %>% map(~map(.x %>% select(talk_freq), tabyl))
 
-write.csv(talk_freq_block, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/ego_talk_freq_block.csv',
+write.csv(talk_freq_block, 'results_up/tie_strength_intensity/ego_talk_freq_block.csv',
           row.names = F)
 
 ############################################
@@ -299,14 +312,14 @@ ego_tie %<>% mutate(talk_freq_fp = recode(talk_freq_fp,
 # overall summary
 talk_freq_fp <- ego_tie %>% tabyl(talk_freq_fp)
 
-write.csv(talk_freq_fp, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/ego_talk_freq_fp.csv',
+write.csv(talk_freq_fp, 'results_up/tie_strength_intensity/ego_talk_freq_fp.csv',
           row.names = F)
 
 # summary by block
 talk_freq_fp_block <- ego_tie %>% tabyl(block, talk_freq_fp)
 # ego_tie %>% split(.$block) %>% map(~map(.x %>% select(talk_freq_fp), tabyl))
 
-write.csv(talk_freq_fp_block, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/ego_talk_freq_fp_block.csv',
+write.csv(talk_freq_fp_block, 'results_up/tie_strength_intensity/ego_talk_freq_fp_block.csv',
           row.names = F)
 
 #################################################
@@ -329,14 +342,14 @@ ego_tie$num_subjects[is.na(ego_tie$subjects_other) == F] <- ego_tie$num_subjects
 # overall summary
 num_sub <- ego_tie %>% tabyl(num_subjects)
 
-write.csv(num_sub, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/ego_num_subjects.csv',
+write.csv(num_sub, 'results_up/tie_strength_intensity/ego_num_subjects.csv',
           row.names = F)
 
 # summary by block
 num_sub_block <- ego_tie %>% tabyl(block, num_subjects)
 # ego_tie %>% split(.$block) %>% map(~map(.x %>% select(num_subjects), tabyl))
 
-write.csv(num_sub_block, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/ego_num_subjects_block.csv',
+write.csv(num_sub_block, 'results_up/tie_strength_intensity/ego_num_subjects_block.csv',
           row.names = F)
 
 ############
@@ -450,7 +463,7 @@ unique(alter_tie$yrs_known)
 # just show table of alter values
 ties <- alter_tie %>% tabyl(yrs_known)
 
-write.csv(ties, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/alter_yrs_known.csv',
+write.csv(ties, 'results_up/tie_strength_intensity/alter_yrs_known.csv',
           row.names = F)
 
 #################################
@@ -473,14 +486,14 @@ alter_tie %<>% mutate(talk_freq = recode(talk_freq,
 # overall summary
 talk_freq <- alter_tie %>% tabyl(talk_freq)
 
-write.csv(talk_freq, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/alter_talk_freq.csv',
+write.csv(talk_freq, 'results_up/tie_strength_intensity/alter_talk_freq.csv',
           row.names = F)
 
 # summary by block
 talk_freq_block <- alter_tie %>% tabyl(block, talk_freq)
 # ego_tie %>% split(.$block) %>% map(~map(.x %>% select(talk_freq), tabyl))
 
-write.csv(talk_freq_block, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/alter_talk_freq_block.csv',
+write.csv(talk_freq_block, 'results_up/tie_strength_intensity/alter_talk_freq_block.csv',
           row.names = F)
 
 ############################################
@@ -502,14 +515,14 @@ alter_tie %<>% mutate(talk_freq_fp = recode(talk_freq_fp,
 # overall summary
 talk_freq_fp <- alter_tie %>% tabyl(talk_freq_fp)
 
-write.csv(talk_freq_fp, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/alter_talk_freq_fp.csv',
+write.csv(talk_freq_fp, 'results_up/tie_strength_intensity/alter_talk_freq_fp.csv',
           row.names = F)
 
 # summary by block
 talk_freq_fp_block <- alter_tie %>% tabyl(block, talk_freq_fp)
 # ego_tie %>% split(.$block) %>% map(~map(.x %>% select(talk_freq_fp), tabyl))
 
-write.csv(talk_freq_fp_block, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/alter_talk_freq_fp_block.csv',
+write.csv(talk_freq_fp_block, 'results_up/tie_strength_intensity/alter_talk_freq_fp_block.csv',
           row.names = F)
 
 #################################################
@@ -532,13 +545,13 @@ alter_tie$num_subjects[is.na(alter_tie$subjects_other) == F] <- alter_tie$num_su
 # overall summary
 num_sub <- alter_tie %>% tabyl(num_subjects)
 
-write.csv(num_sub, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/alter_num_subjects.csv',
+write.csv(num_sub, 'results_up/tie_strength_intensity/alter_num_subjects.csv',
           row.names = F)
 
 # summary by block
 num_sub_block <- alter_tie %>% tabyl(block, num_subjects)
 # ego_tie %>% split(.$block) %>% map(~map(.x %>% select(num_subjects), tabyl))
 
-write.csv(num_sub_block, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/alter_num_subjects_block.csv',
+write.csv(num_sub_block, 'results_up/tie_strength_intensity/alter_num_subjects_block.csv',
           row.names = F)
 

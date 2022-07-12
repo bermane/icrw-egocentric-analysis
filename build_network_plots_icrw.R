@@ -355,3 +355,4 @@ ggraph(gr, layout = "stress") +
 ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/',
              'results/network_plots/by_using_discussed_fp/block', i, '.png'))
 }
+
