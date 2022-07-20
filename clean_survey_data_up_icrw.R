@@ -847,14 +847,20 @@ fam <- c('Husband', 'Mother-in-law', 'Mother', 'Sister-in-law', 'Sister',
          'Jethanikalarka', 'Buasas', 'Chachaji', 'Awwsahsyika', 
          'Bhabhi', 'Mausisash', 'Bhaganee', 'Buaa', 'Mami',
          'Dadi', 'Patoh', 'Barebeta',
-         'Chhotibeti', 'Barebahu', 'Chhotebahu', 'Bahan', 'Chhotebeti')
+         'Chhotibeti', 'Barebahu', 'Chhotebahu', 'Bahan', 'Chhotebeti',
+         "Chachiyasas", "Dadisas", "Chachisas", "Bhau", "Bhuakeladke", 
+         "Saale", "Nandoi", "Bhanji", "Betha", "Bethi", "Badimaa", "Chachijee", 
+         "Mausi", "Dada", "Mamakaladka",  "Damand", "Mausiasaash", "Brotherinlaw", 
+         "Maternalcousin", "Bete", "Jijaji")
 
 nonfam <- c('Friend', 'Neighbor', 'Landlord', 'Acquaintance', 'Neighbour', 'Blockmanager',
             'Shgvolentear', 'Trainer', 'Saheli', 'Bcm', 'Aunty', 'VCM',
-            'Facilator', 'Councilor', 'Faciletor', 'Facilater')
+            'Facilator', 'Councilor', 'Faciletor', 'Facilater',
+            "Anti", "Supervisor", "Master", "Pradhan", "YejahakaamkartahaidukanMalik")
 
 health <- c('ASHA', 'Doctor', 'ANM', 'AWW', 'Docter', 'Dactor', 'Dr', 'BahnoiDoctor', 'DR',
-            'Nurse', 'AnmFaciletor')
+            'Nurse', 'AnmFaciletor', "DrDevchandra", "Staffnurse", "Drkhalid", "Sangini", "Sangani", 
+            "CHO", "Ashasangini", "DoctorCMO", "AshaGaneshpurki", "LHV", "Doctor-Patient")
 
 # recode relationship vals
 v_attr$rela_vals <- v_attr$relationship

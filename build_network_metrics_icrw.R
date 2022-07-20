@@ -12,6 +12,9 @@ library(magrittr)
 ### EGO NETWORK DATA BASIC METRICS ####
 #######################################
 
+# set wd
+setwd('/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis')
+
 # load ego igraph objects
 load("data/ego_igraph.rda")
 
