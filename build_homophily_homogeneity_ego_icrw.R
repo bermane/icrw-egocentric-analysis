@@ -132,9 +132,9 @@ alter_know[alter_know == 0] <- NA
 alter %<>% add_column(alter_know)
 rm(alter_know)
 
-###############################
-### HOMOPHILY EGO AND ALTER ###
-###############################
+#####################
+### HOMOPHILY EGO ###
+#####################
 
 # gender
 # education
