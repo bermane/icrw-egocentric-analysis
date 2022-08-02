@@ -21,6 +21,63 @@ dist_blo <- cbind(V(gr_comb)$block %>% as.data.frame,
                   V(gr_comb)$district %>% as.data.frame)
 colnames(dist_blo) <- c('Block', 'District')
 
+
+########################################################
+### NEW PLOTS WITH LABELS AND SPECIFIC FAMILY VALUES ###
+########################################################
+
+# set shape for group
+shape_group <- scale_shape_manual(name = 'Group', values = c('Ego' = 22,
+                                                              'Alter' = 21,
+                                                              'AAlter' = 24))
+
+# set colors for relationships
+colscale_rela <- scale_fill_manual(name = 'Relationship', values = c('Ego' = '#228833', 
+                                                                  'Husband' = '#EE6677',
+                                                                  'HusbandWife' = '#66CCEE',
+                                                                  'Sister-in-law' = '#CCBB44',
+                                                                  'Other Family' = '#4477AA',
+                                                                  'Health Worker' = '#AA3377',
+                                                                  'Non-Family' = '#BBBBBB'))
+
+### 113041KAB|113040SAV
+
+# looking in block 9 since there is an example of 1 alter to 2 egos
+i <- 9
+
+# subset graph based on block
+gr <- induced_subgraph(gr_comb, 
+                       vids = which(V(gr_comb)$block == blocks[i]), 
+                       impl = 'create_from_scratch')
+
+# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
+gr <- induced_subgraph(gr, 
+                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "113041KAB|113040SAV")), 
+                       impl = 'create_from_scratch')
+
+# plot using ggraph
+ggraph(gr, layout = "stress") + 
+  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
+                  edge_colour = "grey66", edge_width = 0.5) + 
+  geom_node_point(aes(fill = rela %>% as.factor, 
+                      stroke = intv_stroke,
+                      shape = group %>% as.factor), size = 6) +
+  theme_graph() + 
+  scale_edge_linetype_manual(name = 'Tie Strength', 
+                             values = c('1' = 'dashed', '2' = 'solid'),
+                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
+  theme(text = element_text(size=20)) +
+  ggtitle(str_c('Network of 113041KAB|113040SAV within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
+  shape_group + colscale_rela +
+  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
+
+ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/',
+             'results_bihar/network_plots/manual/119060CHA-119058DRO-119061NAN-NEW.png'))
+
+###################
+### OLDER PLOTS ###
+###################
+
 # set colors for group
 colscale_group <- scale_fill_manual(name = "Group", values = c('Ego' = '#228833', 
                                                                'Alter' = '#EE6677',

@@ -821,7 +821,7 @@ for(i in 1:NROW(v_attr)){
   }
 }
 
-# clean up sex vales
+# clean up sex values
 v_attr$sex[v_attr$sex %in% c('1', '1.0')] <- 'Male'
 v_attr$sex[v_attr$sex %in% c('2', '2.0')] <- 'Female'
 v_attr$sex[is.na(v_attr$sex)] <- 'Missing'
@@ -848,7 +848,17 @@ nonfam <- c('Friend', 'Neighbor', 'Landlord', 'Acquaintance', 'Neighbour', 'Bloc
 health <- c('ASHA', 'Doctor', 'ANM', 'AWW', 'Docter', 'Dactor', 'Dr', 'BahnoiDoctor', 'DR',
             'Nurse', 'AnmFaciletor')
 
-# recode relationship vals
+# recode relationship vals into relationships
+v_attr$rela <- v_attr$relationship
+v_attr$rela[v_attr$rela %in% fam] <- 'Other Family'
+v_attr$rela[v_attr$rela %in% nonfam] <- 'Non-Family'
+v_attr$rela[v_attr$rela %in% health] <- 'Health Worker'
+v_attr$rela[str_length(v_attr$id) == 9] <- 'Ego'
+v_attr$rela[v_attr$relationship == 'Sister-in-law'] <- 'Sister-in-law'
+v_attr$rela[v_attr$relationship == 'Husband'] <- 'Husband'
+v_attr$rela[v_attr$relationship == 'HusbandWife'] <- 'HusbandWife'
+
+# recode relationship vals into categories
 v_attr$rela_vals <- v_attr$relationship
 v_attr$rela_vals[v_attr$rela_vals %in% fam] <- 'Family'
 v_attr$rela_vals[v_attr$rela_vals %in% nonfam] <- 'Non-Family'
@@ -893,6 +903,7 @@ gr_comb %<>% set_vertex_attr(name = 'group', value = v_attr$group)
 gr_comb %<>% set_vertex_attr(name = 'intv', value = v_attr$intv)
 gr_comb %<>% set_vertex_attr(name = 'intv_stroke', value = v_attr$intv_stroke)
 gr_comb %<>% set_vertex_attr(name = 'rela_vals', value = v_attr$rela_vals)
+gr_comb %<>% set_vertex_attr(name = 'rela', value = v_attr$rela)
 
 # add additional edge attributes
 edge$talk_freq <- NA
