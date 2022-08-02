@@ -193,7 +193,7 @@ ego_df %<>% bind_cols(ego_pc %>% select(pcq102,
                                         pcq311,
                                         pcq201b,
                                         pcq209,
-                                        pcq119,
+                                        pcq118,
                                         pcq106,
                                         pcq107,
                                         ego_ever_used_fp) %>%
@@ -203,7 +203,7 @@ ego_df %<>% bind_cols(ego_pc %>% select(pcq102,
                                ego_using_fp = pcq311,
                                ego_age_married = pcq201b,
                                ego_parity = pcq209,
-                               ego_hus_mig = pcq119,
+                               ego_hus_mig = pcq118,
                                ego_ever_worked = pcq106,
                                ego_worked_lastyr = pcq107))
 

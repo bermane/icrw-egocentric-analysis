@@ -1,0 +1,4844 @@
+---
+title: "Bihar Network Analysis"
+author: "Ethan Berman"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Centrality and Density Measures
+## A) Ego Metrics
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+# this code loads network objects for ego and alter and generates network metrics
+# and related figures
+
+# load packages
+library(tidyverse)
+library(igraph)
+library(ggraph)
+library(janitor)
+library(magrittr)
+library(kableExtra)
+
+#######################################
+### EGO NETWORK DATA BASIC METRICS ####
+#######################################
+
+# load ego igraph objects
+load("/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_igraph.rda")
+
+# measures based on ego
+ego_ego_met <- gr_list_ego %>%
+  map_dfr(~ tibble(deg = degree(.x, v = 'ego'),
+                   bet = betweenness(.x, v = 'ego', weights = NA),
+                   clo = closeness(.x, v = 'ego', weights = NA)),
+          .id = 'ego_id')
+
+# print ego degree centrality table
+ego_ego_met %>% tabyl(deg) %>% round(2) %>%
+  rename(degree = deg) %>%
+  kbl(caption = 'Ego Degree Centrality') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# print ego betweeness centrality table
+ego_ego_met %>% tabyl(bet) %>% round(2) %>%
+  rename(betweenness = bet) %>%
+  kbl(caption = 'Ego Betweenness Centrality') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# print ego closeness table
+ego_ego_met %>% tabyl(clo) %>% round(2) %>%
+  rename(closeness = clo) %>%
+  kbl(caption = 'Ego Closeness Centrality') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# sort ego_df and ego_ego_met by ego_id
+ego_ego_met %<>% arrange(ego_id)
+ego_df %<>% arrange(ego_id)
+
+# make sure ego_ids match
+# sum(ego_ego_met$ego_id == ego_df$ego_id)
+  
+# add district, block, age, education, caste, parity, husband migrant columns to ego_ego_met
+ego_ego_met %<>% add_column(district = ego_df$district_name,
+                            block = ego_df$block_name,
+                            age = ego_df$ego_age,
+                            edu = ego_df$ego_edu,
+                            caste = ego_df$ego_caste,
+                            parity = ego_df$ego_parity,
+                            husband_migrant = ego_df$ego_hus_mig,
+                            ever_worked = ego_df$ego_ever_worked,
+                            worked_last_year = ego_df$ego_worked_lastyr)
+
+# calculate degree centrality by ego age
+# two groups, 18-21 and 22-24
+ego_ego_met %>%
+  select(deg, age) %>%
+  rename(degree = deg) %>%
+  mutate(age = case_when(age <= 21 ~ '18-21',
+                         age > 21 ~ '22-24')) %>%
+  tabyl(age, degree) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top') %>%
+  kbl(caption = 'Ego Degree Centrality by Age (pcq102)') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# calculate degree centrality by ego parity
+# NA, 0, 1, 2
+
+# set NA values to 0
+ego_ego_met$parity[is.na(ego_ego_met$parity)] <- 0
+
+ego_ego_met %>%
+  select(deg, parity) %>%
+  rename(degree = deg) %>%
+  tabyl(parity, degree) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top') %>%
+  kbl(caption = 'Ego Degree Centrality by Parity (pcq209 -- Missing Values set to 0)') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# calculate degree centrality by ego education
+# 0, 1-8, 9+
+ego_ego_met %>%
+  select(deg, edu) %>%
+  rename(education = edu, degree = deg) %>%
+  mutate(education = case_when(education == 0 ~ 'None',
+                         education > 0 & education <= 8 ~ '1-8',
+                         education > 8 ~ '9+')) %>%
+  mutate(education = ordered(education, levels = c('None', '1-8', '9+'))) %>%
+  tabyl(education, degree) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top') %>%
+  kbl(caption = 'Ego Degree Centrality by Education (pcq103)') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# calculate degree centrality by ego caste
+# 0, 1-8, 9+
+ego_ego_met %>%
+  select(deg, caste) %>%
+  rename(degree = deg) %>%
+  mutate(caste = case_when(caste == 1 ~ 'Scheduled Caste',
+                           caste == 2 ~ 'Scheduled Tribe',
+                           caste == 3 ~ 'Other Backward Class',
+                           caste == 4 ~ 'None of Them')) %>%
+  mutate(caste = ordered(caste, levels = c('Scheduled Caste', 'Scheduled Tribe', 
+                                       'Other Backward Class', 'None of Them'))) %>%
+  tabyl(caste, degree) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top') %>%
+  kbl(caption = 'Ego Degree Centrality by Caste (pcq111)') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# calculate degree centrality by ego employment
+# worked ever, 1 = yes, 2 = no
+ego_ego_met %>%
+  select(deg, ever_worked) %>%
+  rename(degree = deg) %>%
+  tabyl(ever_worked, degree) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top') %>%
+  kbl(caption = 'Ego Degree Centrality by Whether Ego has Ever Worked (pcq106)') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# worked in the last year, 1-3 = yes, 2 or NA = no
+ego_ego_met %>%
+  select(deg, worked_last_year) %>%
+  rename(degree = deg) %>%
+  mutate(worked_last_year = case_when(worked_last_year >= 1 & worked_last_year <= 3 ~ 'Yes',
+                                      worked_last_year == 4 | is.na(worked_last_year)  ~ 'No')) %>%
+  tabyl(worked_last_year, degree) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top') %>%
+  kbl(caption = 'Ego Degree Centrality by Whether Ego has Worked in the Last Year (pcq107)') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# calculate degree centrality by ego's husband migrant
+# yes = 3-7, no = 1-2
+ego_ego_met %>%
+  select(deg, husband_migrant) %>%
+  rename(degree = deg) %>%
+  mutate(husband_migrant = case_when(husband_migrant < 3 ~ 'No',
+                                     husband_migrant >= 3 & husband_migrant <= 5 ~ 'Yes')) %>%
+  tabyl(husband_migrant, degree) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top') %>%
+  kbl(caption = "Ego Degree Centrality by Whether Ego's Husband is Migrant (pcq118)") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# ego table by block
+ego_ego_met %>% 
+            group_by(block) %>% 
+            summarize(degree = mean(deg, na.rm = T) %>% round(2),
+                      betweenness = mean(bet, na.rm = T) %>% round(2),
+                      closeness = mean(clo, na.rm = T) %>% round(2)) %>%
+            mutate(n = ego_ego_met %>% group_by(block) %>% tally() %>% .$n) %>%
+  kbl(caption = 'Ego Mean Degree, Betweenness and Closeness Centrality by Block') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# write ego table by district
+ego_ego_met %>% 
+            group_by(district) %>% 
+            summarize(degree = mean(deg, na.rm = T) %>% round(2),
+                      betweenness = mean(bet, na.rm = T) %>% round(2),
+                      closeness = mean(clo, na.rm = T) %>% round(2)) %>%
+            mutate(n = ego_ego_met %>% group_by(district) %>% tally() %>% .$n) %>%
+  kbl(caption = 'Ego Mean Degree, Betweenness and Closeness Centrality by District') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+```
+## B) Alters in Ego's Network
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+# measures based on alter
+# alter degree centrality
+# alter betweenness centrality
+ego_alt_met <- gr_list %>%
+  map_dfr(~ tibble(mean_deg = mean(degree(.x)),
+                   mean_bet = mean(betweenness(.x, weights = NA)),
+                   deg_centr = centr_degree(.x)$centralization,
+                   mean_clo = mean(closeness(.x, weights = NA)),
+                   dens = edge_density(.x)),
+          .id = 'ego_id')
+
+# alter mean degree table
+ego_alt_met %>% tabyl(mean_deg) %>% round(2) %>%
+  rename(mean_degree = mean_deg) %>%
+  kbl(caption = 'Alter Mean Degree Centrality') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# alter mean betweeness table
+ego_alt_met %>% tabyl(mean_bet) %>% round(2) %>%
+  rename(mean_betweenness = mean_bet) %>%
+  kbl(caption = 'Alter Mean Betweenness Centrality') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# alter mean closeness table
+ego_alt_met %>% tabyl(mean_clo) %>% round(2) %>%
+  rename(mean_closeness = mean_clo) %>%
+  kbl(caption = 'Alter Mean Closeness Centrality') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# write alter density table
+ego_alt_met %>% tabyl(dens) %>% round(2) %>%
+  rename(density = dens) %>%
+  kbl(caption = 'Alter Density') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# sort ego_df and ego_alt_met by ego_id
+ego_alt_met %<>% arrange(ego_id)
+ego_df %<>% arrange(ego_id)
+
+# make sure ego_ids match
+# sum(ego_alt_met$ego_id == ego_df$ego_id)
+
+# add district and block columns to ego_alt_met
+ego_alt_met %<>% add_column(district = ego_df$district_name,
+                            block = ego_df$block_name)
+
+# write ego_alt table by block
+ego_alt_met %>% 
+            group_by(block) %>% 
+            summarize(mean_degree = mean(mean_deg, na.rm = T) %>% round(2),
+                      mean_betweenness = mean(mean_bet, na.rm = T) %>% round(2),
+                      mean_closeness = mean(mean_clo, na.rm = T) %>% round(2),
+                      mean_density = mean(dens, na.rm = T) %>% round(2)) %>%
+            mutate(n = ego_alt_met %>% group_by(block) %>% tally() %>% .$n) %>%
+  kbl(caption = 'Alter Mean Degree, Betweenness, Closeness Centrality, and Density by Block') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# write ego_alt table by district
+ego_alt_met %>% 
+            group_by(district) %>% 
+            summarize(mean_degree = mean(mean_deg, na.rm = T) %>% round(2),
+                      mean_betweenness = mean(mean_bet, na.rm = T) %>% round(2),
+                      mean_closeness = mean(mean_clo, na.rm = T) %>% round(2),
+                      mean_density = mean(dens, na.rm = T) %>% round(2)) %>%
+            mutate(n = ego_alt_met %>% group_by(district) %>% tally() %>% .$n) %>%
+  kbl(caption = 'Alter Mean Degree, Betweenness, Closeness Centrality, and Density by District') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+```
+
+## C) Alter Metrics (Alter Survey)
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+########################################
+### ALTER NETWORK DATA BASIC METRICS ###
+########################################
+
+# load alter igraph objects
+load("/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/alter_igraph.rda")
+
+# create table of unique blocks showing district as well
+# write.csv(alter_df %>% select(district_name, block_name) %>% distinct(block_name, .keep_all = T), 
+#          file = 'results/alter_district_block.csv', row.names = F)
+
+# measures based on alter
+# alter degree centrality
+alt_alt_met <- gr_list_a_alt %>%
+  map_dfr(~ tibble(deg = degree(.x, v = 'ego'),
+                   bet = betweenness(.x, v = 'ego', weights = NA),
+                   clo = closeness(.x, v = 'ego', weights = NA)),
+          .id = 'alter_id')
+
+# alter degree centrality table
+alt_alt_met %>% tabyl(deg) %>% round(2) %>%
+  rename(degree = deg) %>%
+  kbl(caption = 'Alter Degree Centrality') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# alter betweeness centrality table
+alt_alt_met %>% tabyl(bet) %>% round(2) %>%
+  rename(betweenness = bet) %>%
+  kbl(caption = 'Alter Betweenness Centrality') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# alter closeness table
+alt_alt_met %>% tabyl(clo) %>% round(2) %>%
+  rename(closeness = clo) %>%
+  kbl(caption = 'Alter Closeness Centrality') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# sort alter_df and alt_alt_met by ego_id
+alt_alt_met %<>% arrange(alter_id)
+alter_df %<>% arrange(alter_id)
+
+# make sure alter_ids match
+# sum(alt_alt_met$alter_id == alter_df$alter_id)
+
+# add district, block, age, education, caste columns to alt_alt_met
+alt_alt_met %<>% add_column(district = alter_df$district_name,
+                            block = alter_df$block_name,
+                            age = alter_df$age,
+                            edu = alter_df$education,
+                            caste = alter_df$caste)
+
+# write alt_alt table by block
+alt_alt_met %>% 
+            group_by(block) %>% 
+            summarize(degree = mean(deg, na.rm = T) %>% round(2),
+                      betweenness = mean(bet, na.rm = T) %>% round(2),
+                      closeness = mean(clo, na.rm = T) %>% round(2)) %>%
+            mutate(n = alt_alt_met %>% group_by(block) %>% tally() %>% .$n) %>%
+  kbl(caption = 'Alter Mean Degree, Betweenness and Closeness Centrality by Block') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# write alt_alt table by district
+alt_alt_met %>% 
+            group_by(district) %>% 
+            summarize(degree = mean(deg, na.rm = T) %>% round(2),
+                      betweenness = mean(bet, na.rm = T) %>% round(2),
+                      closeness = mean(clo, na.rm = T) %>% round(2)) %>%
+            mutate(n = alt_alt_met %>% group_by(district) %>% tally() %>% .$n) %>%
+  kbl(caption = 'Alter Mean Degree, Betweenness and Closeness Centrality by District') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+```
+
+## D) Alter's Alters in Alter's Network (Alter Survey)
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+# measures based on aalter
+# aalter degree centrality
+# aalter betweenness centrality
+alt_aalt_met <- gr_list_a %>%
+  map_dfr(~ tibble(mean_deg = mean(degree(.x)),
+                   mean_bet = mean(betweenness(.x, weights = NA)),
+                   deg_centr = centr_degree(.x)$centralization,
+                   mean_clo = mean(closeness(.x, weights = NA)),
+                   dens = edge_density(.x)),
+          .id = 'alter_id')
+
+# alter mean degree table
+alt_aalt_met %>% tabyl(mean_deg) %>% round(2) %>% 
+  rename(mean_degree = mean_deg) %>%
+  kbl(caption = 'AAlter Mean Degree Centrality') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# alter mean betweeness table
+alt_aalt_met %>% tabyl(mean_bet) %>% round(2) %>%
+  rename(mean_betweenness = mean_bet) %>%
+  kbl(caption = 'AAlter Mean Betweenness Centrality') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# alter mean closeness table
+alt_aalt_met %>% tabyl(mean_clo) %>% round(2) %>%
+  rename(mean_closeness = mean_clo) %>%
+  kbl(caption = 'AAlter Mean Closeness Centrality') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# alter density table
+alt_aalt_met %>% tabyl(dens) %>% round(2) %>%
+  rename(density = dens) %>%
+  kbl(caption = 'AAlter Density') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# sort alter_df and alt_aalt_met by ego_id
+alt_aalt_met %<>% arrange(alter_id)
+alter_df %<>% arrange(alter_id)
+
+# make sure alter_ids match
+# sum(alt_aalt_met$alter_id == alter_df$alter_id)
+
+# add district and block columns to alt_aalt_met
+alt_aalt_met %<>% add_column(district = alter_df$district_name,
+                            block = alter_df$block_name)
+
+# write alt_aalt table by block
+alt_aalt_met %>% 
+            group_by(block) %>% 
+            summarize(mean_degree = mean(mean_deg, na.rm = T) %>% round(2),
+                      mean_betweenness = mean(mean_bet, na.rm = T) %>% round(2),
+                      mean_closeness = mean(mean_clo, na.rm = T) %>% round(2),
+                      mean_density = mean(dens, na.rm = T) %>% round(2)) %>%
+            mutate(n = alt_aalt_met %>% group_by(block) %>% tally() %>% .$n) %>%
+  kbl(caption = 'AAlter Mean Degree, Betweenness, Closeness Centrality, and Density by Block') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# write alt_aalt table by district
+alt_aalt_met %>% 
+            group_by(district) %>% 
+            summarize(mean_degree = mean(mean_deg, na.rm = T) %>% round(2),
+                      mean_betweenness = mean(mean_bet, na.rm = T) %>% round(2),
+                      mean_closeness = mean(mean_clo, na.rm = T) %>% round(2),
+                      mean_density = mean(dens, na.rm = T) %>% round(2)) %>%
+            mutate(n = alt_aalt_met %>% group_by(district) %>% tally() %>% .$n) %>%
+  kbl(caption = 'AAlter Mean Degree, Betweenness, Closeness Centrality, and Density by District') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+```
+
+## E) Figures
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+
+############################################
+### FIGURES OF DEGREE CENTRALITY OVERALL ###
+############################################
+
+# degree centrality of ego and alter
+# first add ego
+deg <- tibble(id = ego_ego_met$ego_id,
+              deg = ego_ego_met$deg,
+              district = ego_ego_met$district,
+              age = ego_ego_met$age,
+              edu = ego_ego_met$edu,
+              caste = ego_ego_met$caste,
+              group = 'ego') 
+
+# second add alter
+deg <- rbind(deg, tibble(id = alt_alt_met$alter_id,
+                         deg = alt_alt_met$deg,
+                         district = alt_alt_met$district,
+                         age = alt_alt_met$age,
+                         edu = alt_alt_met$edu,
+                         caste = alt_alt_met$caste,
+                         group = 'alter')) 
+
+# change ego, edu, caste to numeric
+deg %<>% mutate(age = as.numeric(age) %>% factor,
+                edu = as.numeric(edu) %>% factor,
+                caste = as.numeric(caste) %>% factor)
+
+# reshape df
+deg_sum <- deg %>% group_by(group) %>% count(deg)
+
+# add missing val for ego
+deg_sum <- rbind(deg_sum, tibble(group = 'ego',
+                                 deg = 1,
+                                 n = 0))
+
+# generate colorscale
+# colscale_egoalt <- scale_fill_manual(name = "Group", values = c('ego' = '#CCBB44', 'alter' = '#EE6677',
+#                                                                 'Overall' = '#4477AA'))
+colscale_egoalt <- scale_fill_manual(name = "Group", values = c('ego' = '#CCBB44', 'alter' = '#EE6677'),
+                                     labels = c('ego' = 'Ego', 'alter' = 'Alter'))
+
+# # plot degree by n
+# ggplot(deg_sum, aes(x = deg %>% as.factor, y = n, fill = ordered(group, levels = c('ego', 'alter')))) +
+#   geom_bar(stat = 'identity',
+#            position = position_dodge()) +
+#   theme_bw() +
+#   labs(x = 'Degree', y = 'N', fill = 'Group') +
+#   colscale_egoalt +  xlim('0', '1', '2', '3', '4', '5') +
+#   ggtitle('Degree Centrality of Ego and Alter') +
+#   theme(text = element_text(size=20))
+
+# ggsave('results/figures/deg_cent_ego_alt_plot_n.png')
+
+# plot degree by perc
+deg_sum$perc <- NA
+deg_sum$perc[deg_sum$group == 'alter'] <- deg_sum$n[deg_sum$group == 'alter']/sum(deg_sum$n[deg_sum$group == 'alter'])
+deg_sum$perc[deg_sum$group == 'ego'] <- deg_sum$n[deg_sum$group == 'ego']/sum(deg_sum$n[deg_sum$group == 'ego'])
+deg_sum$perc <- round(deg_sum$perc, 2)
+
+ggplot(deg_sum, aes(x = deg %>% as.factor, y = perc*100, fill = ordered(group, levels = c('ego', 'alter')))) +
+  geom_bar(stat = 'identity',
+           position = position_dodge()) +
+  theme_bw() +
+  labs(x = 'Degree', y = 'Percent by Group', fill = 'Group') +
+  colscale_egoalt +  xlim('0', '1', '2', '3', '4', '5') +
+  ggtitle('Degree Centrality of Ego and Alter') +
+  theme(text = element_text(size=20))
+
+# ggsave('results/figures/deg_cent_ego_alt_plot_perc.png')
+
+########################################
+### FIGURES OF DEG CENTRALITY BY AGE ###
+########################################
+
+# segment df by ego age
+deg_ego_age <- deg %>% 
+  filter(group == 'ego') %>% 
+  group_by(age) %>% 
+  count(deg)
+
+# add in missing values
+for(i in unique(deg_ego_age$age)){
+  for(j in 0:5){
+    check <- deg_ego_age %>%
+      filter(age == i,
+             deg == j)
+    if(NROW(check) == 0){
+      deg_ego_age %<>% rbind(tibble(age = i,
+                                    deg = j,
+                                    n = 0))
+    }
+  }
+}
+
+# generate colorscale
+colscale_egoage <- scale_fill_manual(name = "Age", values = c('18' = '#4477AA', '19' = '#66CCEE',
+                                                              '20' = '#228833', '21' = '#CCBB44',
+                                                              '22' = '#EE6677', '23' = '#AA3377',
+                                                              '24' = '#BBBBBB'))
+
+# # plot degree by ego age
+# ggplot(deg_ego_age, aes(x = deg %>% as.factor, y = n, fill = age)) +
+#   geom_bar(stat = 'identity',
+#            position = position_dodge()) +
+#   theme_bw() +
+#   colscale_egoage +
+#   labs(x = 'Degree', y = 'N', fill = 'Age') +  
+#   xlim('0', '1', '2', '3', '4', '5') +
+#   ggtitle('Degree Centrality of Ego by Age') +
+#   theme(text = element_text(size=20))
+# 
+# ggsave('results/figures/deg_cent_ego_age_plot_n.png')
+
+# plot degree by perc
+deg_ego_age$perc <- NA
+for(i in unique(deg_ego_age$age)){
+  deg_ego_age$perc[deg_ego_age$age == i] <- deg_ego_age$n[deg_ego_age$age == i]/sum(deg_ego_age$n[deg_ego_age$age == i])
+}
+deg_ego_age$perc <- round(deg_ego_age$perc, 2)
+
+ggplot(deg_ego_age, aes(x = deg %>% as.factor, y = perc*100, fill = age)) +
+  geom_bar(stat = 'identity',
+           position = position_dodge()) +
+  theme_bw() +
+  colscale_egoage + 
+  labs(x = 'Degree', y = 'Percent by Age Group', fill = 'Age') +  
+  xlim('0', '1', '2', '3', '4', '5') +
+  ggtitle('Degree Centrality of Ego by Age') +
+  theme(text = element_text(size=20))
+
+# ggsave('results/figures/deg_cent_ego_age_plot_perc.png')
+
+# segment df by alter age
+deg_alt_age <- deg %>% 
+  filter(group == 'alter')
+
+# factor age groups
+deg_alt_age %<>% mutate(age = age %>%
+                          as.character %>%
+                          as.numeric %>%
+                          cut(c(17,19,29,39,49,59,101),
+                              labels = c('18-19', '20-29', '30-39', '40-49', '50-59','60+'))) %>%
+  group_by(age) %>% 
+  count(deg)
+
+# add in missing values
+for(i in unique(deg_alt_age$age)){
+  for(j in 0:5){
+    check <- deg_alt_age %>%
+      filter(age == i,
+             deg == j)
+    if(NROW(check) == 0){
+      deg_alt_age %<>% rbind(tibble(age = i,
+                                    deg = j,
+                                    n = 0))
+    }
+  }
+}
+
+# generate colorscale
+colscale_altage <- scale_fill_manual(name = "Age", values = c('18-19' = '#4477AA', '20-29' = '#66CCEE',
+                                                              '30-39' = '#228833', '40-49' = '#CCBB44',
+                                                              '50-59' = '#EE6677', '60+' = '#AA3377'))
+
+# # plot degree by alter age
+# ggplot(deg_alt_age, aes(x = deg %>% as.factor, y = n, fill = age)) +
+#   geom_bar(stat = 'identity',
+#            position = position_dodge()) +
+#   theme_bw() +
+#   colscale_altage +
+#   labs(x = 'Degree', y = 'N', fill = 'Age') +  
+#   xlim('0', '1', '2', '3', '4', '5') +
+#   ggtitle('Degree Centrality of Alter by Age') +
+#   theme(text = element_text(size=20))
+# 
+# ggsave('results/figures/deg_cent_alt_age_plot_n.png')
+
+# plot degree by perc
+deg_alt_age$perc <- NA
+for(i in unique(deg_alt_age$age)){
+  deg_alt_age$perc[deg_alt_age$age == i] <- deg_alt_age$n[deg_alt_age$age == i]/sum(deg_alt_age$n[deg_alt_age$age == i])
+}
+deg_alt_age$perc <- round(deg_alt_age$perc, 2)
+
+ggplot(deg_alt_age, aes(x = deg %>% as.factor, y = perc*100, fill = age)) +
+  geom_bar(stat = 'identity',
+           position = position_dodge()) +
+  theme_bw() +
+  colscale_altage + 
+  labs(x = 'Degree', y = 'Percent by Age Group', fill = 'Age') +  
+  xlim('0', '1', '2', '3', '4', '5') +
+  ggtitle('Degree Centrality of Alter by Age') +
+  theme(text = element_text(size=20))
+
+# ggsave('results/figures/deg_cent_alt_age_plot_perc.png')
+
+##########################################
+### FIGURES OF DEG CENTRALITY BY CASTE ###
+##########################################
+
+# segment df by ego caste
+deg_ego_caste <- deg %>% 
+  filter(group == 'ego')
+
+# factor caste groups
+deg_ego_caste %<>% mutate(caste = caste %>%
+                          as.character %>%
+                          as.numeric %>%
+                          cut(c(0,2,3,4),
+                              labels = c('Schedule Caste/Tribe', 'Other Backward Class', 'Other'))) %>%
+  group_by(caste) %>% 
+  count(deg)
+
+# add in missing values
+for(i in unique(deg_ego_caste$caste)){
+  for(j in 0:5){
+    check <- deg_ego_caste %>%
+      filter(caste == i,
+             deg == j)
+    if(NROW(check) == 0){
+      deg_ego_caste %<>% rbind(tibble(caste = i,
+                                    deg = j,
+                                    n = 0))
+    }
+  }
+}
+
+# generate colorscale
+colscale_caste <- scale_fill_manual(name = "Caste", values = c('Schedule Caste/Tribe' = '#4477AA',
+                                                              'Other Backward Class' = '#228833', 
+                                                              'Other' = '#EE6677'))
+
+# # plot degree by ego caste
+# ggplot(deg_ego_caste, aes(x = deg %>% as.factor, 
+#                           y = n, 
+#                           fill = ordered(caste,
+#                                          levels = c('Schedule Caste/Tribe',
+#                                                     'Other Backward Class',
+#                                                     'Other')))) +
+#   geom_bar(stat = 'identity',
+#            position = position_dodge()) +
+#   theme_bw() +
+#   colscale_caste +
+#   labs(x = 'Degree', y = 'N', fill = 'Caste') +  
+#   xlim('0', '1', '2', '3', '4', '5') +
+#   ggtitle('Degree Centrality of Ego by Caste') +
+#   theme(text = element_text(size=20))
+# 
+# ggsave('results/figures/deg_cent_ego_caste_plot_n.png')
+
+# plot degree by perc
+deg_ego_caste$perc <- NA
+for(i in unique(deg_ego_caste$caste)){
+  deg_ego_caste$perc[deg_ego_caste$caste == i] <- deg_ego_caste$n[deg_ego_caste$caste == i]/sum(deg_ego_caste$n[deg_ego_caste$caste == i])
+}
+deg_ego_caste$perc <- round(deg_ego_caste$perc, 2)
+
+ggplot(deg_ego_caste, aes(x = deg %>% as.factor,
+                          y = perc*100, 
+                          fill = ordered(caste, 
+                                         levels = c('Schedule Caste/Tribe', 
+                                                   'Other Backward Class', 
+                                                   'Other')))) +                                 
+  geom_bar(stat = 'identity',
+           position = position_dodge()) +
+  theme_bw() +
+  colscale_caste + 
+  labs(x = 'Degree', y = 'Percent by Caste Group', fill = 'Caste') +  
+  xlim('0', '1', '2', '3', '4', '5') +
+  ggtitle('Degree Centrality of Ego by Caste') +
+  theme(text = element_text(size=20))
+
+# ggsave('results/figures/deg_cent_ego_caste_plot_perc.png')
+
+# segment df by alter caste
+deg_alt_caste <- deg %>% 
+  filter(group == 'alter')
+
+# factor caste groups
+deg_alt_caste %<>% mutate(caste = caste %>%
+                            as.character %>%
+                            as.numeric %>%
+                            cut(c(0,2,3,4),
+                                labels = c('Schedule Caste/Tribe', 'Other Backward Class', 'Other'))) %>%
+  group_by(caste) %>% 
+  count(deg)
+
+# add in missing values
+for(i in unique(deg_alt_caste$caste)){
+  for(j in 0:5){
+    check <- deg_alt_caste %>%
+      filter(caste == i,
+             deg == j)
+    if(NROW(check) == 0){
+      deg_alt_caste %<>% rbind(tibble(caste = i,
+                                      deg = j,
+                                      n = 0))
+    }
+  }
+}
+
+# # plot degree by alter caste
+# ggplot(deg_alt_caste, aes(x = deg %>% as.factor, 
+#                           y = n, 
+#                           fill = ordered(caste,
+#                                          levels = c('Schedule Caste/Tribe',
+#                                                     'Other Backward Class',
+#                                                     'Other')))) +
+#   geom_bar(stat = 'identity',
+#            position = position_dodge()) +
+#   theme_bw() +
+#   colscale_caste +
+#   labs(x = 'Degree', y = 'N', fill = 'Caste') +  
+#   xlim('0', '1', '2', '3', '4', '5') +
+#   ggtitle('Degree Centrality of Alter by Caste') +
+#   theme(text = element_text(size=20))
+# 
+# ggsave('results/figures/deg_cent_alt_caste_plot_n.png')
+
+# plot degree by perc
+deg_alt_caste$perc <- NA
+for(i in unique(deg_alt_caste$caste)){
+  deg_alt_caste$perc[deg_alt_caste$caste == i] <- deg_alt_caste$n[deg_alt_caste$caste == i]/sum(deg_alt_caste$n[deg_alt_caste$caste == i])
+}
+deg_alt_caste$perc <- round(deg_alt_caste$perc, 2)
+
+ggplot(deg_alt_caste, aes(x = deg %>% as.factor,
+                          y = perc*100, 
+                          fill = ordered(caste, 
+                                         levels = c('Schedule Caste/Tribe', 
+                                                    'Other Backward Class', 
+                                                    'Other')))) +                                 
+  geom_bar(stat = 'identity',
+           position = position_dodge()) +
+  theme_bw() +
+  colscale_caste + 
+  labs(x = 'Degree', y = 'Percent by Caste Group', fill = 'Caste') +  
+  xlim('0', '1', '2', '3', '4', '5') +
+  ggtitle('Degree Centrality of Alter by Caste') +
+  theme(text = element_text(size=20))
+
+# ggsave('results/figures/deg_cent_alt_caste_plot_perc.png')
+
+##############################################
+### FIGURES OF DEG CENTRALITY BY EDUCATION ###
+##############################################
+
+# segment df by ego education
+deg_ego_edu <- deg %>% 
+  filter(group == 'ego')
+
+# factor caste groups
+deg_ego_edu %<>% mutate(edu = edu %>%
+                            as.character %>%
+                            as.numeric %>%
+                            cut(c(-1,0,8,100),
+                                labels = c('None', '1-8', '9+'))) %>%
+  group_by(edu) %>% 
+  count(deg)
+
+# add in missing values
+for(i in unique(deg_ego_edu$edu)){
+  for(j in 0:5){
+    check <- deg_ego_edu %>%
+      filter(edu == i,
+             deg == j)
+    if(NROW(check) == 0){
+      deg_ego_edu %<>% rbind(tibble(edu = i,
+                                      deg = j,
+                                      n = 0))
+    }
+  }
+}
+
+# generate colorscale
+colscale_edu <- scale_fill_manual(name = "Education", values = c('None' = '#4477AA',
+                                                               '1-8' = '#228833', 
+                                                               '9+' = '#EE6677'))
+
+# # plot degree by ego education
+# ggplot(deg_ego_edu, aes(x = deg %>% as.factor, 
+#                           y = n, 
+#                           fill = ordered(edu,
+#                                          levels = c('None',
+#                                                     '1-8',
+#                                                     '9+')))) +
+#   geom_bar(stat = 'identity',
+#            position = position_dodge()) +
+#   theme_bw() +
+#   colscale_edu +
+#   labs(x = 'Degree', y = 'N', fill = 'Education') +  
+#   xlim('0', '1', '2', '3', '4', '5') +
+#   ggtitle('Degree Centrality of Ego by Education') +
+#   theme(text = element_text(size=20))
+# 
+# ggsave('results/figures/deg_cent_ego_edu_plot_n.png')
+
+# plot degree by perc
+deg_ego_edu$perc <- NA
+for(i in unique(deg_ego_edu$edu)){
+  deg_ego_edu$perc[deg_ego_edu$edu == i] <- deg_ego_edu$n[deg_ego_edu$edu == i]/sum(deg_ego_edu$n[deg_ego_edu$edu == i])
+}
+deg_ego_edu$perc <- round(deg_ego_edu$perc, 2)
+
+ggplot(deg_ego_edu, aes(x = deg %>% as.factor,
+                          y = perc*100, 
+                          fill = ordered(edu,
+                                          levels = c('None',
+                                                     '1-8',
+                                                     '9+')))) +                                 
+  geom_bar(stat = 'identity',
+           position = position_dodge()) +
+  theme_bw() +
+  colscale_edu + 
+  labs(x = 'Degree', y = 'Percent by Education Group', fill = 'Education') +  
+  xlim('0', '1', '2', '3', '4', '5') +
+  ggtitle('Degree Centrality of Ego by Education') +
+  theme(text = element_text(size=20))
+
+# ggsave('results/figures/deg_cent_ego_edu_plot_perc.png')
+
+# segment df by alter education
+deg_alt_edu <- deg %>% 
+  filter(group == 'alter')
+
+# factor caste groups
+deg_alt_edu %<>% mutate(edu = edu %>%
+                          as.character %>%
+                          as.numeric %>%
+                          cut(c(-1,0,8,100),
+                              labels = c('None', '1-8', '9+'))) %>%
+  group_by(edu) %>% 
+  count(deg)
+
+# add in missing values
+for(i in unique(deg_alt_edu$edu)){
+  for(j in 0:5){
+    check <- deg_alt_edu %>%
+      filter(edu == i,
+             deg == j)
+    if(NROW(check) == 0){
+      deg_alt_edu %<>% rbind(tibble(edu = i,
+                                    deg = j,
+                                    n = 0))
+    }
+  }
+}
+
+# # plot degree by ego education
+# ggplot(deg_alt_edu, aes(x = deg %>% as.factor, 
+#                         y = n, 
+#                         fill = ordered(edu,
+#                                        levels = c('None',
+#                                                   '1-8',
+#                                                   '9+')))) +
+#   geom_bar(stat = 'identity',
+#            position = position_dodge()) +
+#   theme_bw() +
+#   colscale_edu +
+#   labs(x = 'Degree', y = 'N', fill = 'Education') +  
+#   xlim('0', '1', '2', '3', '4', '5') +
+#   ggtitle('Degree Centrality of Alter by Education') +
+#   theme(text = element_text(size=20))
+# 
+# ggsave('results/figures/deg_cent_alt_edu_plot_n.png')
+
+# plot degree by perc
+deg_alt_edu$perc <- NA
+for(i in unique(deg_alt_edu$edu)){
+  deg_alt_edu$perc[deg_alt_edu$edu == i] <- deg_alt_edu$n[deg_alt_edu$edu == i]/sum(deg_alt_edu$n[deg_alt_edu$edu == i])
+}
+deg_alt_edu$perc <- round(deg_alt_edu$perc, 2)
+
+ggplot(deg_alt_edu, aes(x = deg %>% as.factor,
+                        y = perc*100, 
+                        fill = ordered(edu,
+                                       levels = c('None',
+                                                  '1-8',
+                                                  '9+')))) +                                 
+  geom_bar(stat = 'identity',
+           position = position_dodge()) +
+  theme_bw() +
+  colscale_edu + 
+  labs(x = 'Degree', y = 'Percent by Education Group', fill = 'Education') +  
+  xlim('0', '1', '2', '3', '4', '5') +
+  ggtitle('Degree Centrality of Alter by Education') +
+  theme(text = element_text(size=20))
+
+# ggsave('results/figures/deg_cent_alt_edu_plot_perc.png')
+
+```
+
+``````{r, echo = F, warning = F, message = F, results = 'asis', fig.width = 13,fig.height = 8}
+##################################
+### PLOTS OF NETWORK STRUCTURE ###
+##################################
+
+# density of 1st net
+# ego_alt_met$dens[1]
+
+# basic plot
+ggraph(gr_list_ego[[1]], 'dh') +
+  geom_edge_link(aes(linetype = as.factor(weight))) +
+  geom_node_label(aes(label = name)) + 
+  theme_graph(base_family = 'Helvetica') +
+  scale_edge_linetype_manual(values = c('dotted', 'solid')) + 
+  theme(legend.position="none") +
+  ggtitle('Ego-Alter Network (Density = 1)')
+
+# ggsave(filename = 'results/figures/ego_net_1.png')
+
+# density of 1st net
+# ego_alt_met$dens[108]
+
+# basic plot2
+ggraph(gr_list_ego[[108]], 'dh') +
+  geom_edge_link(aes(linetype = as.factor(weight))) +
+  geom_node_label(aes(label = name)) + 
+  theme_graph(base_family = 'Helvetica') +
+  scale_edge_linetype_manual(values = c('dotted', 'solid')) + 
+  theme(legend.position="none") +
+  ggtitle('Ego-Alter Network (Density = 0.7)')
+
+# ggsave(filename = 'results/figures/ego_net_109.png')
+
+# density of 1st net
+# ego_alt_met$dens[80]
+
+# basic plot2
+ggraph(gr_list_ego[[80]], 'dh') +
+  geom_edge_link(aes(linetype = as.factor(weight))) +
+  geom_node_label(aes(label = name)) + 
+  theme_graph(base_family = 'Helvetica') +
+  scale_edge_linetype_manual(values = c('dotted', 'solid')) + 
+  theme(legend.position="none") +
+  ggtitle('Ego-Alter Network (Density = 0.6)')
+
+# ggsave(filename = 'results/figures/ego_net_81.png')
+
+# clear workspace
+rm(list=ls())
+
+```
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+
+###########################################################
+### CALCULATE HOMOPHILY AND HETEROGENEITY EGO AND ALTER ###
+###########################################################
+
+# this code loads csv data of ego and alter interviews
+# and calculates homophily and homogeneity metrics
+
+# load packages
+library(magrittr)
+library(egor)
+library(janitor)
+library(tidyverse)
+library(readxl)
+library(igraph)
+library(readstata13)
+
+#########################################
+### LOAD EGO AND ALTER DATA AND CLEAN ###
+#########################################
+
+# load ego and alter cleaned data
+ego <- read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_clean_complete_11012022.xlsx")
+
+alter <-read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/alter_clean_complete_11012022.xlsx")
+
+# load pc data
+ego_pc <- read_excel(path = "data/ego_pc_complete_12012022.xlsx")
+
+# load list of duplicate ids
+dup_id <- read_excel(path = 'data/duplicate_ids_02022022.xlsx')
+
+# remove first row with 'qe' names
+ego <- ego[-1,]
+alter <- alter[-1,]
+
+# clean column names only keep part after last "."
+ego_names <- sapply(colnames(ego), FUN = function(x){
+  st <- str_split(x, pattern = glob2rx("*-*"))
+  st <- st[[1]][length(st[[1]])]
+  return(st)
+})
+
+names(ego_names) <- NULL
+colnames(ego) <- ego_names
+
+alter_names <- sapply(colnames(alter), FUN = function(x){
+  st <- str_split(x, pattern = glob2rx("*-*"))
+  st <- st[[1]][length(st[[1]])]
+  return(st)
+})
+
+names(alter_names) <- NULL
+colnames(alter) <- alter_names
+
+rm(ego_names, alter_names)
+
+# remove empty columns from "notes"
+ego <- ego[,str_detect(colnames(ego), 'note') == F]
+alter <- alter[,str_detect(colnames(alter), 'note') == F]
+
+# replace character NA values with NA
+ego[ego == "NA"] <- NA
+alter[alter == "NA"] <- NA
+
+# fix district, block and village in alter data
+alter$district_name <- alter$`district name_clean`
+alter$block_name <- alter$`block name_clean`
+alter$village_name <- alter$`village name_clean`
+
+# remove "clean" columns
+alter <- alter %>% select(-c(`district name_clean`, `block name_clean`, `village name_clean`))
+
+# add alter-alter tie columns to ego dataset so we can build edgelist below
+# let's first extract the correct question so easier to look at
+alter_know <- ego[,str_detect(colnames(ego), glob2rx('alter?_know?'))]
+
+# set to numeric
+alter_know <- sapply(alter_know, as.numeric)
+
+# set "don't know" to 0 since then tie won't exist. both responses labeled 2 and 9
+alter_know[alter_know == 2] <- 0
+alter_know[alter_know == 9] <- 0
+
+# create new df with only a single column for combinations
+alter_know %<>% as.data.frame %>% 
+  mutate(know12 = alter1_know2 + alter2_know1,
+         know13 = alter1_know3 + alter3_know1,
+         know14 = alter1_know4 + alter4_know1,
+         know15 = alter1_know5 + alter5_know1,
+         know23 = alter2_know3 + alter3_know2,
+         know24 = alter2_know4 + alter4_know2,
+         know25 = alter2_know5 + alter5_know2,
+         know34 = alter3_know4 + alter4_know3,
+         know35 = alter3_know5 + alter5_know3,
+         know45 = alter4_know5 + alter5_know4)
+
+# now set 0 to NA since we just want to identify tie or not
+alter_know %<>% select(know12:know45)
+alter_know[alter_know == 0] <- NA
+
+# add simple know columns back into ego df
+ego %<>% add_column(alter_know)
+rm(alter_know)
+
+# add aalter-aalter tie columns to alter dataset so we can build edgelist below
+# let's first extract the correct question so easier to look at
+alter_know <- alter[,str_detect(colnames(alter), glob2rx('alter?_know?'))]
+
+# set to numeric
+alter_know <- sapply(alter_know, as.numeric)
+
+# set "don't know" to 0 since then tie won't exist. both responses labeled 2 and 9
+alter_know[alter_know == 2] <- 0
+alter_know[alter_know == 9] <- 0
+
+# create new df with only a single column for combinations
+alter_know %<>% as.data.frame %>% 
+  mutate(know12 = alter1_know2 + alter2_know1,
+         know13 = alter1_know3 + alter3_know1,
+         know14 = alter1_know4 + alter4_know1,
+         know15 = alter1_know5 + alter5_know1,
+         know23 = alter2_know3 + alter3_know2,
+         know24 = alter2_know4 + alter4_know2,
+         know25 = alter2_know5 + alter5_know2,
+         know34 = alter3_know4 + alter4_know3,
+         know35 = alter3_know5 + alter5_know3,
+         know45 = alter4_know5 + alter5_know4)
+
+# now set 0 to NA since we just want to identify tie or not
+alter_know %<>% select(know12:know45)
+alter_know[alter_know == 0] <- NA
+
+# add simple know columns back into alter df
+alter %<>% add_column(alter_know)
+rm(alter_know)
+
+#####################
+### HOMOPHILY EGO ###
+#####################
+
+# gender
+# education
+# number of family members
+# number of non-family members close to
+# practicing FP
+# network composition: family/non-family (?)
+
+# sort ego data and PC data by woman ID so can merge
+ego %<>% arrange(woman_id)
+ego_pc %<>% arrange(qe6) # qe6 is woman_id
+
+# make sure ego_ids match
+# sum(ego_pc$qe6 == ego$woman_id)
+
+# build tibble of ego and alter attributes
+ea <- rbind(tibble(ego_id = ego$woman_id,
+                   alter_name = ego$alter1,
+                   ego_sex = 2,
+                   alt_sex = ego$alter1_sex,
+                   ego_caste = ego_pc$pcq111,
+                   alt_caste = ego$alter1_caste,
+                   ego_edu = ego_pc$pcq103,
+                   alt_edu = NA,
+                   ego_fam = ego$family_members,
+                   alt_fam = ego$alter1_family,
+                   ego_friends = ego$friends,
+                   alt_friends = ego$alter1_friends,
+                   ego_neigh = ego$neighbours,
+                   alt_neigh = ego$alter1_neighbours,
+                   ego_using_fp = ego_pc$pcq311,
+                   alt_using_fp = ego$alter1_using_fp,
+                   ego_know_asha = ego$know_asha,
+                   ego_know_anm = ego$know_anm,
+                   ego_know_aww = ego$know_aww,
+                   ego_know_shg = ego$know_shg,
+                   ego_know_pra = ego$know_pradhan,
+                   ego_know_pha = ego$know_pharmacist,
+                   ego_know_doc = ego$know_doctor,
+                   ego_know_rel = ego$know_religious_leader,
+                   alt_know_asha = ego$alter1_asha,
+                   alt_know_anm = ego$alter1_anm,
+                   alt_know_aww = ego$alter1_aww,
+                   alt_know_shg = ego$alter1_shg,
+                   alt_know_pra = ego$alter1_pradhan,
+                   alt_know_pha = ego$alter1_pharmacist,
+                   alt_know_doc = ego$alter1_doctor,
+                   alt_know_rel = ego$alter1_religious_leader,
+                   ego_sons = ego_pc$pcq205s,
+                   ego_daughters = ego_pc$pcq205d,
+                   alt_sons = ego$alter1_sons,
+                   alt_daughters = ego$alter1_daughters,
+                   alt_residence = ego$alter1_residence,
+                   alt_relationship = ego$alter1r,
+                   alt_learned = ego$alter1_learned,
+                   alt_encourage_fp = ego$alter1_encourage_fp,
+                   alt_discuss_fp = ego$alter1_discuss_fp,
+                   alt_help_ego = ego$alter1_help,
+                   alt_helped_by_ego = ego$alter1_helped,
+                   alt_against_advice = ego$alter1_follow_advice,
+                   alt_support_no_child = ego$alter1_nochild),
+            tibble(ego_id = ego$woman_id,
+                   alter_name = ego$alter2,
+                   ego_sex = 2,
+                   alt_sex = ego$alter2_sex,
+                   ego_caste = ego_pc$pcq111,
+                   alt_caste = ego$alter2_caste,
+                   ego_edu = ego_pc$pcq103,
+                   alt_edu = NA,
+                   ego_fam = ego$family_members,
+                   alt_fam = ego$alter2_family,
+                   ego_friends = ego$friends,
+                   alt_friends = ego$alter2_friends,
+                   ego_neigh = ego$neighbours,
+                   alt_neigh = ego$alter2_neighbours,
+                   ego_using_fp = ego_pc$pcq311,
+                   alt_using_fp = ego$alter2_using_fp,
+                   ego_know_asha = ego$know_asha,
+                   ego_know_anm = ego$know_anm,
+                   ego_know_aww = ego$know_aww,
+                   ego_know_shg = ego$know_shg,
+                   ego_know_pra = ego$know_pradhan,
+                   ego_know_pha = ego$know_pharmacist,
+                   ego_know_doc = ego$know_doctor,
+                   ego_know_rel = ego$know_religious_leader,
+                   alt_know_asha = ego$alter2_asha,
+                   alt_know_anm = ego$alter2_anm,
+                   alt_know_aww = ego$alter2_aww,
+                   alt_know_shg = ego$alter2_shg,
+                   alt_know_pra = ego$alter2_pradhan,
+                   alt_know_pha = ego$alter2_pharmacist,
+                   alt_know_doc = ego$alter2_doctor,
+                   alt_know_rel = ego$alter2_religious_leader,
+                   ego_sons = ego_pc$pcq205s,
+                   ego_daughters = ego_pc$pcq205d,
+                   alt_sons = ego$alter2_sons,
+                   alt_daughters = ego$alter2_daughters,
+                   alt_residence = ego$alter2_residence,
+                   alt_relationship = ego$alter2r,
+                   alt_learned = ego$alter2_learned,
+                   alt_encourage_fp = ego$alter2_encourage_fp,
+                   alt_discuss_fp = ego$alter2_discuss_fp,
+                   alt_help_ego = ego$alter2_help,
+                   alt_helped_by_ego = ego$alter2_helped,
+                   alt_against_advice = ego$alter2_follow_advice,
+                   alt_support_no_child = ego$alter2_nochild),
+            tibble(ego_id = ego$woman_id,
+                   alter_name = ego$alter3,
+                   ego_sex = 2,
+                   alt_sex = ego$alter3_sex,
+                   ego_caste = ego_pc$pcq111,
+                   alt_caste = ego$alter3_caste,
+                   ego_edu = ego_pc$pcq103,
+                   alt_edu = NA,
+                   ego_fam = ego$family_members,
+                   alt_fam = ego$alter3_family,
+                   ego_friends = ego$friends,
+                   alt_friends = ego$alter3_friends,
+                   ego_neigh = ego$neighbours,
+                   alt_neigh = ego$alter3_neighbours,
+                   ego_using_fp = ego_pc$pcq311,
+                   alt_using_fp = ego$alter3_using_fp,
+                   ego_know_asha = ego$know_asha,
+                   ego_know_anm = ego$know_anm,
+                   ego_know_aww = ego$know_aww,
+                   ego_know_shg = ego$know_shg,
+                   ego_know_pra = ego$know_pradhan,
+                   ego_know_pha = ego$know_pharmacist,
+                   ego_know_doc = ego$know_doctor,
+                   ego_know_rel = ego$know_religious_leader,
+                   alt_know_asha = ego$alter3_asha,
+                   alt_know_anm = ego$alter3_anm,
+                   alt_know_aww = ego$alter3_aww,
+                   alt_know_shg = ego$alter3_shg,
+                   alt_know_pra = ego$alter3_pradhan,
+                   alt_know_pha = ego$alter3_pharmacist,
+                   alt_know_doc = ego$alter3_doctor,
+                   alt_know_rel = ego$alter3_religious_leader,
+                   ego_sons = ego_pc$pcq205s,
+                   ego_daughters = ego_pc$pcq205d,
+                   alt_sons = ego$alter3_sons,
+                   alt_daughters = ego$alter3_daughters,
+                   alt_residence = ego$alter3_residence,
+                   alt_relationship = ego$alter3r,
+                   alt_learned = ego$alter3_learned,
+                   alt_encourage_fp = ego$alter3_encourage_fp,
+                   alt_discuss_fp = ego$alter3_discuss_fp,
+                   alt_help_ego = ego$alter3_help,
+                   alt_helped_by_ego = ego$alter3_helped,
+                   alt_against_advice = ego$alter3_follow_advice,
+                   alt_support_no_child = ego$alter3_nochild),
+            tibble(ego_id = ego$woman_id,
+                   alter_name = ego$alter4,
+                   ego_sex = 2,
+                   alt_sex = ego$alter4_sex,
+                   ego_caste = ego_pc$pcq111,
+                   alt_caste = ego$alter4_caste,
+                   ego_edu = ego_pc$pcq103,
+                   alt_edu = NA,
+                   ego_fam = ego$family_members,
+                   alt_fam = ego$alter4_family,
+                   ego_friends = ego$friends,
+                   alt_friends = ego$alter4_friends,
+                   ego_neigh = ego$neighbours,
+                   alt_neigh = ego$alter4_neighbours,
+                   ego_using_fp = ego_pc$pcq311,
+                   alt_using_fp = ego$alter4_using_fp,
+                   ego_know_asha = ego$know_asha,
+                   ego_know_anm = ego$know_anm,
+                   ego_know_aww = ego$know_aww,
+                   ego_know_shg = ego$know_shg,
+                   ego_know_pra = ego$know_pradhan,
+                   ego_know_pha = ego$know_pharmacist,
+                   ego_know_doc = ego$know_doctor,
+                   ego_know_rel = ego$know_religious_leader,
+                   alt_know_asha = ego$alter4_asha,
+                   alt_know_anm = ego$alter4_anm,
+                   alt_know_aww = ego$alter4_aww,
+                   alt_know_shg = ego$alter4_shg,
+                   alt_know_pra = ego$alter4_pradhan,
+                   alt_know_pha = ego$alter4_pharmacist,
+                   alt_know_doc = ego$alter4_doctor,
+                   alt_know_rel = ego$alter4_religious_leader,
+                   ego_sons = ego_pc$pcq205s,
+                   ego_daughters = ego_pc$pcq205d,
+                   alt_sons = ego$alter4_sons,
+                   alt_daughters = ego$alter4_daughters,
+                   alt_residence = ego$alter4_residence,
+                   alt_relationship = ego$alter4r,
+                   alt_learned = ego$alter4_learned,
+                   alt_encourage_fp = ego$alter4_encourage_fp,
+                   alt_discuss_fp = ego$alter4_discuss_fp,
+                   alt_help_ego = ego$alter4_help,
+                   alt_helped_by_ego = ego$alter4_helped,
+                   alt_against_advice = ego$alter4_follow_advice,
+                   alt_support_no_child = ego$alter4_nochild),
+            tibble(ego_id = ego$woman_id,
+                   alter_name = ego$alter5,
+                   ego_sex = 2,
+                   alt_sex = ego$alter5_sex,
+                   ego_caste = ego_pc$pcq111,
+                   alt_caste = ego$alter5_caste,
+                   ego_edu = ego_pc$pcq103,
+                   alt_edu = NA,
+                   ego_fam = ego$family_members,
+                   alt_fam = ego$alter5_family,
+                   ego_friends = ego$friends,
+                   alt_friends = ego$alter5_friends,
+                   ego_neigh = ego$neighbours,
+                   alt_neigh = ego$alter5_neighbours,
+                   ego_using_fp = ego_pc$pcq311,
+                   alt_using_fp = ego$alter5_using_fp,
+                   ego_know_asha = ego$know_asha,
+                   ego_know_anm = ego$know_anm,
+                   ego_know_aww = ego$know_aww,
+                   ego_know_shg = ego$know_shg,
+                   ego_know_pra = ego$know_pradhan,
+                   ego_know_pha = ego$know_pharmacist,
+                   ego_know_doc = ego$know_doctor,
+                   ego_know_rel = ego$know_religious_leader,
+                   alt_know_asha = ego$alter5_asha,
+                   alt_know_anm = ego$alter5_anm,
+                   alt_know_aww = ego$alter5_aww,
+                   alt_know_shg = ego$alter5_shg,
+                   alt_know_pra = ego$alter5_pradhan,
+                   alt_know_pha = ego$alter5_pharmacist,
+                   alt_know_doc = ego$alter5_doctor,
+                   alt_know_rel = ego$alter5_religious_leader,
+                   ego_sons = ego_pc$pcq205s,
+                   ego_daughters = ego_pc$pcq205d,
+                   alt_sons = ego$alter5_sons,
+                   alt_daughters = ego$alter5_daughters,
+                   alt_residence = ego$alter5_residence,
+                   alt_relationship = ego$alter5r,
+                   alt_learned = ego$alter5_learned,
+                   alt_encourage_fp = ego$alter5_encourage_fp,
+                   alt_discuss_fp = ego$alter5_discuss_fp,
+                   alt_help_ego = ego$alter5_help,
+                   alt_helped_by_ego = ego$alter5_helped,
+                   alt_against_advice = ego$alter5_follow_advice,
+                   alt_support_no_child = ego$alter5_nochild))
+
+# drop rows for missing alters
+ea %<>% filter(is.na(alter_name) == F)
+
+##############
+### GENDER ###
+##############
+
+# check unique values
+# unique(ea$ego_sex)
+# unique(ea$alt_sex)
+
+# set to numeric
+ea$alt_sex <- as.numeric(ea$alt_sex)
+
+# summarise
+sex <- ea$ego_sex == ea$alt_sex
+dat <- tabyl(sex) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# create homophily output
+homo <- tibble(metric = 'Gender (%)',
+               value = dat %>% filter(sex == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(sex == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(sex == 'TRUE') %>% select(n) +
+                           dat %>% filter(sex == 'FALSE') %>% select(n)))
+
+#############
+### CASTE ###
+#############
+
+# check unique values
+# unique(ea$ego_caste)
+# unique(ea$alt_caste)
+
+# set to numeric
+ea$alt_caste <- as.numeric(ea$alt_caste)
+
+# set don't know to NA
+ea$alt_caste[ea$alt_caste == 9] <- NA
+
+# summarise
+caste <- ea$ego_caste == ea$alt_caste
+dat <- tabyl(caste) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Caste (%)',
+               value = dat %>% filter(caste == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(caste == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(caste == 'TRUE') %>% select(n) +
+                           dat %>% filter(caste == 'FALSE') %>% select(n)))
+
+#################
+### EDUCATION ###
+#################
+
+# DON'T HAVE ALTER EDUCATION FROM EGO SURVEY !!!
+
+################################
+### NUMBER OF FAMILY MEMBERS ###
+################################
+
+# check unique values
+# unique(ea$ego_fam)
+# unique(ea$alt_fam)
+
+# convert to numeric
+ea$ego_fam <- as.numeric(ea$ego_fam)
+ea$alt_fam <- as.numeric(ea$alt_fam)
+
+# set don't know to NA
+ea$alt_fam[ea$alt_fam == 99] <- NA
+
+# # calculate bias homophily
+# fam <- ea$ego_fam - ea$alt_fam
+# fam <- tibble(mean_fam = mean(fam, na.rm = T),
+#               med_fam = median(fam, na.rm = T),
+#               n = length(fam[is.na(fam) == F]))
+
+# create formula to calculate sd homophily
+homo_sd <- function(ego, alt){
+  out <- alt - ego
+  out <- out*out
+  n <- length(out[is.na(out) == F])
+  out <- sum(out, na.rm = T)
+  out <- out/n
+  return(c(round(sqrt(out), 2), n))
+}
+
+# calculate sd homophily
+fam_sd <- homo_sd(ea$ego_fam, ea$alt_fam)
+dat <- tibble(aed = fam_sd[1],
+                 n = fam_sd[2])
+
+# add to homophily output
+homo %<>% add_row(metric = 'Number of Family Members (AED)',
+               value = dat %>% select(aed) %>% as.character,
+               N = dat %>% select(n) %>% as.character)
+
+#######################################
+### NUMBER OF FRIENDS AND NEIGHBORS ###
+#######################################
+
+# check unique values
+# unique(ea$ego_friends)
+# unique(ea$alt_friends)
+# unique(ea$ego_neigh)
+# unique(ea$alt_neigh)
+
+# convert to numeric
+ea$ego_friends <- as.numeric(ea$ego_friends)
+ea$alt_friends <- as.numeric(ea$alt_friends)
+ea$ego_neigh <- as.numeric(ea$ego_neigh)
+ea$alt_neigh <- as.numeric(ea$alt_neigh)
+
+# set don't know to NA
+ea$alt_friends[ea$alt_friends == 99] <- NA
+ea$alt_neigh[ea$alt_neigh == 99] <- NA
+
+# # calculate homophily
+# friends <- ea$ego_friends - ea$alt_friends
+# neigh <- ea$ego_neigh - ea$alt_neigh
+# friends_neigh <- (ea$ego_friends + ea$ego_neigh) - (ea$alt_friends + ea$alt_neigh)
+# 
+# friends_neigh <- tibble(mean_friends = mean(friends, na.rm = T),
+#                         med_friends = median(friends, na.rm = T),
+#                         n_friends = length(friends[is.na(friends) == F]),
+#                         mean_neigh = mean(neigh, na.rm = T),
+#                         med_neigh = median(neigh, na.rm = T),
+#                         n_neigh = length(neigh[is.na(neigh) == F]),
+#                         mean_friends_neigh = mean(friends_neigh, na.rm = T),
+#                         med_friends_neigh = median(friends_neigh, na.rm = T),
+#                         n_friends_neigh = length(friends_neigh[is.na(friends_neigh) == F]))
+# 
+# write.csv(friends_neigh, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/ego_friends_neighbors_bias.csv',
+#           row.names = F)
+
+# calculate sd homophily
+friends_sd <- homo_sd(ea$ego_friends, ea$alt_friends)
+neigh_sd <- homo_sd(ea$ego_neigh, ea$alt_neigh)
+friends_neigh_sd <- homo_sd((ea$ego_friends + ea$ego_neigh), (ea$alt_friends + ea$alt_neigh))
+dat <- tibble(aed_friends = friends_sd[1],
+                               n_friends = friends_sd[2],
+                               aed_neigh = neigh_sd[1],
+                               n_neigh = neigh_sd[2],
+                               aed_friends_neigh = friends_neigh_sd[1],
+                               n_friends_neigh = friends_neigh_sd[2])
+
+# add to homophily output
+homo %<>% add_row(metric = 'Number of Friends (AED)',
+               value = dat %>% select(aed_friends) %>% as.character,
+               N = dat %>% select(n_friends) %>% as.character) %>%
+  add_row(metric = 'Number of Neighbors (AED)',
+               value = dat %>% select(aed_neigh) %>% as.character,
+               N = dat %>% select(n_neigh) %>% as.character) %>%
+  add_row(metric = 'Number of Friends & Neighbors Combined (AED)',
+               value = dat %>% select(aed_friends_neigh) %>% as.character,
+               N = dat %>% select(n_friends_neigh) %>% as.character)
+
+#####################
+### PRACTICING FP ###
+#####################
+
+# PC ego values
+# 1 = Yes, 2 = No
+
+# alt values
+# 1 = Yes, 2 = No, 9 = Don't Know
+
+# check unique values
+# unique(ea$ego_using_fp)
+# unique(ea$alt_using_fp)
+
+# set values to numeric
+ea$alt_using_fp <- as.numeric(ea$alt_using_fp)
+
+# if alter is husband change to same value as ego
+ea$alt_using_fp[str_detect(ea$alt_relationship, 'Husband')] <- ea$ego_using_fp[str_detect(ea$alt_relationship, 'Husband')]
+
+# set don't know to NA
+ea$alt_using_fp[ea$alt_using_fp == 9] <- NA
+
+# calculate homophily
+using_fp <- ea$ego_using_fp == ea$alt_using_fp
+dat <- tabyl(using_fp) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Currently Using Family Planning (%)',
+               value = dat %>% filter(using_fp == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(using_fp == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(using_fp == 'TRUE') %>% select(n) +
+                           dat %>% filter(using_fp == 'FALSE') %>% select(n)))
+
+###############################
+### PEOPLE KNOWN IN VILLAGE ###
+###############################
+
+# check some values
+# unique(ea$ego_know_asha)
+# unique(ea$alt_know_asha)
+
+# for ego, 1 is Yes, 2 is heard, 9 is don't know/haven't heard
+# for alter 1 is Yes, 2 is No, 9 is not sure
+# we should change ego values of 9 to 2 to match alter
+# remove alter rows with 9
+
+# do individuals first
+# asha
+# recode values
+ea$ego_know_asha[ea$ego_know_asha == '9'] <- '2'
+ea$alt_know_asha[ea$alt_know_asha == '9'] <- NA
+
+# calculate homophily
+asha <- ea$ego_know_asha == ea$alt_know_asha
+dat <- tabyl(asha) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Know ASHA (%)',
+               value = dat %>% filter(asha == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(asha == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(asha == 'TRUE') %>% select(n) +
+                           dat %>% filter(asha == 'FALSE') %>% select(n)))
+# anm
+# recode values
+ea$ego_know_anm[ea$ego_know_anm == '9'] <- '2'
+ea$alt_know_anm[ea$alt_know_anm == '9'] <- NA
+
+# calculate homophily
+anm <- ea$ego_know_anm == ea$alt_know_anm
+dat <- tabyl(anm) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Know ANM (%)',
+               value = dat %>% filter(anm == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(anm == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(anm == 'TRUE') %>% select(n) +
+                           dat %>% filter(anm == 'FALSE') %>% select(n)))
+
+# aww
+# recode values
+ea$ego_know_aww[ea$ego_know_aww == '9'] <- '2'
+ea$alt_know_aww[ea$alt_know_aww == '9'] <- NA
+
+# calculate homophily
+aww <- ea$ego_know_aww == ea$alt_know_aww
+dat <- tabyl(aww) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Know AWW (%)',
+               value = dat %>% filter(aww == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(aww == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(aww == 'TRUE') %>% select(n) +
+                           dat %>% filter(aww == 'FALSE') %>% select(n)))
+
+# shg
+# recode values
+ea$ego_know_shg[ea$ego_know_shg == '9'] <- '2'
+ea$alt_know_shg[ea$alt_know_shg == '9'] <- NA
+
+# calculate homophily
+shg <- ea$ego_know_shg == ea$alt_know_shg
+dat <- tabyl(shg) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Know SHG (%)',
+               value = dat %>% filter(shg == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(shg == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(shg == 'TRUE') %>% select(n) +
+                           dat %>% filter(shg == 'FALSE') %>% select(n)))
+
+# pradhan
+# recode values
+ea$ego_know_pra[ea$ego_know_pra == '9'] <- '2'
+ea$alt_know_pra[ea$alt_know_pra == '9'] <- NA
+
+# calculate homophily
+pra <- ea$ego_know_pra == ea$alt_know_pra
+dat <- tabyl(pra) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Know Pradhan (%)',
+               value = dat %>% filter(pra == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(pra == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(pra == 'TRUE') %>% select(n) +
+                           dat %>% filter(pra == 'FALSE') %>% select(n)))
+
+# pharmacist
+# recode values
+ea$ego_know_pha[ea$ego_know_pha == '9'] <- '2'
+ea$alt_know_pha[ea$alt_know_pha == '9'] <- NA
+
+# calculate homophily
+pha <- ea$ego_know_pha == ea$alt_know_pha
+dat <- tabyl(pha) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Know Pharmacist (%)',
+               value = dat %>% filter(pha == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(pha == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(pha == 'TRUE') %>% select(n) +
+                           dat %>% filter(pha == 'FALSE') %>% select(n)))
+
+# doctor
+# recode values
+ea$ego_know_doc[ea$ego_know_doc == '9'] <- '2'
+ea$alt_know_doc[ea$alt_know_doc == '9'] <- NA
+
+# calculate homophily
+doc <- ea$ego_know_doc == ea$alt_know_doc
+dat <- tabyl(doc) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Know Doctor (%)',
+               value = dat %>% filter(doc == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(doc == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(doc == 'TRUE') %>% select(n) +
+                           dat %>% filter(doc == 'FALSE') %>% select(n)))
+
+# religious leader
+# recode values
+ea$ego_know_rel[ea$ego_know_rel == '9'] <- '2'
+ea$alt_know_rel[ea$alt_know_rel == '9'] <- NA
+
+# calculate homophily
+rel <- ea$ego_know_rel == ea$alt_know_rel
+dat <- tabyl(rel) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Know Religious Leader (%)',
+               value = dat %>% filter(rel == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(rel == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(rel == 'TRUE') %>% select(n) +
+                           dat %>% filter(rel == 'FALSE') %>% select(n)))
+
+# now by category
+# first all values to numeric
+ea %<>% mutate(across(c(ego_know_asha,
+                       ego_know_anm,
+                       ego_know_aww,
+                       ego_know_shg,
+                       ego_know_pra,
+                       ego_know_pha,
+                       ego_know_doc,
+                       ego_know_rel,
+                       alt_know_asha,
+                       alt_know_anm,
+                       alt_know_aww,
+                       alt_know_shg,
+                       alt_know_pra,
+                       alt_know_pha,
+                       alt_know_doc,
+                       alt_know_rel), as.numeric))
+
+# exchange 2s for 0s
+ea %<>% mutate(across(c(ego_know_asha,
+                        ego_know_anm,
+                        ego_know_aww,
+                        ego_know_shg,
+                        ego_know_pra,
+                        ego_know_pha,
+                        ego_know_doc,
+                        ego_know_rel,
+                        alt_know_asha,
+                        alt_know_anm,
+                        alt_know_aww,
+                        alt_know_shg,
+                        alt_know_pra,
+                        alt_know_pha,
+                        alt_know_doc,
+                        alt_know_rel),
+                      ~ ifelse(. == 2, 0, .)))
+
+# calculate health worker category
+ego_hw <- ea %>% 
+  select(ego_know_asha,
+         ego_know_anm,
+         ego_know_aww,
+         ego_know_pha,
+         ego_know_doc) %>%
+  rowSums(na.rm = T)
+
+ego_hw <- ego_hw > 0
+
+alt_hw <- ea %>% 
+  select(alt_know_asha,
+         alt_know_anm,
+         alt_know_aww,
+         alt_know_pha,
+         alt_know_doc) %>%
+  rowSums(na.rm = T)
+
+alt_hw <- alt_hw > 0
+
+# calculate homophily
+hw <- ego_hw == alt_hw
+dat <- tabyl(hw) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Know Health Worker Category (%)',
+               value = dat %>% filter(hw == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(hw == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(hw == 'TRUE') %>% select(n) +
+                           dat %>% filter(hw == 'FALSE') %>% select(n)))
+
+# calculate village leader category
+ego_vl <- ea %>% 
+  select(ego_know_pra,
+         ego_know_rel) %>%
+  rowSums(na.rm = T)
+
+ego_vl <- ego_vl > 0
+
+alt_vl <- ea %>% 
+  select(alt_know_pra,
+         alt_know_rel) %>%
+  rowSums(na.rm = T)
+
+alt_vl <- alt_vl > 0
+
+# calculate homophily
+vl <- ego_vl == alt_vl
+dat <- tabyl(vl) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Know Village Leader Category (%)',
+               value = dat %>% filter(vl == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(vl == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(vl == 'TRUE') %>% select(n) +
+                           dat %>% filter(vl == 'FALSE') %>% select(n)))
+
+# now total number of people
+ego_ppl <- ea %>%
+  select(ego_know_asha,
+         ego_know_anm,
+         ego_know_aww,
+         ego_know_shg,
+         ego_know_pra,
+         ego_know_pha,
+         ego_know_doc,
+         ego_know_rel) %>%
+  rowSums(na.rm = T)
+
+alt_ppl <- ea %>%
+  select(alt_know_asha,
+         alt_know_anm,
+         alt_know_aww,
+         alt_know_shg,
+         alt_know_pra,
+         alt_know_pha,
+         alt_know_doc,
+         alt_know_rel) %>%
+  rowSums(na.rm = T)
+
+# # calculate bias homophily
+# ppl <- ego_ppl - alt_ppl
+# ppl <- tibble(mean_people_known_village = mean(ppl, na.rm = T),
+#               med_people_known_village = median(ppl, na.rm = T),
+#               n = length(ppl[is.na(ppl) == F]))
+# 
+# write.csv(ppl, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/ego_num_people_known_village_bias.csv',
+#           row.names = F)
+
+# calculate sd homophily
+ppl_sd <- homo_sd(ego_ppl, alt_ppl)
+dat <- tibble(aed = ppl_sd[1],
+                 n = ppl_sd[2])
+
+# add to homophily output
+homo %<>% add_row(metric = 'Total Number of Important People Known (AED)',
+               value = dat %>% select(aed) %>% as.character,
+               N = dat %>% select(n) %>% as.character)
+
+##########################
+### NUMBER OF CHILDREN ###
+##########################
+
+# check unique values
+# unique(ea$ego_sons)
+# unique(ea$alt_sons)
+# unique(ea$ego_daughters)
+# unique(ea$alt_daughters)
+
+# change husband values to same as ego
+ea$alt_sons[ea$alt_relationship == "Husband पति"] <- ea$ego_sons[ea$alt_relationship == "Husband पति"]
+ea$alt_daughters[ea$alt_relationship == "Husband पति"] <- ea$ego_daughters[ea$alt_relationship == "Husband पति"]
+
+# convert to numeric
+ea$ego_sons <- as.numeric(ea$ego_sons)
+ea$alt_sons <- as.numeric(ea$alt_sons)
+ea$ego_daughters <- as.numeric(ea$ego_daughters)
+ea$alt_daughters <- as.numeric(ea$alt_daughters)
+
+# set don't know to NA
+ea$alt_sons[ea$alt_sons == 99] <- NA
+ea$alt_daughters[ea$alt_daughters == 99] <- NA
+
+# # calculate bias homophily
+# sons <- ea$ego_sons - ea$alt_sons
+# daughters <- ea$ego_daughters - ea$alt_daughters
+# children <- (ea$ego_sons + ea$ego_daughters) - (ea$alt_sons + ea$alt_daughters)
+# 
+# children_bias <- tibble(mean_sons = mean(sons, na.rm = T),
+#                         med_sons = median(sons, na.rm = T),
+#                         n_sons = length(sons[is.na(sons) == F]),
+#                         mean_daughters = mean(daughters, na.rm = T),
+#                         med_daughters = median(daughters, na.rm = T),
+#                         n_daughters = length(neigh[is.na(daughters) == F]),
+#                         mean_children = mean(children, na.rm = T),
+#                         med_children = median(children, na.rm = T),
+#                         n_children = length(children[is.na(children) == F]))
+
+# calculate sd homophily
+sons_sd <- homo_sd(ea$ego_sons, ea$alt_sons)
+daughters_sd <- homo_sd(ea$ego_daughters, ea$alt_daughters)
+children_sd <- homo_sd((ea$ego_sons + ea$ego_daughters), (ea$alt_sons + ea$alt_daughters))
+dat <- tibble(aed_sons = sons_sd[1],
+                               n_sons = sons_sd[2],
+                               aed_daughters = daughters_sd[1],
+                               n_daughters = daughters_sd[2],
+                               aed_children = children_sd[1],
+                               n_children = children_sd[2])
+
+# add to homophily output
+homo %<>% add_row(metric = 'Number of Sons (AED)',
+               value = dat %>% select(aed_sons) %>% as.character,
+               N = dat %>% select(n_sons) %>% as.character) %>%
+  add_row(metric = 'Number of Daughters (AED)',
+               value = dat %>% select(aed_daughters) %>% as.character,
+               N = dat %>% select(n_daughters) %>% as.character) %>%
+  add_row(metric = 'Number of Children Total (AED)',
+               value = dat %>% select(aed_children) %>% as.character,
+               N = dat %>% select(n_children) %>% as.character)
+
+##############################################
+### BASIC PROPORTION OF PLACE OF RESIDENCE ###
+##############################################
+
+# check unique values
+# unique(ea$alt_residence)
+
+# recode values
+ea %<>% mutate(alt_residence = recode(alt_residence, 
+                                     '1' = 'Same Household',
+                                     '2' = 'Same Village',
+                                     '3' = 'Another Village (same district)',
+                                     '4' = 'Outside this District'))
+
+# build tabyl
+dat <- ea %>% tabyl(alt_residence) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo %<>% add_row(metric = 'Live in Same Household (%)',
+               value = dat %>% filter(alt_residence == 'Same Household') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(alt_residence == 'Same Household') %>% select(n),
+                         '/',
+                         dat %>% select(n) %>% sum)) %>%
+  add_row(metric = 'Live in Same Village (%)',
+               value = dat %>% filter(alt_residence == 'Same Village') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(alt_residence == 'Same Village') %>% select(n),
+                         '/',
+                         dat %>% select(n) %>% sum)) %>%
+  add_row(metric = 'Live in Another Village, Same District (%)',
+               value = dat %>% filter(alt_residence == 'Another Village (same district)') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(alt_residence == 'Another Village (same district)') %>% select(n),
+                         '/',
+                         dat %>% select(n) %>% sum)) %>%
+  add_row(metric = 'Live in Another District (%)',
+               value = dat %>% filter(alt_residence == 'Outside this District') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(alt_residence == 'Outside this District') %>% select(n),
+                         '/',
+                         dat %>% select(n) %>% sum))
+
+```
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+#####################################
+### HETEROGENEITY OF EGO'S ALTERS ###
+#####################################
+
+###########
+### SEX ###
+###########
+
+# check unique values
+# unique(ea$alt_sex)
+
+# build proportions
+sex <- ea %>% tabyl(alt_sex)
+
+# create a function to calculate blaus and iqv
+blau <- function(perc){
+  b <- perc*perc
+  k <- length(perc)
+  b <- (1 - sum(b)) %>% round(2)
+  iqv <- (b / (1-(1/k))) %>% round(2)
+  return(c(b, iqv, k))
+}
+
+n <- sex$n[is.na(sex$percent) == F] %>% sum
+
+# calculate heterogeneity
+sex <- blau(sex$percent)
+
+# create tibble
+dat = tibble(blau = sex[1],
+             iqv = sex[2],
+             k = sex[3])
+
+# create heterogeneity output
+hetero <- tibble(metric = 'Gender',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+#############
+### CASTE ###
+#############
+
+# check unique values
+# unique(ea$alt_caste)
+
+# build proportions
+caste <- ea %>% tabyl(alt_caste)
+n <- caste$n[is.na(caste$valid_percent) == F] %>% sum
+
+# calculate heterogeneity
+caste <- blau(na.omit(caste$valid_percent))
+
+# create tibble
+dat = tibble(blau = caste[1],
+             iqv = caste[2],
+             k = caste[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Caste',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+################################
+### NUMBER OF FAMILY MEMBERS ###
+################################
+
+# check unique values
+# unique(ea$alt_fam)
+
+# # calculate heterogeneity
+# fam <- tibble(fam_sd = sd(ea$alt_fam, na.rm = T) %>% round(2),
+#               n = length(ea$alt_fam[is.na(ea$alt_fam) == F]))
+
+#######################################
+### NUMBER OF FRIENDS AND NEIGHBORS ###
+#######################################
+
+# check unique values
+# unique(ea$alt_friends)
+# unique(ea$alt_neigh)
+
+# # calculate heterogeneity
+# friends_neigh <- tibble(friends_sd = sd(ea$alt_friends, na.rm = T) %>% round(2),
+#               friends_n = length(ea$alt_friends[is.na(ea$alt_friends) == F]),
+#               neigh_sd = sd(ea$alt_neigh, na.rm = T) %>% round(2),
+#               neigh_n = length(ea$alt_neigh[is.na(ea$alt_neigh) == F]),
+#               friends_neigh_sd = sd((ea$alt_friends + ea$alt_neigh), na.rm = T) %>% round(2),
+#               friends_neigh_n = length((ea$alt_friends + ea$alt_neigh)[is.na((ea$alt_friends + ea$alt_neigh)) == F]))
+
+#####################
+### PRACTICING FP ###
+#####################
+
+# PC ego values
+# 1 = Yes, 2 = No
+
+# alt values
+# 1 = Yes, 2 = No, 9 = Don't Know
+
+# check unique values
+# unique(ea$alt_using_fp)
+
+# calculate heterogeneity
+using_fp <- tabyl(ea$alt_using_fp)
+n <- using_fp$n[is.na(using_fp$valid_percent) == F] %>% sum
+using_fp <- blau(na.omit(using_fp$valid_percent))
+dat <- tibble(blau = using_fp[1],
+                   iqv = using_fp[2],
+                   k = using_fp[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Currently Using Family Planning',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+###############################
+### PEOPLE KNOWN IN VILLAGE ###
+###############################
+
+# check some values
+# unique(ea$alt_know_asha)
+
+# for ego, 1 is Yes, 2 is heard, 9 is don't know/haven't heard
+# for alter 1 is Yes, 2 is No, 9 is not sure
+# we should change ego values of 9 to 2 to match alter
+# remove alter rows with 9
+
+# calculate heterogeneity
+ppl <- tabyl(ea$alt_know_asha)
+n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$valid_percent))
+dat <- tibble(blau = ppl[1],
+              iqv = ppl[2],
+              k = ppl[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Know ASHA',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+# anm
+# calculate heterogeneity
+ppl <- tabyl(ea$alt_know_anm)
+n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$valid_percent))
+dat <- tibble(blau = ppl[1],
+              iqv = ppl[2],
+              k = ppl[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Know ANM',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+# aww
+# calculate heterogeneity
+ppl <- tabyl(ea$alt_know_aww)
+n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$valid_percent))
+dat <- tibble(blau = ppl[1],
+              iqv = ppl[2],
+              k = ppl[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Know AWW',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+# shg
+# calculate heterogeneity
+ppl <- tabyl(ea$alt_know_shg)
+n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$valid_percent))
+dat <- tibble(blau = ppl[1],
+              iqv = ppl[2],
+              k = ppl[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Know SHG',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+# pradhan
+# calculate heterogeneity
+ppl <- tabyl(ea$alt_know_pra)
+n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$valid_percent))
+dat <- tibble(blau = ppl[1],
+              iqv = ppl[2],
+              k = ppl[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Know Pradhan',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+# pharmacist
+# calculate heterogeneity
+ppl <- tabyl(ea$alt_know_pha)
+n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$valid_percent))
+dat <- tibble(blau = ppl[1],
+              iqv = ppl[2],
+              k = ppl[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Know Pharmacist',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+# doctor
+# calculate heterogeneity
+ppl <- tabyl(ea$alt_know_doc)
+n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$valid_percent))
+dat <- tibble(blau = ppl[1],
+              iqv = ppl[2],
+              k = ppl[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Know Doctor',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+# religious leader
+# calculate heterogeneity
+ppl <- tabyl(ea$alt_know_rel)
+n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$valid_percent))
+dat <- tibble(blau = ppl[1],
+              iqv = ppl[2],
+              k = ppl[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Know Religious Leader',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+# calculate health worker category
+
+
+# calculate homophily
+# calculate heterogeneity
+ppl <- tabyl(alt_hw)
+n <- ppl$n[is.na(ppl$percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$percent))
+dat <- tibble(blau = ppl[1],
+              iqv = ppl[2],
+              k = ppl[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Know Health Worker Category',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+# calculate village leader category
+# calculate heterogeneity
+ppl <- tabyl(alt_vl)
+n <- ppl$n[is.na(ppl$percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$percent))
+dat <- tibble(blau = ppl[1],
+              iqv = ppl[2],
+              k = ppl[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Know Village Leader Category',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+# # now total number of people
+# # calculate heterogeneity
+# ppl <- tibble(ppl_known_village_sd = sd(alt_ppl, na.rm = T) %>% round(2),
+#               n = length(alt_ppl[is.na(alt_ppl) == F]))
+
+##########################
+### NUMBER OF CHILDREN ###
+##########################
+
+# check unique values
+# unique(ea$alt_sons)
+# unique(ea$alt_daughters)
+
+# # calculate heterogeneity
+# children <- tibble(sons_sd = sd(ea$alt_sons, na.rm = T) %>% round(2),
+#               sons_n = length(ea$alt_sons[is.na(ea$alt_sons) == F]),
+#               daughters_sd = sd(ea$alt_daughters, na.rm = T) %>% round(2),
+#               daughters_n = length(ea$alt_daughters[is.na(ea$alt_daughters) == F]),
+#               children_sd = sd((ea$alt_sons + ea$alt_daughters), na.rm = T) %>% round(2),
+#               children_n = length((ea$alt_sons + ea$alt_daughters)[is.na((ea$alt_sons + ea$alt_daughters)) == F]))
+
+##########################
+### PLACE OF RESIDENCE ###
+##########################
+
+# check unique values
+# unique(ea$alt_residence)
+
+# calculate heterogeneity
+res <- tabyl(ea$alt_residence)
+n <- res$n[is.na(res$percent) == F] %>% sum
+res <- blau(na.omit(res$percent))
+dat <- tibble(blau = res[1],
+              iqv = res[2],
+              k = res[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Residence',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+#######################
+### SOCIAL LEARNING ###
+#######################
+
+# check unique values
+#unique(ea$alt_learned)
+
+# calculate homophily
+a <- tabyl(str_detect(ea$alt_learned, "A"))
+n <- a$n[is.na(a$percent) == F] %>% sum
+a <- blau(a$percent)
+dat <- tibble(blau = a[1],
+              iqv = a[2],
+              k = a[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Social Learning: Get along with family',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+b <- tabyl(str_detect(ea$alt_learned, "B"))
+n <- b$n[is.na(b$percent) == F] %>% sum
+b <- blau(b$percent)
+dat <- tibble(blau = b[1],
+              iqv = b[2],
+              k = b[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Social Learning: Ways of earning',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+c <- tabyl(str_detect(ea$alt_learned, "C"))
+n <- c$n[is.na(c$percent) == F] %>% sum
+c <- blau(c$percent)
+dat <- tibble(blau = c[1],
+              iqv = c[2],
+              k = c[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Social Learning: Take care of children',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+d <- tabyl(str_detect(ea$alt_learned, "D"))
+n <- d$n[is.na(d$percent) == F] %>% sum
+d <- blau(d$percent)
+dat <- tibble(blau = d[1],
+              iqv = d[2],
+              k = d[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Social Learning: Get health care',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+e <- tabyl(str_detect(ea$alt_learned, "E"))
+n <- e$n[is.na(e$percent) == F] %>% sum
+e <- blau(e$percent)
+dat <- tibble(blau = e[1],
+              iqv = e[2],
+              k = e[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Social Learning: Apply for government schemes',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+f <- tabyl(str_detect(ea$alt_learned, "F"))
+n <- f$n[is.na(f$percent) == F] %>% sum
+f <- blau(f$percent)
+dat <- tibble(blau = f[1],
+              iqv = f[2],
+              k = f[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Social Learning: Plan no. of children to have',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+g <- tabyl(str_detect(ea$alt_learned, "G"))
+n <- g$n[is.na(g$percent) == F] %>% sum
+g <- blau(g$percent)
+dat <- tibble(blau = g[1],
+              iqv = g[2],
+              k = g[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Social Learning: FP methods',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+###########################
+### ENCOURAGE USE OF FP ###
+###########################
+
+# check unique values
+# unique(ea$alt_encourage_fp)
+
+# calculate heterogeneity
+fp <- tabyl(ea$alt_encourage_fp)
+n <- fp$n[is.na(fp$percent) == F] %>% sum
+fp <- blau(na.omit(fp$percent))
+dat <- tibble(blau = fp[1],
+              iqv = fp[2],
+              k = fp[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Encourage Use of Family Planning',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+#################################
+### DISCUSS FP METHODS FREELY ###
+#################################
+
+# check unique values
+# unique(ea$alt_discuss_fp)
+
+# calculate heterogeneity
+fp <- tabyl(ea$alt_discuss_fp)
+n <- fp$n[is.na(fp$percent) == F] %>% sum
+fp <- blau(na.omit(fp$percent))
+dat <- tibble(blau = fp[1],
+             iqv = fp[2],
+             k = fp[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Discuss FP Methods Freely',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+###########################
+### ALT HELP/ADVISE EGO ###
+###########################
+
+# check unique values
+# unique(ea$alt_help_ego)
+
+# calculate heterogeneity
+fp <- tabyl(ea$alt_help_ego)
+n <- fp$n[is.na(fp$percent) == F] %>% sum
+fp <- blau(na.omit(fp$percent))
+dat <- tibble(blau = fp[1],
+             iqv = fp[2],
+             k = fp[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Alter Help/Advise Ego',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+###########################
+### EGO HELP/ADVISE ALT ###
+###########################
+
+# check unique values
+# unique(ea$alt_helped_by_ego)
+
+# calculate heterogeneity
+fp <- tabyl(ea$alt_helped_by_ego)
+n <- fp$n[is.na(fp$percent) == F] %>% sum
+fp <- blau(na.omit(fp$percent))
+dat <- tibble(blau = fp[1],
+             iqv = fp[2],
+             k = fp[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Ego Help/Advise Alter',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+############################
+### GOING AGAINST ADVICE ###
+############################
+
+# check unique values
+# unique(ea$alt_against_advice)
+
+# calculate heterogeneity
+fp <- tabyl(ea$alt_against_advice)
+n <- fp$n[is.na(fp$percent) == F] %>% sum
+fp <- blau(na.omit(fp$percent))
+dat <- tibble(blau = fp[1],
+             iqv = fp[2],
+             k = fp[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Going Against Advice',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+###################################
+### SUPPORT NOT HAVING CHILDREN ###
+###################################
+
+# check unique values
+# unique(ea$alt_support_no_child)
+
+# calculate heterogeneity
+fp <- tabyl(ea$alt_support_no_child)
+n <- fp$n[is.na(fp$percent) == F] %>% sum
+fp <- blau(na.omit(fp$percent))
+dat <- tibble(blau = fp[1],
+             iqv = fp[2],
+             k = fp[3])
+
+# add to heterogeneity output
+hetero %<>% add_row(metric = 'Support Not Having Children',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+```
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+#################################################################
+### CALCULATE HOMOPHILY AND HETEROGENEITY OF ALTER AND AALTER ###
+#################################################################
+
+##################################
+### HOMOPHILY ALTER AND AALTER ###
+##################################
+
+# gender
+# education
+# number of family members
+# number of non-family members close to
+# practicing FP
+# network composition: family/non-family (?)
+
+# sort ego data and PC data by woman ID so can merge
+ego %<>% arrange(woman_id)
+ego_pc %<>% arrange(qe6) # qe6 is woman_id
+
+# make sure ego_ids match
+# sum(ego_pc$qe6 == ego$woman_id)
+
+# build tibble of ego and alter attributes since we might need some variables
+ego_alter_old <- rbind(tibble(ego_id = ego$woman_id,
+                              alter_name = ego$alter1,
+                              alter_id = str_c(ego$woman_id, 1),
+                              ego_sex = 2,
+                              alt_sex = ego$alter1_sex,
+                              ego_caste = ego_pc$pcq111,
+                              alt_caste = ego$alter1_caste,
+                              ego_edu = ego_pc$pcq103,
+                              alt_edu = NA,
+                              ego_fam = ego$family_members,
+                              alt_fam = ego$alter1_family,
+                              ego_friends = ego$friends,
+                              alt_friends = ego$alter1_friends,
+                              ego_neigh = ego$neighbours,
+                              alt_neigh = ego$alter1_neighbours,
+                              ego_using_fp = ego_pc$pcq311,
+                              alt_using_fp = ego$alter1_using_fp,
+                              ego_know_asha = ego$know_asha,
+                              ego_know_anm = ego$know_anm,
+                              ego_know_aww = ego$know_aww,
+                              ego_know_shg = ego$know_shg,
+                              ego_know_pra = ego$know_pradhan,
+                              ego_know_pha = ego$know_pharmacist,
+                              ego_know_doc = ego$know_doctor,
+                              ego_know_rel = ego$know_religious_leader,
+                              alt_know_asha = ego$alter1_asha,
+                              alt_know_anm = ego$alter1_anm,
+                              alt_know_aww = ego$alter1_aww,
+                              alt_know_shg = ego$alter1_shg,
+                              alt_know_pra = ego$alter1_pradhan,
+                              alt_know_pha = ego$alter1_pharmacist,
+                              alt_know_doc = ego$alter1_doctor,
+                              alt_know_rel = ego$alter1_religious_leader,
+                              ego_sons = ego_pc$pcq205s,
+                              ego_daughters = ego_pc$pcq205d,
+                              alt_sons = ego$alter1_sons,
+                              alt_daughters = ego$alter1_daughters,
+                              alt_residence = ego$alter1_residence,
+                              alt_relationship = ego$alter1r,
+                              alt_learned = ego$alter1_learned,
+                              alt_encourage_fp = ego$alter1_encourage_fp,
+                              alt_discuss_fp = ego$alter1_discuss_fp,
+                              alt_help_ego = ego$alter1_help,
+                              alt_helped_by_ego = ego$alter1_helped,
+                              alt_against_advice = ego$alter1_follow_advice,
+                              alt_support_no_child = ego$alter1_nochild),
+                       tibble(ego_id = ego$woman_id,
+                              alter_name = ego$alter2,
+                              alter_id = str_c(ego$woman_id, 2),
+                              ego_sex = 2,
+                              alt_sex = ego$alter2_sex,
+                              ego_caste = ego_pc$pcq111,
+                              alt_caste = ego$alter2_caste,
+                              ego_edu = ego_pc$pcq103,
+                              alt_edu = NA,
+                              ego_fam = ego$family_members,
+                              alt_fam = ego$alter2_family,
+                              ego_friends = ego$friends,
+                              alt_friends = ego$alter2_friends,
+                              ego_neigh = ego$neighbours,
+                              alt_neigh = ego$alter2_neighbours,
+                              ego_using_fp = ego_pc$pcq311,
+                              alt_using_fp = ego$alter2_using_fp,
+                              ego_know_asha = ego$know_asha,
+                              ego_know_anm = ego$know_anm,
+                              ego_know_aww = ego$know_aww,
+                              ego_know_shg = ego$know_shg,
+                              ego_know_pra = ego$know_pradhan,
+                              ego_know_pha = ego$know_pharmacist,
+                              ego_know_doc = ego$know_doctor,
+                              ego_know_rel = ego$know_religious_leader,
+                              alt_know_asha = ego$alter2_asha,
+                              alt_know_anm = ego$alter2_anm,
+                              alt_know_aww = ego$alter2_aww,
+                              alt_know_shg = ego$alter2_shg,
+                              alt_know_pra = ego$alter2_pradhan,
+                              alt_know_pha = ego$alter2_pharmacist,
+                              alt_know_doc = ego$alter2_doctor,
+                              alt_know_rel = ego$alter2_religious_leader,
+                              ego_sons = ego_pc$pcq205s,
+                              ego_daughters = ego_pc$pcq205d,
+                              alt_sons = ego$alter2_sons,
+                              alt_daughters = ego$alter2_daughters,
+                              alt_residence = ego$alter2_residence,
+                              alt_relationship = ego$alter2r,
+                              alt_learned = ego$alter2_learned,
+                              alt_encourage_fp = ego$alter2_encourage_fp,
+                              alt_discuss_fp = ego$alter2_discuss_fp,
+                              alt_help_ego = ego$alter2_help,
+                              alt_helped_by_ego = ego$alter2_helped,
+                              alt_against_advice = ego$alter2_follow_advice,
+                              alt_support_no_child = ego$alter2_nochild),
+                       tibble(ego_id = ego$woman_id,
+                              alter_name = ego$alter3,
+                              alter_id = str_c(ego$woman_id, 3),
+                              ego_sex = 2,
+                              alt_sex = ego$alter3_sex,
+                              ego_caste = ego_pc$pcq111,
+                              alt_caste = ego$alter3_caste,
+                              ego_edu = ego_pc$pcq103,
+                              alt_edu = NA,
+                              ego_fam = ego$family_members,
+                              alt_fam = ego$alter3_family,
+                              ego_friends = ego$friends,
+                              alt_friends = ego$alter3_friends,
+                              ego_neigh = ego$neighbours,
+                              alt_neigh = ego$alter3_neighbours,
+                              ego_using_fp = ego_pc$pcq311,
+                              alt_using_fp = ego$alter3_using_fp,
+                              ego_know_asha = ego$know_asha,
+                              ego_know_anm = ego$know_anm,
+                              ego_know_aww = ego$know_aww,
+                              ego_know_shg = ego$know_shg,
+                              ego_know_pra = ego$know_pradhan,
+                              ego_know_pha = ego$know_pharmacist,
+                              ego_know_doc = ego$know_doctor,
+                              ego_know_rel = ego$know_religious_leader,
+                              alt_know_asha = ego$alter3_asha,
+                              alt_know_anm = ego$alter3_anm,
+                              alt_know_aww = ego$alter3_aww,
+                              alt_know_shg = ego$alter3_shg,
+                              alt_know_pra = ego$alter3_pradhan,
+                              alt_know_pha = ego$alter3_pharmacist,
+                              alt_know_doc = ego$alter3_doctor,
+                              alt_know_rel = ego$alter3_religious_leader,
+                              ego_sons = ego_pc$pcq205s,
+                              ego_daughters = ego_pc$pcq205d,
+                              alt_sons = ego$alter3_sons,
+                              alt_daughters = ego$alter3_daughters,
+                              alt_residence = ego$alter3_residence,
+                              alt_relationship = ego$alter3r,
+                              alt_learned = ego$alter3_learned,
+                              alt_encourage_fp = ego$alter3_encourage_fp,
+                              alt_discuss_fp = ego$alter3_discuss_fp,
+                              alt_help_ego = ego$alter3_help,
+                              alt_helped_by_ego = ego$alter3_helped,
+                              alt_against_advice = ego$alter3_follow_advice,
+                              alt_support_no_child = ego$alter3_nochild),
+                       tibble(ego_id = ego$woman_id,
+                              alter_name = ego$alter4,
+                              alter_id = str_c(ego$woman_id, 4),
+                              ego_sex = 2,
+                              alt_sex = ego$alter4_sex,
+                              ego_caste = ego_pc$pcq111,
+                              alt_caste = ego$alter4_caste,
+                              ego_edu = ego_pc$pcq103,
+                              alt_edu = NA,
+                              ego_fam = ego$family_members,
+                              alt_fam = ego$alter4_family,
+                              ego_friends = ego$friends,
+                              alt_friends = ego$alter4_friends,
+                              ego_neigh = ego$neighbours,
+                              alt_neigh = ego$alter4_neighbours,
+                              ego_using_fp = ego_pc$pcq311,
+                              alt_using_fp = ego$alter4_using_fp,
+                              ego_know_asha = ego$know_asha,
+                              ego_know_anm = ego$know_anm,
+                              ego_know_aww = ego$know_aww,
+                              ego_know_shg = ego$know_shg,
+                              ego_know_pra = ego$know_pradhan,
+                              ego_know_pha = ego$know_pharmacist,
+                              ego_know_doc = ego$know_doctor,
+                              ego_know_rel = ego$know_religious_leader,
+                              alt_know_asha = ego$alter4_asha,
+                              alt_know_anm = ego$alter4_anm,
+                              alt_know_aww = ego$alter4_aww,
+                              alt_know_shg = ego$alter4_shg,
+                              alt_know_pra = ego$alter4_pradhan,
+                              alt_know_pha = ego$alter4_pharmacist,
+                              alt_know_doc = ego$alter4_doctor,
+                              alt_know_rel = ego$alter4_religious_leader,
+                              ego_sons = ego_pc$pcq205s,
+                              ego_daughters = ego_pc$pcq205d,
+                              alt_sons = ego$alter4_sons,
+                              alt_daughters = ego$alter4_daughters,
+                              alt_residence = ego$alter4_residence,
+                              alt_relationship = ego$alter4r,
+                              alt_learned = ego$alter4_learned,
+                              alt_encourage_fp = ego$alter4_encourage_fp,
+                              alt_discuss_fp = ego$alter4_discuss_fp,
+                              alt_help_ego = ego$alter4_help,
+                              alt_helped_by_ego = ego$alter4_helped,
+                              alt_against_advice = ego$alter4_follow_advice,
+                              alt_support_no_child = ego$alter4_nochild),
+                       tibble(ego_id = ego$woman_id,
+                              alter_name = ego$alter5,
+                              alter_id = str_c(ego$woman_id, 5),
+                              ego_sex = 2,
+                              alt_sex = ego$alter5_sex,
+                              ego_caste = ego_pc$pcq111,
+                              alt_caste = ego$alter5_caste,
+                              ego_edu = ego_pc$pcq103,
+                              alt_edu = NA,
+                              ego_fam = ego$family_members,
+                              alt_fam = ego$alter5_family,
+                              ego_friends = ego$friends,
+                              alt_friends = ego$alter5_friends,
+                              ego_neigh = ego$neighbours,
+                              alt_neigh = ego$alter5_neighbours,
+                              ego_using_fp = ego_pc$pcq311,
+                              alt_using_fp = ego$alter5_using_fp,
+                              ego_know_asha = ego$know_asha,
+                              ego_know_anm = ego$know_anm,
+                              ego_know_aww = ego$know_aww,
+                              ego_know_shg = ego$know_shg,
+                              ego_know_pra = ego$know_pradhan,
+                              ego_know_pha = ego$know_pharmacist,
+                              ego_know_doc = ego$know_doctor,
+                              ego_know_rel = ego$know_religious_leader,
+                              alt_know_asha = ego$alter5_asha,
+                              alt_know_anm = ego$alter5_anm,
+                              alt_know_aww = ego$alter5_aww,
+                              alt_know_shg = ego$alter5_shg,
+                              alt_know_pra = ego$alter5_pradhan,
+                              alt_know_pha = ego$alter5_pharmacist,
+                              alt_know_doc = ego$alter5_doctor,
+                              alt_know_rel = ego$alter5_religious_leader,
+                              ego_sons = ego_pc$pcq205s,
+                              ego_daughters = ego_pc$pcq205d,
+                              alt_sons = ego$alter5_sons,
+                              alt_daughters = ego$alter5_daughters,
+                              alt_residence = ego$alter5_residence,
+                              alt_relationship = ego$alter5r,
+                              alt_learned = ego$alter5_learned,
+                              alt_encourage_fp = ego$alter5_encourage_fp,
+                              alt_discuss_fp = ego$alter5_discuss_fp,
+                              alt_help_ego = ego$alter5_help,
+                              alt_helped_by_ego = ego$alter5_helped,
+                              alt_against_advice = ego$alter5_follow_advice,
+                              alt_support_no_child = ego$alter5_nochild))
+
+# drop rows for missing alters
+ego_alter_old %<>% filter(is.na(alter_name) == F)
+
+# build tibble of alter and aalter attributes
+ea <- rbind(tibble(ego_id = alter$alter_id,
+                   alter_name = alter$alter1,
+                   ego_sex = NA,
+                   alt_sex = alter$alter1_sex,
+                   ego_caste = alter$caste,
+                   alt_caste = alter$alter1_caste,
+                   ego_edu = alter$education,
+                   alt_edu = NA,
+                   ego_fam = alter$family_members,
+                   alt_fam = alter$alter1_family,
+                   ego_friends = alter$friends,
+                   alt_friends = alter$alter1_friends,
+                   ego_neigh = alter$neighbours,
+                   alt_neigh = alter$alter1_neighbours,
+                   ego_using_fp = alter$current_method,
+                   alt_using_fp = alter$alter1_using_fp,
+                   ego_know_asha = alter$know_asha,
+                   ego_know_anm = alter$know_anm,
+                   ego_know_aww = alter$know_aww,
+                   ego_know_shg = alter$know_shg,
+                   ego_know_pra = alter$know_pradhan,
+                   ego_know_pha = alter$know_pharmacist,
+                   ego_know_doc = alter$know_doctor,
+                   ego_know_rel = alter$know_religious_leader,
+                   alt_know_asha = NA,
+                   alt_know_anm = NA,
+                   alt_know_aww = NA,
+                   alt_know_shg = NA,
+                   alt_know_pra = NA,
+                   alt_know_pha = NA,
+                   alt_know_doc = NA,
+                   alt_know_rel = NA,
+                   ego_sons = alter$sons,
+                   ego_daughters = alter$daughters,
+                   alt_sons = alter$alter1_sons,
+                   alt_daughters = alter$alter1_daughters,
+                   alt_residence = alter$alter1_residence,
+                   alt_relationship = alter$alter1r,
+                   alt_learned = alter$alter1_learned,
+                   alt_encourage_fp = alter$alter1_encourage_fp,
+                   alt_discuss_fp = alter$alter1_discuss_fp,
+                   alt_help_ego = alter$alter1_help,
+                   alt_helped_by_ego = alter$alter1_helped,
+                   alt_against_advice = alter$alter1_follow_advice,
+                   alt_support_no_child = alter$alter1_nochild),
+            tibble(ego_id = alter$alter_id,
+                   alter_name = alter$alter2,
+                   ego_sex = NA,
+                   alt_sex = alter$alter2_sex,
+                   ego_caste = alter$caste,
+                   alt_caste = alter$alter2_caste,
+                   ego_edu = alter$education,
+                   alt_edu = NA,
+                   ego_fam = alter$family_members,
+                   alt_fam = alter$alter2_family,
+                   ego_friends = alter$friends,
+                   alt_friends = alter$alter2_friends,
+                   ego_neigh = alter$neighbours,
+                   alt_neigh = alter$alter2_neighbours,
+                   ego_using_fp = alter$current_method,
+                   alt_using_fp = alter$alter2_using_fp,
+                   ego_know_asha = alter$know_asha,
+                   ego_know_anm = alter$know_anm,
+                   ego_know_aww = alter$know_aww,
+                   ego_know_shg = alter$know_shg,
+                   ego_know_pra = alter$know_pradhan,
+                   ego_know_pha = alter$know_pharmacist,
+                   ego_know_doc = alter$know_doctor,
+                   ego_know_rel = alter$know_religious_leader,
+                   alt_know_asha = NA,
+                   alt_know_anm = NA,
+                   alt_know_aww = NA,
+                   alt_know_shg = NA,
+                   alt_know_pra = NA,
+                   alt_know_pha = NA,
+                   alt_know_doc = NA,
+                   alt_know_rel = NA,
+                   ego_sons = alter$sons,
+                   ego_daughters = alter$daughters,
+                   alt_sons = alter$alter2_sons,
+                   alt_daughters = alter$alter2_daughters,
+                   alt_residence = alter$alter2_residence,
+                   alt_relationship = alter$alter2r,
+                   alt_learned = alter$alter2_learned,
+                   alt_encourage_fp = alter$alter2_encourage_fp,
+                   alt_discuss_fp = alter$alter2_discuss_fp,
+                   alt_help_ego = alter$alter2_help,
+                   alt_helped_by_ego = alter$alter2_helped,
+                   alt_against_advice = alter$alter2_follow_advice,
+                   alt_support_no_child = alter$alter2_nochild),
+            tibble(ego_id = alter$alter_id,
+                   alter_name = alter$alter3,
+                   ego_sex = NA,
+                   alt_sex = alter$alter3_sex,
+                   ego_caste = alter$caste,
+                   alt_caste = alter$alter3_caste,
+                   ego_edu = alter$education,
+                   alt_edu = NA,
+                   ego_fam = alter$family_members,
+                   alt_fam = alter$alter3_family,
+                   ego_friends = alter$friends,
+                   alt_friends = alter$alter3_friends,
+                   ego_neigh = alter$neighbours,
+                   alt_neigh = alter$alter3_neighbours,
+                   ego_using_fp = alter$current_method,
+                   alt_using_fp = alter$alter3_using_fp,
+                   ego_know_asha = alter$know_asha,
+                   ego_know_anm = alter$know_anm,
+                   ego_know_aww = alter$know_aww,
+                   ego_know_shg = alter$know_shg,
+                   ego_know_pra = alter$know_pradhan,
+                   ego_know_pha = alter$know_pharmacist,
+                   ego_know_doc = alter$know_doctor,
+                   ego_know_rel = alter$know_religious_leader,
+                   alt_know_asha = NA,
+                   alt_know_anm = NA,
+                   alt_know_aww = NA,
+                   alt_know_shg = NA,
+                   alt_know_pra = NA,
+                   alt_know_pha = NA,
+                   alt_know_doc = NA,
+                   alt_know_rel = NA,
+                   ego_sons = alter$sons,
+                   ego_daughters = alter$daughters,
+                   alt_sons = alter$alter3_sons,
+                   alt_daughters = alter$alter3_daughters,
+                   alt_residence = alter$alter3_residence,
+                   alt_relationship = alter$alter3r,
+                   alt_learned = alter$alter3_learned,
+                   alt_encourage_fp = alter$alter3_encourage_fp,
+                   alt_discuss_fp = alter$alter3_discuss_fp,
+                   alt_help_ego = alter$alter3_help,
+                   alt_helped_by_ego = alter$alter3_helped,
+                   alt_against_advice = alter$alter3_follow_advice,
+                   alt_support_no_child = alter$alter3_nochild),
+            tibble(ego_id = alter$alter_id,
+                   alter_name = alter$alter4,
+                   ego_sex = NA,
+                   alt_sex = alter$alter4_sex,
+                   ego_caste = alter$caste,
+                   alt_caste = alter$alter4_caste,
+                   ego_edu = alter$education,
+                   alt_edu = NA,
+                   ego_fam = alter$family_members,
+                   alt_fam = alter$alter4_family,
+                   ego_friends = alter$friends,
+                   alt_friends = alter$alter4_friends,
+                   ego_neigh = alter$neighbours,
+                   alt_neigh = alter$alter4_neighbours,
+                   ego_using_fp = alter$current_method,
+                   alt_using_fp = alter$alter4_using_fp,
+                   ego_know_asha = alter$know_asha,
+                   ego_know_anm = alter$know_anm,
+                   ego_know_aww = alter$know_aww,
+                   ego_know_shg = alter$know_shg,
+                   ego_know_pra = alter$know_pradhan,
+                   ego_know_pha = alter$know_pharmacist,
+                   ego_know_doc = alter$know_doctor,
+                   ego_know_rel = alter$know_religious_leader,
+                   alt_know_asha = NA,
+                   alt_know_anm = NA,
+                   alt_know_aww = NA,
+                   alt_know_shg = NA,
+                   alt_know_pra = NA,
+                   alt_know_pha = NA,
+                   alt_know_doc = NA,
+                   alt_know_rel = NA,
+                   ego_sons = alter$sons,
+                   ego_daughters = alter$daughters,
+                   alt_sons = alter$alter4_sons,
+                   alt_daughters = alter$alter4_daughters,
+                   alt_residence = alter$alter4_residence,
+                   alt_relationship = alter$alter4r,
+                   alt_learned = alter$alter4_learned,
+                   alt_encourage_fp = alter$alter4_encourage_fp,
+                   alt_discuss_fp = alter$alter4_discuss_fp,
+                   alt_help_ego = alter$alter4_help,
+                   alt_helped_by_ego = alter$alter4_helped,
+                   alt_against_advice = alter$alter4_follow_advice,
+                   alt_support_no_child = alter$alter4_nochild),
+            tibble(ego_id = alter$alter_id,
+                   alter_name = alter$alter5,
+                   ego_sex = NA,
+                   alt_sex = alter$alter5_sex,
+                   ego_caste = alter$caste,
+                   alt_caste = alter$alter5_caste,
+                   ego_edu = alter$education,
+                   alt_edu = NA,
+                   ego_fam = alter$family_members,
+                   alt_fam = alter$alter5_family,
+                   ego_friends = alter$friends,
+                   alt_friends = alter$alter5_friends,
+                   ego_neigh = alter$neighbours,
+                   alt_neigh = alter$alter5_neighbours,
+                   ego_using_fp = alter$current_method,
+                   alt_using_fp = alter$alter5_using_fp,
+                   ego_know_asha = alter$know_asha,
+                   ego_know_anm = alter$know_anm,
+                   ego_know_aww = alter$know_aww,
+                   ego_know_shg = alter$know_shg,
+                   ego_know_pra = alter$know_pradhan,
+                   ego_know_pha = alter$know_pharmacist,
+                   ego_know_doc = alter$know_doctor,
+                   ego_know_rel = alter$know_religious_leader,
+                   alt_know_asha = NA,
+                   alt_know_anm = NA,
+                   alt_know_aww = NA,
+                   alt_know_shg = NA,
+                   alt_know_pra = NA,
+                   alt_know_pha = NA,
+                   alt_know_doc = NA,
+                   alt_know_rel = NA,
+                   ego_sons = alter$sons,
+                   ego_daughters = alter$daughters,
+                   alt_sons = alter$alter5_sons,
+                   alt_daughters = alter$alter5_daughters,
+                   alt_residence = alter$alter5_residence,
+                   alt_relationship = alter$alter5r,
+                   alt_learned = alter$alter5_learned,
+                   alt_encourage_fp = alter$alter5_encourage_fp,
+                   alt_discuss_fp = alter$alter5_discuss_fp,
+                   alt_help_ego = alter$alter5_help,
+                   alt_helped_by_ego = alter$alter5_helped,
+                   alt_against_advice = alter$alter5_follow_advice,
+                   alt_support_no_child = alter$alter5_nochild))
+
+# drop rows for missing alters
+ea %<>% filter(is.na(alter_name) == F)
+
+##############
+### GENDER ###
+##############
+
+# check unique values
+# unique(ea$ego_sex)
+# unique(ea$alt_sex)
+
+# need to get sex from ego survey
+for(i in 1:NROW(ea)){
+  ea$ego_sex[i] <- ego_alter_old$alt_sex[ego_alter_old$alter_id == ea$ego_id[i]]
+}
+
+# check unique values
+# unique(ea$ego_sex)
+# unique(ea$alt_sex)
+
+# set to numeric
+ea$ego_sex <- as.numeric(ea$ego_sex)
+ea$alt_sex <- as.numeric(ea$alt_sex)
+
+# check unique values
+# unique(ea$ego_sex)
+# unique(ea$alt_sex)
+
+# summarise
+sex <- ea$ego_sex == ea$alt_sex
+dat <- tabyl(sex) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# create homophily output
+homo_alt <- tibble(metric = 'Gender (%)',
+               value = dat %>% filter(sex == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(sex == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(sex == 'TRUE') %>% select(n) +
+                           dat %>% filter(sex == 'FALSE') %>% select(n)))
+
+#############
+### CASTE ###
+#############
+
+# check unique values
+# unique(ea$ego_caste)
+# unique(ea$alt_caste)
+
+# set to numeric
+ea$ego_caste <- as.numeric(ea$ego_caste)
+ea$alt_caste <- as.numeric(ea$alt_caste)
+
+# set don't know to NA
+ea$alt_caste[ea$alt_caste == 9] <- NA
+
+# summarise
+caste <- ea$ego_caste == ea$alt_caste
+dat <- tabyl(caste) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# create homophily output
+homo_alt %<>% add_row(metric = 'Caste (%)',
+               value = dat %>% filter(caste == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(caste == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(caste == 'TRUE') %>% select(n) +
+                           dat %>% filter(caste == 'FALSE') %>% select(n)))
+
+#################
+### EDUCATION ###
+#################
+
+# DON'T HAVE AALTER EDUCATION FROM ALTER SURVEY !!!
+
+################################
+### NUMBER OF FAMILY MEMBERS ###
+################################
+
+# check unique values
+# unique(ea$ego_fam)
+# unique(ea$alt_fam)
+
+# convert to numeric
+ea$ego_fam <- as.numeric(ea$ego_fam)
+ea$alt_fam <- as.numeric(ea$alt_fam)
+
+# set don't know to NA
+ea$alt_fam[ea$alt_fam == 99] <- NA
+
+# calculate bias homophily
+# fam <- ea$ego_fam - ea$alt_fam
+# fam <- tibble(mean_fam = mean(fam, na.rm = T),
+#               med_fam = median(fam, na.rm = T),
+#               n = length(fam[is.na(fam) == F]))
+# 
+# write.csv(fam, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/homophily/alt_fam_bias.csv',
+#           row.names = F)
+
+# create formula to calculate sd homophily
+homo_sd <- function(ego, alt){
+  out <- alt - ego
+  out <- out*out
+  n <- length(out[is.na(out) == F])
+  out <- sum(out, na.rm = T)
+  out <- out/n
+  return(c(round(sqrt(out), 2), n))
+}
+
+# calculate sd homophily
+fam_sd <- homo_sd(ea$ego_fam, ea$alt_fam)
+dat <- tibble(aed = fam_sd[1],
+                 n = fam_sd[2])
+
+# add to homophily output
+homo_alt %<>% add_row(metric = 'Number of Family Members (AED)',
+               value = dat %>% select(aed) %>% as.character,
+               N = dat %>% select(n) %>% as.character)
+
+#######################################
+### NUMBER OF FRIENDS AND NEIGHBORS ###
+#######################################
+
+# check unique values
+# unique(ea$ego_friends)
+# unique(ea$alt_friends)
+# unique(ea$ego_neigh)
+# unique(ea$alt_neigh)
+
+# convert to numeric
+ea$ego_friends <- as.numeric(ea$ego_friends)
+ea$alt_friends <- as.numeric(ea$alt_friends)
+ea$ego_neigh <- as.numeric(ea$ego_neigh)
+ea$alt_neigh <- as.numeric(ea$alt_neigh)
+
+# set don't know to NA
+ea$alt_friends[ea$alt_friends == 99] <- NA
+ea$alt_neigh[ea$alt_neigh == 99] <- NA
+
+# # calculate homophily
+# friends <- ea$ego_friends - ea$alt_friends
+# neigh <- ea$ego_neigh - ea$alt_neigh
+# friends_neigh <- (ea$ego_friends + ea$ego_neigh) - (ea$alt_friends + ea$alt_neigh)
+# 
+# friends_neigh <- tibble(mean_friends = mean(friends, na.rm = T),
+#                         med_friends = median(friends, na.rm = T),
+#                         n_friends = length(friends[is.na(friends) == F]),
+#                         mean_neigh = mean(neigh, na.rm = T),
+#                         med_neigh = median(neigh, na.rm = T),
+#                         n_neigh = length(neigh[is.na(neigh) == F]),
+#                         mean_friends_neigh = mean(friends_neigh, na.rm = T),
+#                         med_friends_neigh = median(friends_neigh, na.rm = T),
+#                         n_friends_neigh = length(friends_neigh[is.na(friends_neigh) == F]))
+
+# calculate sd homophily
+friends_sd <- homo_sd(ea$ego_friends, ea$alt_friends)
+neigh_sd <- homo_sd(ea$ego_neigh, ea$alt_neigh)
+friends_neigh_sd <- homo_sd((ea$ego_friends + ea$ego_neigh), (ea$alt_friends + ea$alt_neigh))
+dat <- tibble(aed_friends = friends_sd[1],
+                               n_friends = friends_sd[2],
+                               aed_neigh = neigh_sd[1],
+                               n_neigh = neigh_sd[2],
+                               aed_friends_neigh = friends_neigh_sd[1],
+                               n_friends_neigh = friends_neigh_sd[2])
+
+# add to homophily output
+homo_alt %<>% add_row(metric = 'Number of Friends (AED)',
+               value = dat %>% select(aed_friends) %>% as.character,
+               N = dat %>% select(n_friends) %>% as.character) %>%
+  add_row(metric = 'Number of Neighbors (AED)',
+               value = dat %>% select(aed_neigh) %>% as.character,
+               N = dat %>% select(n_neigh) %>% as.character) %>%
+  add_row(metric = 'Number of Friends & Neighbors Combined (AED)',
+               value = dat %>% select(aed_friends_neigh) %>% as.character,
+               N = dat %>% select(n_friends_neigh) %>% as.character)
+
+#####################
+### PRACTICING FP ###
+#####################
+
+# alt values
+# 1 = Yes, 2 = No, 3 = menopause (need to switch to NA)
+
+# alt values
+# 1 = Yes, 2 = No, 9 = Don't Know
+
+# check unique values
+# unique(ea$ego_using_fp)
+# unique(ea$alt_using_fp)
+
+# set values to numeric
+ea$ego_using_fp <- as.numeric(ea$ego_using_fp)
+ea$alt_using_fp <- as.numeric(ea$alt_using_fp)
+
+# if alter is husband or wife change to same value as ego
+# fix issue with 1 NA value
+husband <- str_detect(ea$alt_relationship, 'Husband')
+husband[is.na(husband)] <- FALSE
+
+ea$alt_using_fp[husband] <- ea$ego_using_fp[husband]
+
+# set don't know to NA
+ea$alt_using_fp[ea$alt_using_fp == 9] <- NA
+
+# calculate homophily
+using_fp <- ea$ego_using_fp == ea$alt_using_fp
+dat <- tabyl(using_fp) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo_alt %<>% add_row(metric = 'Currently Using Family Planning (%)',
+               value = dat %>% filter(using_fp == 'TRUE') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(using_fp == 'TRUE') %>% select(n),
+                         '/',
+                         dat %>% filter(using_fp == 'TRUE') %>% select(n) +
+                           dat %>% filter(using_fp == 'FALSE') %>% select(n)))
+
+
+
+##########################
+### NUMBER OF CHILDREN ###
+##########################
+
+# check unique values
+# unique(ea$ego_sons)
+# unique(ea$alt_sons)
+# unique(ea$ego_daughters)
+# unique(ea$alt_daughters)
+
+# convert to numeric
+ea$ego_sons <- as.numeric(ea$ego_sons)
+ea$alt_sons <- as.numeric(ea$alt_sons)
+ea$ego_daughters <- as.numeric(ea$ego_daughters)
+ea$alt_daughters <- as.numeric(ea$alt_daughters)
+
+# if alter is husband or wife change to same value as ego
+# fix issue with 1 NA value
+husband <- str_detect(ea$alt_relationship, 'Husband')
+husband[is.na(husband)] <- FALSE
+
+ea$alt_sons[husband] <- ea$ego_sons[husband]
+ea$alt_daughters[husband] <- ea$ego_daughters[husband]
+
+# set don't know to NA
+ea$alt_sons[ea$alt_sons == 99] <- NA
+ea$alt_daughters[ea$alt_daughters == 99] <- NA
+
+# calculate bias homophily
+# sons <- ea$ego_sons - ea$alt_sons
+# daughters <- ea$ego_daughters - ea$alt_daughters
+# children <- (ea$ego_sons + ea$ego_daughters) - (ea$alt_sons + ea$alt_daughters)
+# 
+# children_bias <- tibble(mean_sons = mean(sons, na.rm = T),
+#                         med_sons = median(sons, na.rm = T),
+#                         n_sons = length(sons[is.na(sons) == F]),
+#                         mean_daughters = mean(daughters, na.rm = T),
+#                         med_daughters = median(daughters, na.rm = T),
+#                         n_daughters = length(neigh[is.na(daughters) == F]),
+#                         mean_children = mean(children, na.rm = T),
+#                         med_children = median(children, na.rm = T),
+#                         n_children = length(children[is.na(children) == F]))
+
+# calculate sd homophily
+sons_sd <- homo_sd(ea$ego_sons, ea$alt_sons)
+daughters_sd <- homo_sd(ea$ego_daughters, ea$alt_daughters)
+children_sd <- homo_sd((ea$ego_sons + ea$ego_daughters), (ea$alt_sons + ea$alt_daughters))
+dat <- tibble(aed_sons = sons_sd[1],
+                               n_sons = sons_sd[2],
+                               aed_daughters = daughters_sd[1],
+                               n_daughters = daughters_sd[2],
+                               aed_children = children_sd[1],
+                               n_children = children_sd[2])
+
+# add to homophily output
+homo_alt %<>% add_row(metric = 'Number of Sons (AED)',
+               value = dat %>% select(aed_sons) %>% as.character,
+               N = dat %>% select(n_sons) %>% as.character) %>%
+  add_row(metric = 'Number of Daughters (AED)',
+               value = dat %>% select(aed_daughters) %>% as.character,
+               N = dat %>% select(n_daughters) %>% as.character) %>%
+  add_row(metric = 'Number of Children Total (AED)',
+               value = dat %>% select(aed_children) %>% as.character,
+               N = dat %>% select(n_children) %>% as.character)
+
+##############################################
+### BASIC PROPORTION OF PLACE OF RESIDENCE ###
+##############################################
+
+# check unique values
+# unique(ea$alt_residence)
+
+# recode values
+ea %<>% mutate(alt_residence = recode(alt_residence, 
+                                     '1' = 'Same Household',
+                                     '2' = 'Same Village',
+                                     '3' = 'Another Village (same district)',
+                                     '4' = 'Outside this District'))
+
+# build tabyl
+dat <- ea %>% tabyl(alt_residence) %>%
+  adorn_pct_formatting(digits = 2)
+
+# if valid percent remove percent and change name of valid percent
+if('valid_percent' %in% colnames(dat)){
+  dat %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+# add to homophily output
+homo_alt %<>% add_row(metric = 'Live in Same Household (%)',
+               value = dat %>% filter(alt_residence == 'Same Household') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(alt_residence == 'Same Household') %>% select(n),
+                         '/',
+                         dat %>% select(n) %>% sum)) %>%
+  add_row(metric = 'Live in Same Village (%)',
+               value = dat %>% filter(alt_residence == 'Same Village') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(alt_residence == 'Same Village') %>% select(n),
+                         '/',
+                         dat %>% select(n) %>% sum)) %>%
+  add_row(metric = 'Live in Another Village, Same District (%)',
+               value = dat %>% filter(alt_residence == 'Another Village (same district)') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(alt_residence == 'Another Village (same district)') %>% select(n),
+                         '/',
+                         dat %>% select(n) %>% sum)) %>%
+  add_row(metric = 'Live in Another District (%)',
+               value = dat %>% filter(alt_residence == 'Outside this District') %>% select(percent) %>% as.character,
+               N = str_c(dat %>% filter(alt_residence == 'Outside this District') %>% select(n),
+                         '/',
+                         dat %>% select(n) %>% sum))
+
+```
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+
+#####################################
+### HETEROGENEITY OF EGO'S ALTERS ###
+#####################################
+
+###########
+### SEX ###
+###########
+
+# check unique values
+# unique(ea$alt_sex)
+
+# build proportions
+sex <- ea %>% tabyl(alt_sex)
+
+# create a function to calculate blaus and iqv
+blau <- function(perc){
+  b <- perc*perc
+  k <- length(perc)
+  b <- (1 - sum(b)) %>% round(2)
+  iqv <- (b / (1-(1/k))) %>% round(2)
+  return(c(b, iqv, k))
+}
+
+n <- sex$n[is.na(sex$valid_percent) == F] %>% sum
+
+# calculate heterogeneity
+sex <- blau(na.omit(sex$valid_percent))
+
+# create tibble
+dat = tibble(blau = sex[1],
+             iqv = sex[2],
+             k = sex[3])
+
+# create heterogeneity output
+hetero_alt <- tibble(metric = 'Gender',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+#############
+### CASTE ###
+#############
+
+# check unique values
+# unique(ea$alt_caste)
+
+# build proportions
+caste <- ea %>% tabyl(alt_caste)
+
+n <- caste$n[is.na(caste$valid_percent) == F] %>% sum
+
+# calculate heterogeneity
+caste <- blau(na.omit(caste$valid_percent))
+
+# create tibble
+dat = tibble(blau = caste[1],
+              iqv = caste[2],
+               k = caste[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Caste',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+################################
+### NUMBER OF FAMILY MEMBERS ###
+################################
+
+# check unique values
+# unique(ea$alt_fam)
+
+# # calculate heterogeneity
+# fam <- tibble(fam_sd = sd(ea$alt_fam, na.rm = T) %>% round(2),
+#               n = length(ea$alt_fam[is.na(ea$alt_fam) == F]))
+
+#######################################
+### NUMBER OF FRIENDS AND NEIGHBORS ###
+#######################################
+
+# check unique values
+# unique(ea$alt_friends)
+# unique(ea$alt_neigh)
+
+# # calculate heterogeneity
+# friends_neigh <- tibble(friends_sd = sd(ea$alt_friends, na.rm = T) %>% round(2),
+#               friends_n = length(ea$alt_friends[is.na(ea$alt_friends) == F]),
+#               neigh_sd = sd(ea$alt_neigh, na.rm = T) %>% round(2),
+#               neigh_n = length(ea$alt_neigh[is.na(ea$alt_neigh) == F]),
+#               friends_neigh_sd = sd((ea$alt_friends + ea$alt_neigh), na.rm = T) %>% round(2),
+#               friends_neigh_n = length((ea$alt_friends + ea$alt_neigh)[is.na((ea$alt_friends + ea$alt_neigh)) == F]))
+
+#####################
+### PRACTICING FP ###
+#####################
+
+# PC ego values
+# 1 = Yes, 2 = No
+
+# alt values
+# 1 = Yes, 2 = No, 9 = Don't Know
+
+# check unique values
+# unique(ea$alt_using_fp)
+
+# calculate heterogeneity
+using_fp <- tabyl(ea$alt_using_fp)
+n <- using_fp$n[is.na(using_fp$valid_percent) == F] %>% sum
+using_fp <- blau(na.omit(using_fp$valid_percent))
+dat <- tibble(blau = using_fp[1],
+                   iqv = using_fp[2],
+                   k = using_fp[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Currently Using Family Planning',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+###############################
+### PEOPLE KNOWN IN VILLAGE ###
+###############################
+
+# # check some values
+# unique(ea$alt_know_asha)
+# 
+# # for ego, 1 is Yes, 2 is heard, 9 is don't know/haven't heard
+# # for alter 1 is Yes, 2 is No, 9 is not sure
+# # we should change ego values of 9 to 2 to match alter
+# # remove alter rows with 9
+# 
+# # calculate heterogeneity
+# ppl <- tabyl(ea$alt_know_asha)
+# ppl <- blau(na.omit(ppl$valid_percent))
+# ppl <- tibble(know_asha_blau = ppl[1],
+#               know_asha_iqv = ppl[2],
+#               k = ppl[3])
+# 
+# write.csv(ppl, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/ego_know_asha.csv',
+#           row.names = F)
+# 
+# # anm
+# # calculate heterogeneity
+# ppl <- tabyl(ea$alt_know_anm)
+# ppl <- blau(na.omit(ppl$valid_percent))
+# ppl <- tibble(know_anm_blau = ppl[1],
+#               know_anm_iqv = ppl[2],
+#               k = ppl[3])
+# 
+# write.csv(ppl, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/ego_know_anm.csv',
+#           row.names = F)
+# 
+# # aww
+# # calculate heterogeneity
+# ppl <- tabyl(ea$alt_know_aww)
+# ppl <- blau(na.omit(ppl$valid_percent))
+# ppl <- tibble(know_aww_blau = ppl[1],
+#               know_aww_iqv = ppl[2],
+#               k = ppl[3])
+# 
+# write.csv(ppl, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/ego_know_aww.csv',
+#           row.names = F)
+# 
+# # shg
+# # calculate heterogeneity
+# ppl <- tabyl(ea$alt_know_shg)
+# ppl <- blau(na.omit(ppl$valid_percent))
+# ppl <- tibble(know_shg_blau = ppl[1],
+#               know_shg_iqv = ppl[2],
+#               k = ppl[3])
+# 
+# write.csv(ppl, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/ego_know_shg.csv',
+#           row.names = F)
+# 
+# # pradhan
+# # calculate heterogeneity
+# ppl <- tabyl(ea$alt_know_pra)
+# ppl <- blau(na.omit(ppl$valid_percent))
+# ppl <- tibble(know_pra_blau = ppl[1],
+#               know_pra_iqv = ppl[2],
+#               k = ppl[3])
+# 
+# write.csv(ppl, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/ego_know_pradhan.csv',
+#           row.names = F)
+# 
+# # pharmacist
+# # calculate heterogeneity
+# ppl <- tabyl(ea$alt_know_pha)
+# ppl <- blau(na.omit(ppl$valid_percent))
+# ppl <- tibble(know_pha_blau = ppl[1],
+#               know_pha_iqv = ppl[2],
+#               k = ppl[3])
+# 
+# write.csv(ppl, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/ego_know_pha.csv',
+#           row.names = F)
+# 
+# # doctor
+# # calculate heterogeneity
+# ppl <- tabyl(ea$alt_know_doc)
+# ppl <- blau(na.omit(ppl$valid_percent))
+# ppl <- tibble(know_doc_blau = ppl[1],
+#               know_doc_iqv = ppl[2],
+#               k = ppl[3])
+# 
+# write.csv(ppl, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/ego_know_doctor.csv',
+#           row.names = F)
+# 
+# # religious leader
+# # calculate heterogeneity
+# ppl <- tabyl(ea$alt_know_rel)
+# ppl <- blau(na.omit(ppl$valid_percent))
+# ppl <- tibble(know_rel_blau = ppl[1],
+#               know_rel_iqv = ppl[2],
+#               k = ppl[3])
+# 
+# write.csv(ppl, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/ego_know_rel.csv',
+#           row.names = F)
+# 
+# # calculate health worker category
+# 
+# 
+# # calculate homophily
+# # calculate heterogeneity
+# ppl <- tabyl(alt_hw)
+# ppl <- blau(na.omit(ppl$percent))
+# ppl <- tibble(know_hw_blau = ppl[1],
+#               know_hw_iqv = ppl[2],
+#               k = ppl[3])
+# 
+# write.csv(ppl, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/ego_know_health_worker.csv',
+#           row.names = F)
+# 
+# # calculate village leader category
+# # calculate heterogeneity
+# ppl <- tabyl(alt_vl)
+# ppl <- blau(na.omit(ppl$percent))
+# ppl <- tibble(know_vl_blau = ppl[1],
+#               know_vl_iqv = ppl[2],
+#               k = ppl[3])
+# 
+# write.csv(ppl, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/ego_know_village_leader.csv',
+#           row.names = F)
+# 
+# # now total number of people
+# # calculate heterogeneity
+# ppl <- tibble(ppl_known_village_sd = sd(alt_ppl, na.rm = T) %>% round(2),
+#               n = length(alt_ppl[is.na(alt_ppl) == F]))
+# 
+# write.csv(ppl, 
+#           '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/heterogeneity/ego_ppl_known_village.csv',
+#           row.names = F)
+
+##########################
+### NUMBER OF CHILDREN ###
+##########################
+
+# check unique values
+# unique(ea$alt_sons)
+# unique(ea$alt_daughters)
+
+# # calculate heterogeneity
+# children <- tibble(sons_sd = sd(ea$alt_sons, na.rm = T) %>% round(2),
+#               sons_n = length(ea$alt_sons[is.na(ea$alt_sons) == F]),
+#               daughters_sd = sd(ea$alt_daughters, na.rm = T) %>% round(2),
+#               daughters_n = length(ea$alt_daughters[is.na(ea$alt_daughters) == F]),
+#               children_sd = sd((ea$alt_sons + ea$alt_daughters), na.rm = T) %>% round(2),
+#               children_n = length((ea$alt_sons + ea$alt_daughters)[is.na((ea$alt_sons + ea$alt_daughters)) == F]))
+
+##########################
+### PLACE OF RESIDENCE ###
+##########################
+
+# check unique values
+# unique(ea$alt_residence)
+
+# calculate heterogeneity
+res <- tabyl(ea$alt_residence)
+n <- res$n[is.na(res$valid_percent) == F] %>% sum
+res <- blau(na.omit(res$valid_percent))
+dat <- tibble(blau = res[1],
+              iqv = res[2],
+              k = res[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Residence',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+#######################
+### SOCIAL LEARNING ###
+#######################
+
+# check unique values
+#unique(ea$alt_learned)
+
+# calculate homophily
+a <- tabyl(str_detect(ea$alt_learned, "A"))
+n <- a$n[is.na(a$valid_percent) == F] %>% sum
+a <- blau(na.omit(a$valid_percent))
+dat <- tibble(blau = a[1],
+              iqv = a[2],
+              k = a[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Social Learning: Get along with family',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+b <- tabyl(str_detect(ea$alt_learned, "B"))
+n <- b$n[is.na(b$valid_percent) == F] %>% sum
+b <- blau(na.omit(b$valid_percent))
+dat <- tibble(blau = b[1],
+              iqv = b[2],
+              k = b[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Social Learning: Ways of earning',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+c <- tabyl(str_detect(ea$alt_learned, "C"))
+n <- c$n[is.na(c$valid_percent) == F] %>% sum
+c <- blau(na.omit(c$valid_percent))
+dat <- tibble(blau = c[1],
+              iqv = c[2],
+              k = c[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Social Learning: Take care of children',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+d <- tabyl(str_detect(ea$alt_learned, "D"))
+n <- d$n[is.na(d$valid_percent) == F] %>% sum
+d <- blau(na.omit(d$valid_percent))
+dat <- tibble(blau = d[1],
+              iqv = d[2],
+              k = d[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Social Learning: Get health care',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+e <- tabyl(str_detect(ea$alt_learned, "E"))
+n <- e$n[is.na(e$valid_percent) == F] %>% sum
+e <- blau(na.omit(e$valid_percent))
+dat <- tibble(blau = e[1],
+              iqv = e[2],
+              k = e[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Social Learning: Apply for government schemes',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+f <- tabyl(str_detect(ea$alt_learned, "F"))
+n <- f$n[is.na(f$valid_percent) == F] %>% sum
+f <- blau(na.omit(f$valid_percent))
+dat <- tibble(blau = f[1],
+              iqv = f[2],
+              k = f[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Social Learning: Plan no. of children to have',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+g <- tabyl(str_detect(ea$alt_learned, "G"))
+n <- g$n[is.na(g$valid_percent) == F] %>% sum
+g <- blau(na.omit(g$valid_percent))
+dat <- tibble(blau = g[1],
+              iqv = g[2],
+              k = g[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Social Learning: FP methods',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+###########################
+### ENCOURAGE USE OF FP ###
+###########################
+
+# check unique values
+# unique(ea$alt_encourage_fp)
+
+# calculate heterogeneity
+fp <- tabyl(ea$alt_encourage_fp)
+n <- fp$n[is.na(fp$valid_percent) == F] %>% sum
+fp <- blau(na.omit(fp$valid_percent))
+dat <- tibble(blau = fp[1],
+             iqv = fp[2],
+              k = fp[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Encourage Use of Family Planning',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+#################################
+### DISCUSS FP METHODS FREELY ###
+#################################
+
+# check unique values
+# unique(ea$alt_discuss_fp)
+
+# calculate heterogeneity
+fp <- tabyl(ea$alt_discuss_fp)
+n <- fp$n[is.na(fp$valid_percent) == F] %>% sum
+fp <- blau(na.omit(fp$valid_percent))
+dat <- tibble(blau = fp[1],
+             iqv = fp[2],
+              k = fp[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Discuss FP Methods Freely',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+###########################
+### ALT HELP/ADVISE EGO ###
+###########################
+
+# check unique values
+# unique(ea$alt_help_ego)
+
+# calculate heterogeneity
+fp <- tabyl(ea$alt_help_ego)
+n <- fp$n[is.na(fp$valid_percent) == F] %>% sum
+fp <- blau(na.omit(fp$valid_percent))
+dat <- tibble(blau = fp[1],
+             iqv = fp[2],
+              k = fp[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = "Alter's Alter Help/Advise Alter",
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+###########################
+### EGO HELP/ADVISE ALT ###
+###########################
+
+# check unique values
+# unique(ea$alt_helped_by_ego)
+
+# calculate heterogeneity
+fp <- tabyl(ea$alt_helped_by_ego)
+n <- fp$n[is.na(fp$valid_percent) == F] %>% sum
+fp <- blau(na.omit(fp$valid_percent))
+dat <- tibble(blau = fp[1],
+             iqv = fp[2],
+              k = fp[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = "Alter Help/Advise Alter's Alter",
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+############################
+### GOING AGAINST ADVICE ###
+############################
+
+# check unique values
+#unique(ea$alt_against_advice)
+
+# calculate heterogeneity
+fp <- tabyl(ea$alt_against_advice)
+n <- fp$n[is.na(fp$valid_percent) == F] %>% sum
+fp <- blau(na.omit(fp$valid_percent))
+dat <- tibble(blau = fp[1],
+             iqv = fp[2],
+              k = fp[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Going Against Advise',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+###################################
+### SUPPORT NOT HAVING CHILDREN ###
+###################################
+
+# check unique values
+#unique(ea$alt_support_no_child)
+
+# calculate heterogeneity
+fp <- tabyl(ea$alt_support_no_child)
+n <- fp$n[is.na(fp$valid_percent) == F] %>% sum
+fp <- blau(na.omit(fp$valid_percent))
+dat <- tibble(blau = fp[1],
+             iqv = fp[2],
+              k = fp[3])
+
+# add to heterogeneity output
+hetero_alt %<>% add_row(metric = 'Support Not Having Children',
+               blau_index = dat %>% select(blau) %>% as.character,
+               iqv = dat %>% select(iqv) %>% as.character,
+               k = dat %>% select(k) %>% as.character,
+               n = n %>% as.character)
+
+
+```
+
+# 2. Homophily
+## A) Ego and Alter
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+# print homophily output
+homo %>%
+  kbl(caption = 'Homophily Between Ego and Alter (AED = Average Euclidean Distance)') %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+```
+
+## B) Alter and Alter's Alter
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+# print homophily output
+homo_alt %>%
+  kbl(caption = "Homophily Between Alter's Alter and Alter (AED = Average Euclidean Distance)") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+```
+
+# 3. Heterogeneity
+## A) Between Alters (Ego's Perspective)
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+# print heterogeneity output
+hetero %>%
+  kbl(caption = "Heterogeneity Between Alters (Ego's Perspective)") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+```
+
+## B) Between Alter's Alters (Alter's Perspective)
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+# print heterogeneity output
+hetero_alt %>%
+  kbl(caption = "Heterogeneity Between Alter's Alters (Alters Perspective)") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+```
+
+# 4. Tie Strength and Intensity
+## A) Ego and Alters
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+
+# clear workspace
+rm(list=ls())
+
+# this code loads csv data of ego and alter interviews
+# and calculates tie intensity and strength
+
+# load packages
+library(magrittr)
+library(egor)
+library(janitor)
+library(tidyverse)
+library(readxl)
+library(igraph)
+library(readstata13)
+
+#########################################
+### LOAD EGO AND ALTER DATA AND CLEAN ###
+#########################################
+
+# load ego and alter cleaned data
+ego <- read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_clean_complete_11012022.xlsx")
+alter <-read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/alter_clean_complete_11012022.xlsx")
+
+# load pc data
+ego_pc <- read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_pc_complete_12012022.xlsx")
+
+# load list of duplicate ids
+dup_id <- read_excel(path = '/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/duplicate_ids_02022022.xlsx')
+
+# remove first row with 'qe' names
+ego <- ego[-1,]
+alter <- alter[-1,]
+
+# clean column names only keep part after last "."
+ego_names <- sapply(colnames(ego), FUN = function(x){
+  st <- str_split(x, pattern = glob2rx("*-*"))
+  st <- st[[1]][length(st[[1]])]
+  return(st)
+})
+
+names(ego_names) <- NULL
+colnames(ego) <- ego_names
+
+alter_names <- sapply(colnames(alter), FUN = function(x){
+  st <- str_split(x, pattern = glob2rx("*-*"))
+  st <- st[[1]][length(st[[1]])]
+  return(st)
+})
+
+names(alter_names) <- NULL
+colnames(alter) <- alter_names
+
+rm(ego_names, alter_names)
+
+# remove empty columns from "notes"
+ego <- ego[,str_detect(colnames(ego), 'note') == F]
+alter <- alter[,str_detect(colnames(alter), 'note') == F]
+
+# replace character NA values with NA
+ego[ego == "NA"] <- NA
+alter[alter == "NA"] <- NA
+
+# fix district, block and village in alter data
+alter$district_name <- alter$`district name_clean`
+alter$block_name <- alter$`block name_clean`
+alter$village_name <- alter$`village name_clean`
+
+# remove "clean" columns
+alter <- alter %>% select(-c(`district name_clean`, `block name_clean`, `village name_clean`))
+
+# add alter-alter tie columns to ego dataset so we can build edgelist below
+# let's first extract the correct question so easier to look at
+alter_know <- ego[,str_detect(colnames(ego), glob2rx('alter?_know?'))]
+
+# set to numeric
+alter_know <- sapply(alter_know, as.numeric)
+
+# set "don't know" to 0 since then tie won't exist. both responses labeled 2 and 9
+alter_know[alter_know == 2] <- 0
+alter_know[alter_know == 9] <- 0
+
+# create new df with only a single column for combinations
+alter_know %<>% as.data.frame %>% 
+  mutate(know12 = alter1_know2 + alter2_know1,
+         know13 = alter1_know3 + alter3_know1,
+         know14 = alter1_know4 + alter4_know1,
+         know15 = alter1_know5 + alter5_know1,
+         know23 = alter2_know3 + alter3_know2,
+         know24 = alter2_know4 + alter4_know2,
+         know25 = alter2_know5 + alter5_know2,
+         know34 = alter3_know4 + alter4_know3,
+         know35 = alter3_know5 + alter5_know3,
+         know45 = alter4_know5 + alter5_know4)
+
+# now set 0 to NA since we just want to identify tie or not
+alter_know %<>% select(know12:know45)
+alter_know[alter_know == 0] <- NA
+
+# add simple know columns back into ego df
+ego %<>% add_column(alter_know)
+rm(alter_know)
+
+# add aalter-aalter tie columns to alter dataset so we can build edgelist below
+# let's first extract the correct question so easier to look at
+alter_know <- alter[,str_detect(colnames(alter), glob2rx('alter?_know?'))]
+
+# set to numeric
+alter_know <- sapply(alter_know, as.numeric)
+
+# set "don't know" to 0 since then tie won't exist. both responses labeled 2 and 9
+alter_know[alter_know == 2] <- 0
+alter_know[alter_know == 9] <- 0
+
+# create new df with only a single column for combinations
+alter_know %<>% as.data.frame %>% 
+  mutate(know12 = alter1_know2 + alter2_know1,
+         know13 = alter1_know3 + alter3_know1,
+         know14 = alter1_know4 + alter4_know1,
+         know15 = alter1_know5 + alter5_know1,
+         know23 = alter2_know3 + alter3_know2,
+         know24 = alter2_know4 + alter4_know2,
+         know25 = alter2_know5 + alter5_know2,
+         know34 = alter3_know4 + alter4_know3,
+         know35 = alter3_know5 + alter5_know3,
+         know45 = alter4_know5 + alter5_know4)
+
+# now set 0 to NA since we just want to identify tie or not
+alter_know %<>% select(know12:know45)
+alter_know[alter_know == 0] <- NA
+
+# add simple know columns back into alter df
+alter %<>% add_column(alter_know)
+rm(alter_know)
+
+##########
+## EGO ###
+##########
+
+######################################################
+### BUILD TIBBLE OF ATTRIBUTES OF INTEREST FOR EGO ###
+######################################################
+
+# length of relationship
+# talking freq
+# talking freq fp
+# number of different things discussed
+
+# sort ego data and PC data by woman ID so can merge
+ego %<>% arrange(woman_id)
+ego_pc %<>% arrange(qe6) # qe6 is woman_id
+
+# make sure ego_ids match
+# sum(ego_pc$qe6 == ego$woman_id)
+
+# build tibble add all alters
+ego_tie <- rbind(tibble(ego_id = ego$woman_id,
+                        ego_age = ego_pc$pcq102,
+                        ego_age_married = ego_pc$pcq201b,
+                        alter_name = ego$alter1,
+                        district = ego$district_name,
+                        block = ego$block_name,
+                        yrs_known = ego$alter1_yrs_known,
+                        talk_freq = ego$alter1_talk_freq,
+                        talk_freq_fp = ego$alter1_freq_talk_fp,
+                        subjects = ego$alter1_subjects,
+                        subjects_other = ego$alter1_subjects_other),
+               tibble(ego_id = ego$woman_id,
+                      ego_age = ego_pc$pcq102,
+                      ego_age_married = ego_pc$pcq201b,
+                      alter_name = ego$alter2,
+                      district = ego$district_name,
+                      block = ego$block_name,
+                      yrs_known = ego$alter2_yrs_known,
+                      talk_freq = ego$alter2_talk_freq,
+                      talk_freq_fp = ego$alter2_freq_talk_fp,
+                      subjects = ego$alter2_subjects,
+                      subjects_other = ego$alter2_subjects_other),
+               tibble(ego_id = ego$woman_id,
+                      ego_age = ego_pc$pcq102,
+                      ego_age_married = ego_pc$pcq201b,
+                      alter_name = ego$alter3,
+                      district = ego$district_name,
+                      block = ego$block_name,
+                      yrs_known = ego$alter3_yrs_known,
+                      talk_freq = ego$alter3_talk_freq,
+                      talk_freq_fp = ego$alter3_freq_talk_fp,
+                      subjects = ego$alter3_subjects,
+                      subjects_other = ego$alter3_subjects_other),
+               tibble(ego_id = ego$woman_id,
+                      ego_age = ego_pc$pcq102,
+                      ego_age_married = ego_pc$pcq201b,
+                      alter_name = ego$alter4,
+                      district = ego$district_name,
+                      block = ego$block_name,
+                      yrs_known = ego$alter4_yrs_known,
+                      talk_freq = ego$alter4_talk_freq,
+                      talk_freq_fp = ego$alter4_freq_talk_fp,
+                      subjects = ego$alter4_subjects,
+                      subjects_other = ego$alter4_subjects_other),
+               tibble(ego_id = ego$woman_id,
+                      ego_age = ego_pc$pcq102,
+                      ego_age_married = ego_pc$pcq201b,
+                      alter_name = ego$alter5,
+                      district = ego$district_name,
+                      block = ego$block_name,
+                      yrs_known = ego$alter5_yrs_known,
+                      talk_freq = ego$alter5_talk_freq,
+                      talk_freq_fp = ego$alter5_freq_talk_fp,
+                      subjects = ego$alter5_subjects,
+                      subjects_other = ego$alter5_subjects_other))
+
+# drop rows for missing alters
+ego_tie %<>% filter(is.na(alter_name) == F)
+
+##############################
+### LENGTH OF RELATIONSHIP ###
+##############################
+
+# check unique values for length of relationship
+# unique(ego_tie$yrs_known)
+
+# set to numeric
+ego_tie$yrs_known <- as.numeric(ego_tie$yrs_known)
+
+# reset values of 99 based on ego age and age of marriage
+ego_tie$yrs_known[ego_tie$yrs_known == 99] <- ego_tie$ego_age[ego_tie$yrs_known == 99] - ego_tie$ego_age_married[ego_tie$yrs_known == 99]
+
+# re check unique values for length of relationship
+# unique(ego_tie$yrs_known)
+
+# calculate summary data overall
+ties <- ego_tie %>% 
+  summarise(mean_yrs_known = mean(yrs_known, na.rm = T),
+                                 med_yrs_known = median(yrs_known, na.rm = T),
+                                 mean_yrs_known_perc_age = mean(yrs_known/ego_age, na.rm = T) * 100,
+                                 med_yrs_known_perc_age = median(yrs_known/ego_age, na.rm = T) * 100) %>%
+  round(2)
+
+# create output
+out <- tibble(metric = 'Mean',
+               value = ties %>% select(mean_yrs_known) %>% as.character,
+               n = sum(is.na(ego_tie$yrs_known) == F) %>% as.character) %>%
+  add_row(metric = 'Mean (% of Ego Age)',
+               value = ties %>% select(mean_yrs_known_perc_age) %>% as.character,
+               n = sum(is.na(ego_tie$yrs_known) == F) %>% as.character) %>%
+  add_row(metric = 'Median',
+               value = ties %>% select(med_yrs_known) %>% as.character,
+               n = sum(is.na(ego_tie$yrs_known) == F) %>% as.character) %>%
+  add_row(metric = 'Median (% of Ego Age)',
+               value = ties %>% select(med_yrs_known_perc_age) %>% as.character,
+               n = sum(is.na(ego_tie$yrs_known) == F) %>% as.character)
+
+# print output
+out %>%
+  kbl(caption = "Length of Relationship (Years Known)") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# calculate summary data by block
+ties_block <- ego_tie %>% 
+  group_by(block) %>%
+  summarise(district = district[1],
+            mean_yrs_known = mean(yrs_known, na.rm = T),
+            mean_yrs_known_perc_age = mean(yrs_known/ego_age, na.rm = T) * 100,
+            med_yrs_known = median(yrs_known, na.rm = T),
+            med_yrs_known_perc_age = median(yrs_known/ego_age, na.rm = T) * 100) %>%
+  mutate(across(where(is.numeric), round, digits=2))
+
+# change column names
+colnames(ties_block) <- c('Block', 'District', 'Mean', 'Mean (% of Ego Age)', 'Median', 'Median (% of Ego Age)')
+
+# print output
+ties_block %>%
+  kbl(caption = "Length of Relationship (Years Known) By Block") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+#################################
+### TALKING FREQUENCY OVERALL ###
+#################################
+
+# check unique values for talking freq overall
+# table(ego_tie$talk_freq)
+
+# recode column
+ego_tie %<>% mutate(talk_freq = recode(talk_freq, 
+                                       `1` = 'intensive',
+                                       `2` = 'intensive',
+                                       `3` = 'intensive',
+                                       `4` = 'moderate',
+                                       `5` = 'moderate',
+                                       `6` = 'minimal',
+                                       `7` = 'minimal'))
+
+# overall summary
+talk_freq <- ego_tie %>% tabyl(talk_freq) %>%
+  adorn_pct_formatting(digits = 2) %>%
+  mutate(talk_freq = ordered(talk_freq, levels = c('minimal', 'moderate', 'intensive'))) %>%
+  arrange(talk_freq)
+
+# print output
+talk_freq %>%
+  kbl(caption = "Talk Frequency Overall") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# summary by block
+talk_freq_block <- ego_tie %>% mutate(talk_freq = ordered(talk_freq, levels = c('minimal', 'moderate', 'intensive'))) %>%
+  arrange(talk_freq) %>%
+  tabyl(block, talk_freq) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top')
+
+# print output
+talk_freq_block %>%
+  kbl(caption = "Talk Frequency Overall By Block") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+############################################
+### TALKING FREQUENCY IN FAMILY PLANNING ###
+############################################
+
+# check unique values for talking freq fp
+# table(ego_tie$talk_freq_fp)
+
+# recode column
+ego_tie %<>% mutate(talk_freq_fp = recode(talk_freq_fp, 
+                                       `1` = 'intensive',
+                                       `2` = 'intensive',
+                                       `3` = 'moderate',
+                                       `4` = 'moderate',
+                                       `5` = 'minimal')) %>%
+  mutate(talk_freq_fp = replace_na(talk_freq_fp, 'none'))
+
+# overall summary
+talk_freq_fp <- ego_tie %>% tabyl(talk_freq_fp) %>%
+  adorn_pct_formatting(digits = 2) %>%
+  mutate(talk_freq_fp = ordered(talk_freq_fp, levels = c('minimal', 'moderate', 'intensive', 'none'))) %>%
+  arrange(talk_freq_fp)
+
+# print output
+talk_freq_fp %>%
+  kbl(caption = "Talk Frequency About Family Planning") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# summary by block
+talk_freq_fp_block <- ego_tie %>%
+  mutate(talk_freq_fp = ordered(talk_freq_fp, levels = c('minimal', 'moderate', 'intensive', 'none'))) %>%
+  arrange(talk_freq_fp) %>%
+  tabyl(block, talk_freq_fp) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top')
+
+# print output
+talk_freq_fp_block %>%
+  kbl(caption = "Talk Frequency About Family Planning by Block") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+#################################################
+### MULTIPLEXITY NUMBER OF DIFFERENT SUBJECTS ###
+#################################################
+
+# check values of subjects
+# unique(ego_tie$subjects)
+
+# count number of subjects
+num_sub <- str_split(ego_tie$subjects, ',')
+num_sub <- sapply(num_sub, function(x) length(x))
+
+# add to tibble
+ego_tie$num_subjects <- num_sub
+
+# add one if mentioned other subjects
+ego_tie$num_subjects[is.na(ego_tie$subjects_other) == F] <- ego_tie$num_subjects[is.na(ego_tie$subjects_other) == F] + 1
+
+# overall summary
+num_sub <- ego_tie %>% tabyl(num_subjects) %>%
+  adorn_pct_formatting(digits = 2)
+
+# print output
+num_sub %>%
+  kbl(caption = "Multiplexity (Number of Different Things Discussed)") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# summary by block
+num_sub_block <- ego_tie %>% tabyl(block, num_subjects) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top')
+# ego_tie %>% split(.$block) %>% map(~map(.x %>% select(num_subjects), tabyl))
+
+# print output
+num_sub_block %>%
+  kbl(caption = "Multiplexity (Number of Different Things Discussed) By Block") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+```
+
+## B) Alter and Alter's Alters
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+############
+## ALTER ###
+############
+
+########################################################
+### BUILD TIBBLE OF ATTRIBUTES OF INTEREST FOR ALTER ###
+########################################################
+
+# length of relationship
+# talking freq
+# talking freq fp
+# number of different things discussed
+
+# build tibble add all aalters
+alter_tie <- rbind(tibble(alter_id = alter$alter_id,
+                        alter_age = alter$age,
+                        aalter_name = alter$alter1,
+                        district = alter$district_name,
+                        block = alter$block_name,
+                        yrs_known = alter$alter1_yrs_known,
+                        talk_freq = alter$alter1_talk_freq,
+                        talk_freq_fp = alter$alter1_freq_talk_fp,
+                        subjects = alter$alter1_subjects,
+                        subjects_other = alter$alter1_subjects_other),
+                   tibble(alter_id = alter$alter_id,
+                          alter_age = alter$age,
+                          aalter_name = alter$alter2,
+                          district = alter$district_name,
+                          block = alter$block_name,
+                          yrs_known = alter$alter2_yrs_known,
+                          talk_freq = alter$alter2_talk_freq,
+                          talk_freq_fp = alter$alter2_freq_talk_fp,
+                          subjects = alter$alter2_subjects,
+                          subjects_other = alter$alter2_subjects_other),
+                   tibble(alter_id = alter$alter_id,
+                          alter_age = alter$age,
+                          aalter_name = alter$alter3,
+                          district = alter$district_name,
+                          block = alter$block_name,
+                          yrs_known = alter$alter3_yrs_known,
+                          talk_freq = alter$alter3_talk_freq,
+                          talk_freq_fp = alter$alter3_freq_talk_fp,
+                          subjects = alter$alter3_subjects,
+                          subjects_other = alter$alter3_subjects_other),
+                   tibble(alter_id = alter$alter_id,
+                          alter_age = alter$age,
+                          aalter_name = alter$alter4,
+                          district = alter$district_name,
+                          block = alter$block_name,
+                          yrs_known = alter$alter4_yrs_known,
+                          talk_freq = alter$alter4_talk_freq,
+                          talk_freq_fp = alter$alter4_freq_talk_fp,
+                          subjects = alter$alter4_subjects,
+                          subjects_other = alter$alter4_subjects_other),
+                   tibble(alter_id = alter$alter_id,
+                          alter_age = alter$age,
+                          aalter_name = alter$alter5,
+                          district = alter$district_name,
+                          block = alter$block_name,
+                          yrs_known = alter$alter5_yrs_known,
+                          talk_freq = alter$alter5_talk_freq,
+                          talk_freq_fp = alter$alter5_freq_talk_fp,
+                          subjects = alter$alter5_subjects,
+                          subjects_other = alter$alter5_subjects_other))
+
+# drop rows for missing alters
+alter_tie %<>% filter(is.na(aalter_name) == F)
+
+# drop rows for incomplete surveys
+alter_tie %<>% filter(is.na(yrs_known) == F)
+
+##############################
+### LENGTH OF RELATIONSHIP ###
+##############################
+
+# check unique values for length of relationship
+# unique(alter_tie$yrs_known)
+
+# set to numeric
+alter_tie$yrs_known <- as.numeric(alter_tie$yrs_known)
+
+# reset values of 99 based on alter age and age of marriage
+# we don't have alter age of marriage!!!
+# ego_tie$yrs_known[ego_tie$yrs_known == 99] <- ego_tie$ego_age[ego_tie$yrs_known == 99] - ego_tie$ego_age_married[ego_tie$yrs_known == 99]
+
+# re check unique values for length of relationship
+# unique(alter_tie$yrs_known)
+
+# # calculate summary data overall
+# ties <- alter_tie %>% 
+#   summarise(mean_yrs_known = mean(yrs_known, na.rm = T),
+#             med_yrs_known = median(yrs_known, na.rm = T))
+# 
+# write.csv(ties, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/ego_yrs_known.csv',
+#           row.names = F)
+# 
+# # calculate summary data by block
+# ties_block <- ego_tie %>% 
+#   group_by(block) %>%
+#   summarise(district = district[1],
+#             mean_yrs_known = mean(yrs_known, na.rm = T),
+#             med_yrs_known = median(yrs_known, na.rm = T),
+#             mean_yrs_known_perc_age = mean(yrs_known/ego_age, na.rm = T),
+#             med_yrs_known_perc_age = median(yrs_known/ego_age, na.rm = T))
+# 
+# write.csv(ties_block, '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results/tie_strength_intensity/ego_yrs_known_block.csv',
+#           row.names = F)
+
+# just show table of alter values
+# ties <- alter_tie %>% tabyl(yrs_known)
+
+```
+
+##### We cannot calculate length of relationship in the same way because we don't have Alter's age/year married, which is necessary for cases where the response was "known since marriage" (n = ~600)
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+
+#################################
+### TALKING FREQUENCY OVERALL ###
+#################################
+
+# check unique values for talking freq overall
+# table(alter_tie$talk_freq)
+
+# recode column
+alter_tie %<>% mutate(talk_freq = recode(talk_freq, 
+                                       `1` = 'intensive',
+                                       `2` = 'intensive',
+                                       `3` = 'intensive',
+                                       `4` = 'moderate',
+                                       `5` = 'moderate',
+                                       `6` = 'minimal',
+                                       `7` = 'minimal'))
+
+# overall summary
+talk_freq <- alter_tie %>% tabyl(talk_freq) %>%
+  adorn_pct_formatting(digits = 2) %>%
+  mutate(talk_freq = ordered(talk_freq, levels = c('minimal', 'moderate', 'intensive'))) %>%
+  arrange(talk_freq)
+
+# print output
+talk_freq %>%
+  kbl(caption = "Talk Frequency Overall") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# summary by block
+# summary by block
+talk_freq_block <- alter_tie %>% mutate(talk_freq = ordered(talk_freq, levels = c('minimal', 'moderate', 'intensive'))) %>%
+  arrange(talk_freq) %>%
+  tabyl(block, talk_freq) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top')
+
+# print output
+talk_freq_block %>%
+  kbl(caption = "Talk Frequency Overall By Block") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+############################################
+### TALKING FREQUENCY IN FAMILY PLANNING ###
+############################################
+
+# check unique values for talking freq fp
+# table(alter_tie$talk_freq_fp)
+
+# recode column
+alter_tie %<>% mutate(talk_freq_fp = recode(talk_freq_fp, 
+                                          `1` = 'intensive',
+                                          `2` = 'intensive',
+                                          `3` = 'moderate',
+                                          `4` = 'moderate',
+                                          `5` = 'minimal')) %>%
+  mutate(talk_freq_fp = replace_na(talk_freq_fp, 'none'))
+
+# overall summary
+talk_freq_fp <- alter_tie %>% tabyl(talk_freq_fp) %>%
+  adorn_pct_formatting(digits = 2) %>%
+  mutate(talk_freq_fp = ordered(talk_freq_fp, levels = c('minimal', 'moderate', 'intensive', 'none'))) %>%
+  arrange(talk_freq_fp)
+
+# print output
+talk_freq_fp %>%
+  kbl(caption = "Talk Frequency About Family Planning") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# summary by block
+talk_freq_fp_block <- alter_tie %>%
+  mutate(talk_freq_fp = ordered(talk_freq_fp, levels = c('minimal', 'moderate', 'intensive', 'none'))) %>%
+  arrange(talk_freq_fp) %>%
+  tabyl(block, talk_freq_fp) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top')
+
+# print output
+talk_freq_fp_block %>%
+  kbl(caption = "Talk Frequency About Family Planning by Block") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+#################################################
+### MULTIPLEXITY NUMBER OF DIFFERENT SUBJECTS ###
+#################################################
+
+# check values of subjects
+# unique(alter_tie$subjects)
+
+# count number of subjects
+num_sub <- str_split(alter_tie$subjects, ',')
+num_sub <- sapply(num_sub, function(x) length(x))
+
+# add to tibble
+alter_tie$num_subjects <- num_sub
+
+# add one if mentioned other subjects
+alter_tie$num_subjects[is.na(alter_tie$subjects_other) == F] <- alter_tie$num_subjects[is.na(alter_tie$subjects_other) == F] + 1
+
+# overall summary
+num_sub <- alter_tie %>% tabyl(num_subjects) %>%
+  adorn_pct_formatting(digits = 2)
+
+# print output
+num_sub %>%
+  kbl(caption = "Multiplexity (Number of Different Things Discussed)") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+# summary by block
+num_sub_block <- alter_tie %>% tabyl(block, num_subjects) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns() %>% 
+  adorn_title(placement = 'top')
+# ego_tie %>% split(.$block) %>% map(~map(.x %>% select(num_subjects), tabyl))
+
+# print output
+num_sub_block %>%
+  kbl(caption = "Multiplexity (Number of Different Things Discussed) By Block") %>%
+  kable_classic_2('hover', full_width = F, position = 'left')
+
+```
+
+# 5. Selected Network Plots
+
+```{r, echo = F, warning = F, message = F, results = 'asis', fig.width = 13,fig.height = 8}
+# this code loads an overview network linking all egos, alters, and aalters
+# in order to generate full network plots showcasing different attributes
+
+# load packages
+library(tidyverse)
+library(igraph)
+library(ggraph)
+library(janitor)
+library(magrittr)
+library(graphlayouts)
+library(snahelper)
+
+# load network
+load("data/combined_igraph.rda")
+
+# create vector of unique blocks
+blocks <- unique(V(gr_comb)$block)
+
+# create df of blocks and districts together
+dist_blo <- cbind(V(gr_comb)$block %>% as.data.frame,
+                  V(gr_comb)$district %>% as.data.frame)
+colnames(dist_blo) <- c('Block', 'District')
+
+# set colors for group
+colscale_group <- scale_fill_manual(name = "Group", values = c('Ego' = '#228833', 
+                                                               'Alter' = '#EE6677',
+                                                               'AAlter' = '#CCBB44'))
+
+# set shapes for relationships
+shape_rela <- scale_shape_manual(name = 'Relationship', values = c('Ego' = 22,
+                                                                   'Family' = 21,
+                                                                   'Health Worker' = 24,
+                                                                   'Non-Family' = 23))
+
+
+##########################
+### CREATE MANUAL PLOT ###
+##########################
+
+### 113041KAB|113040SAV
+
+# looking in block 9 since there is an example of 1 alter to 2 egos
+i <- 9
+
+# subset graph based on block
+gr <- induced_subgraph(gr_comb, 
+                       vids = which(V(gr_comb)$block == blocks[i]), 
+                       impl = 'create_from_scratch')
+
+# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
+gr <- induced_subgraph(gr, 
+                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "113041KAB|113040SAV")), 
+                       impl = 'create_from_scratch')
+
+# plot using ggraph
+ggraph(gr, layout = "stress") + 
+  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
+                  edge_colour = "grey66", edge_width = 0.5) + 
+  geom_node_point(aes(fill = group %>% as.factor, 
+                      stroke = intv_stroke,
+                      shape = rela_vals %>% as.factor), size = 6) +
+  theme_graph() + 
+  scale_edge_linetype_manual(name = 'Tie Strength', 
+                             values = c('1' = 'dashed', '2' = 'solid'),
+                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
+  theme(text = element_text(size=20)) +
+  ggtitle(str_c('Network of 113041KAB|113040SAV within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
+  colscale_group + shape_rela +
+  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
+
+### 119060CHA|119058DRO|119061NAN
+### Block "Ghanshyampur"
+
+i <- which(blocks == "Ghanshyampur")
+
+# subset graph based on block
+gr <- induced_subgraph(gr_comb, 
+                       vids = which(V(gr_comb)$block == blocks[i]), 
+                       impl = 'create_from_scratch')
+
+# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
+gr <- induced_subgraph(gr, 
+                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "119060CHA|119058DRO|119061NAN")), 
+                       impl = 'create_from_scratch')
+
+# plot using ggraph
+ggraph(gr, layout = "stress") + 
+  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
+                  edge_colour = "grey66", edge_width = 0.5) + 
+  geom_node_point(aes(fill = group %>% as.factor, 
+                      stroke = intv_stroke,
+                      shape = rela_vals %>% as.factor), size = 6) +
+  theme_graph() + 
+  scale_edge_linetype_manual(name = 'Tie Strength', 
+                             values = c('1' = 'dashed', '2' = 'solid'),
+                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
+  theme(text = element_text(size=20)) +
+  ggtitle(str_c('Network of 119060CHA|119058DRO|119061NAN within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
+  colscale_group + shape_rela +
+  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
+
+### 233112MEE|233113LAL
+### Block "Bagaha"
+
+i <- which(blocks == "Bagaha")
+
+# subset graph based on block
+gr <- induced_subgraph(gr_comb, 
+                       vids = which(V(gr_comb)$block == blocks[i]), 
+                       impl = 'create_from_scratch')
+
+# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
+gr <- induced_subgraph(gr, 
+                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "233112MEE|233113LAL")), 
+                       impl = 'create_from_scratch')
+
+# plot using ggraph
+ggraph(gr, layout = "stress") + 
+  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
+                  edge_colour = "grey66", edge_width = 0.5) + 
+  geom_node_point(aes(fill = group %>% as.factor, 
+                      stroke = intv_stroke,
+                      shape = rela_vals %>% as.factor), size = 6) +
+  theme_graph() + 
+  scale_edge_linetype_manual(name = 'Tie Strength', 
+                             values = c('1' = 'dashed', '2' = 'solid'),
+                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
+  theme(text = element_text(size=20)) +
+  ggtitle(str_c('Network of 233112MEE|233113LAL within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
+  colscale_group + shape_rela +
+  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
+
+### 230102BAB|230100SOB|230101BIN|235239NEH
+### Block "Narkatiaganj"
+
+i <- which(blocks == "Narkatiaganj")
+
+# subset graph based on block
+gr <- induced_subgraph(gr_comb, 
+                       vids = which(V(gr_comb)$block == blocks[i]), 
+                       impl = 'create_from_scratch')
+
+# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
+gr <- induced_subgraph(gr, 
+                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "230102BAB|230100SOB|230101BIN|235239NEH")), 
+                       impl = 'create_from_scratch')
+
+# plot using ggraph
+ggraph(gr, layout = "stress") + 
+  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
+                  edge_colour = "grey66", edge_width = 0.5) + 
+  geom_node_point(aes(fill = group %>% as.factor, 
+                      stroke = intv_stroke,
+                      shape = rela_vals %>% as.factor), size = 6) +
+  theme_graph() + 
+  scale_edge_linetype_manual(name = 'Tie Strength', 
+                             values = c('1' = 'dashed', '2' = 'solid'),
+                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
+  theme(text = element_text(size=20)) +
+  ggtitle(str_c('Network of 230102BAB|230100SOB|230101BIN|235239NEH within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
+  colscale_group + shape_rela +
+  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
+```
