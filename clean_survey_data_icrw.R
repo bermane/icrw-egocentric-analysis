@@ -216,7 +216,14 @@ alter_attr <- tibble(alter_id = character(),
                      using_fp = character(),
                      subjects = character(),
                      subjects_other = character(),
-                     talk_freq_fp = character())
+                     talk_freq_fp = character(),
+                     know_asha = character(),
+                     know_anm = character(),
+                     know_aww = character(),
+                     know_doc = character(),
+                     know_pha = character(),
+                     know_shg = character(),
+                     know_rel = character())
 
 # create empty tibble of alter-alter ties
 alter_ties <- tibble(from = character(),
@@ -252,7 +259,14 @@ for(i in 1:NROW(ego)){
                             using_fp = using_fp_hold,
                             subjects = ego$alter1_subjects[i],
                             subjects_other = ego$alter1_subjects_other[i],
-                            talk_freq_fp = ego$alter1_freq_talk_fp[i])
+                            talk_freq_fp = ego$alter1_freq_talk_fp[i],
+                            know_asha = ego$alter1_asha[i],
+                            know_anm = ego$alter1_anm[i],
+                            know_aww = ego$alter1_aww[i],
+                            know_doc = ego$alter1_doctor[i],
+                            know_pha = ego$alter1_pharmacist[i],
+                            know_shg = ego$alter1_shg[i],
+                            know_rel = ego$alter1_religious_leader[i])
   } 
   if(is.na(ego$alter2[i]) == F){
     
@@ -278,7 +292,14 @@ for(i in 1:NROW(ego)){
                             using_fp = using_fp_hold,
                             subjects = ego$alter2_subjects[i],
                             subjects_other = ego$alter2_subjects_other[i],
-                            talk_freq_fp = ego$alter2_freq_talk_fp[i])
+                            talk_freq_fp = ego$alter2_freq_talk_fp[i],
+                            know_asha = ego$alter2_asha[i],
+                            know_anm = ego$alter2_anm[i],
+                            know_aww = ego$alter2_aww[i],
+                            know_doc = ego$alter2_doctor[i],
+                            know_pha = ego$alter2_pharmacist[i],
+                            know_shg = ego$alter2_shg[i],
+                            know_rel = ego$alter2_religious_leader[i])
   } 
   if(is.na(ego$alter3[i]) == F){
     
@@ -304,7 +325,14 @@ for(i in 1:NROW(ego)){
                             using_fp = using_fp_hold,
                             subjects = ego$alter3_subjects[i],
                             subjects_other = ego$alter3_subjects_other[i],
-                            talk_freq_fp = ego$alter3_freq_talk_fp[i])
+                            talk_freq_fp = ego$alter3_freq_talk_fp[i],
+                            know_asha = ego$alter3_asha[i],
+                            know_anm = ego$alter3_anm[i],
+                            know_aww = ego$alter3_aww[i],
+                            know_doc = ego$alter3_doctor[i],
+                            know_pha = ego$alter3_pharmacist[i],
+                            know_shg = ego$alter3_shg[i],
+                            know_rel = ego$alter3_religious_leader[i])
   } 
   if(is.na(ego$alter4[i]) == F){
     
@@ -330,7 +358,14 @@ for(i in 1:NROW(ego)){
                             using_fp = using_fp_hold,
                             subjects = ego$alter4_subjects[i],
                             subjects_other = ego$alter4_subjects_other[i],
-                            talk_freq_fp = ego$alter4_freq_talk_fp[i])
+                            talk_freq_fp = ego$alter4_freq_talk_fp[i],
+                            know_asha = ego$alter4_asha[i],
+                            know_anm = ego$alter4_anm[i],
+                            know_aww = ego$alter4_aww[i],
+                            know_doc = ego$alter4_doctor[i],
+                            know_pha = ego$alter4_pharmacist[i],
+                            know_shg = ego$alter4_shg[i],
+                            know_rel = ego$alter4_religious_leader[i])
   } 
   if(is.na(ego$alter5[i]) == F){
     
@@ -356,7 +391,14 @@ for(i in 1:NROW(ego)){
                             using_fp = using_fp_hold,
                             subjects = ego$alter5_subjects[i],
                             subjects_other = ego$alter5_subjects_other[i],
-                            talk_freq_fp = ego$alter5_freq_talk_fp[i])
+                            talk_freq_fp = ego$alter5_freq_talk_fp[i],
+                            know_asha = ego$alter5_asha[i],
+                            know_anm = ego$alter5_anm[i],
+                            know_aww = ego$alter5_aww[i],
+                            know_doc = ego$alter5_doctor[i],
+                            know_pha = ego$alter5_pharmacist[i],
+                            know_shg = ego$alter5_shg[i],
+                            know_rel = ego$alter5_religious_leader[i])
   } 
   
   # go through alter-alter ties and add to edgelist
@@ -423,7 +465,8 @@ for(i in 1:NROW(ego)){
 }
 
 # convert character vars to numeric
-alter_attr %<>% mutate(across(c(sex, age, talk_freq, preg, using_fp), as.numeric))
+alter_attr %<>% mutate(across(c(sex, age, talk_freq, preg, using_fp, know_asha,
+                                know_anm, know_aww, know_doc, know_pha, know_shg, know_rel), as.numeric))
 
 # change duplicate ids so we know same person
 # for(i in 1:NROW(dup_id)){
@@ -783,6 +826,13 @@ v_attr$relationship <- NA
 v_attr$sex <- NA
 v_attr$age <- NA
 v_attr$using_fp <- NA
+v_attr$know_asha <- NA
+v_attr$know_anm <- NA
+v_attr$know_aww <- NA
+v_attr$know_doc <- NA
+v_attr$know_pha <- NA
+v_attr$know_shg <- NA
+v_attr$know_rel <- NA
 
 # fill sex for ego
 v_attr$sex[str_length(v_attr$id) == 9] <- 'Female'
@@ -795,6 +845,13 @@ for(i in 1:NROW(v_attr)){
   if(str_length(v_attr$id[i]) == 9){
     v_attr$age[i] <- ego_df$ego_age[ego_df$ego_id == v_attr$id[i]]
     v_attr$using_fp[i] <- ego_df$ego_using_fp[ego_df$ego_id == v_attr$id[i]]
+    v_attr$know_asha[i] <- ego_df$know_asha[ego_df$ego_id == v_attr$id[i]]
+    v_attr$know_anm[i] <- ego_df$know_anm[ego_df$ego_id == v_attr$id[i]]
+    v_attr$know_aww[i] <- ego_df$know_aww[ego_df$ego_id == v_attr$id[i]]
+    v_attr$know_doc[i] <- ego_df$know_doctor[ego_df$ego_id == v_attr$id[i]]
+    v_attr$know_pha[i] <- ego_df$know_pharmacist[ego_df$ego_id == v_attr$id[i]]
+    v_attr$know_shg[i] <- ego_df$know_shg[ego_df$ego_id == v_attr$id[i]]
+    v_attr$know_rel[i] <- ego_df$know_religious_leader[ego_df$ego_id == v_attr$id[i]]
   }
   
   # fill other attributes for alter
@@ -803,11 +860,25 @@ for(i in 1:NROW(v_attr)){
     v_attr$sex[i] <- alter_attr$sex[alter_attr$alter_id == v_attr$id[i]]
     v_attr$age[i] <- alter_attr$age[alter_attr$alter_id == v_attr$id[i]]
     v_attr$using_fp[i] <- alter_attr$using_fp[alter_attr$alter_id == v_attr$id[i]]
+    v_attr$know_asha[i] <- alter_attr$know_asha[alter_attr$alter_id == v_attr$id[i]]
+    v_attr$know_anm[i] <- alter_attr$know_anm[alter_attr$alter_id == v_attr$id[i]]
+    v_attr$know_aww[i] <- alter_attr$know_aww[alter_attr$alter_id == v_attr$id[i]]
+    v_attr$know_doc[i] <- alter_attr$know_doc[alter_attr$alter_id == v_attr$id[i]]
+    v_attr$know_pha[i] <- alter_attr$know_pha[alter_attr$alter_id == v_attr$id[i]]
+    v_attr$know_shg[i] <- alter_attr$know_shg[alter_attr$alter_id == v_attr$id[i]]
+    v_attr$know_rel[i] <- alter_attr$know_rel[alter_attr$alter_id == v_attr$id[i]]
     
     # if alter was interviewed and gave age/using fp use that
     if(v_attr$id[i] %in% alter_df$alter_id){
       v_attr$age[i] <- alter_df$age[alter_df$alter_id == v_attr$id[i]]
       v_attr$using_fp[i] <- alter_df$current_method[alter_df$alter_id == v_attr$id[i]]
+      v_attr$know_asha[i] <- alter_df$know_asha[alter_df$alter_id == v_attr$id[i]]
+      v_attr$know_anm[i] <- alter_df$know_anm[alter_df$alter_id == v_attr$id[i]]
+      v_attr$know_aww[i] <- alter_df$know_aww[alter_df$alter_id == v_attr$id[i]]
+      v_attr$know_doc[i] <- alter_df$know_doctor[alter_df$alter_id == v_attr$id[i]]
+      v_attr$know_pha[i] <- alter_df$know_pharmacist[alter_df$alter_id == v_attr$id[i]]
+      v_attr$know_shg[i] <- alter_df$know_shg[alter_df$alter_id == v_attr$id[i]]
+      v_attr$know_rel[i] <- alter_df$know_religious_leader[alter_df$alter_id == v_attr$id[i]]
     }
   }
   
@@ -856,7 +927,9 @@ v_attr$rela[v_attr$rela %in% health] <- 'Health Worker'
 v_attr$rela[str_length(v_attr$id) == 9] <- 'Ego'
 v_attr$rela[v_attr$relationship == 'Sister-in-law'] <- 'Sister-in-law'
 v_attr$rela[v_attr$relationship == 'Husband'] <- 'Husband'
-v_attr$rela[v_attr$relationship == 'HusbandWife'] <- 'HusbandWife'
+v_attr$rela[v_attr$relationship == 'HusbandWife' & v_attr$sex == 'Female'] <- 'Wife'
+v_attr$rela[v_attr$relationship == 'HusbandWife' & v_attr$sex == 'Male'] <- 'Husband'
+
 
 # recode relationship vals into categories
 v_attr$rela_vals <- v_attr$relationship
@@ -892,6 +965,24 @@ v_attr$intv[v_attr$id %in% alter_df$alter_id] <- 'Yes'
 # add intv_stroke column
 v_attr %<>% mutate(intv_stroke = recode(intv, Yes = 2, No = 1) %>% as.numeric)
 
+# add column of who all ego and alter know
+v_attr$key_ppl <- ''
+
+# add AAA
+v_attr$key_ppl[which(v_attr$know_asha == 1 | v_attr$know_anm == 1 | v_attr$know_aww == 1)] <- 'A'
+
+# add DOC
+v_attr$key_ppl[which(v_attr$know_doc == 1)] <- str_c(v_attr$key_ppl[which(v_attr$know_doc == 1)], 'D')
+
+# add PHA
+v_attr$key_ppl[which(v_attr$know_pha == 1)] <- str_c(v_attr$key_ppl[which(v_attr$know_pha == 1)], 'P')
+
+# add SHG
+v_attr$key_ppl[which(v_attr$know_shg == 1)] <- str_c(v_attr$key_ppl[which(v_attr$know_shg == 1)], 'S')
+
+# add REL
+v_attr$key_ppl[which(v_attr$know_rel == 1)] <- str_c(v_attr$key_ppl[which(v_attr$know_rel == 1)], 'R')
+
 # set nodes attributes
 gr_comb %<>% set_vertex_attr(name = 'district', value = v_attr$district)
 gr_comb %<>% set_vertex_attr(name = 'block', value = v_attr$block)
@@ -904,6 +995,7 @@ gr_comb %<>% set_vertex_attr(name = 'intv', value = v_attr$intv)
 gr_comb %<>% set_vertex_attr(name = 'intv_stroke', value = v_attr$intv_stroke)
 gr_comb %<>% set_vertex_attr(name = 'rela_vals', value = v_attr$rela_vals)
 gr_comb %<>% set_vertex_attr(name = 'rela', value = v_attr$rela)
+gr_comb %<>% set_vertex_attr(name = 'key_ppl', value = v_attr$key_ppl)
 
 # add additional edge attributes
 edge$talk_freq <- NA

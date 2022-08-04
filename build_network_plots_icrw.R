@@ -34,7 +34,7 @@ shape_group <- scale_shape_manual(name = 'Group', values = c('Ego' = 22,
 # set colors for relationships
 colscale_rela <- scale_fill_manual(name = 'Relationship', values = c('Ego' = '#228833', 
                                                                   'Husband' = '#EE6677',
-                                                                  'HusbandWife' = '#66CCEE',
+                                                                  'Wife' = '#66CCEE',
                                                                   'Sister-in-law' = '#CCBB44',
                                                                   'Other Family' = '#4477AA',
                                                                   'Health Worker' = '#AA3377',
@@ -62,6 +62,7 @@ ggraph(gr, layout = "stress") +
   geom_node_point(aes(fill = rela %>% as.factor, 
                       stroke = intv_stroke,
                       shape = group %>% as.factor), size = 6) +
+  geom_node_text(aes(label = key_ppl), nudge_y = -0.2) + 
   theme_graph() + 
   scale_edge_linetype_manual(name = 'Tie Strength', 
                              values = c('1' = 'dashed', '2' = 'solid'),
