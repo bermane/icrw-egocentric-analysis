@@ -837,6 +837,18 @@ v_attr$sex[is.na(v_attr$sex)] <- 'Missing'
 # clean up relationship values
 v_attr$relationship <- str_remove_all(v_attr$relationship, "[^[\\da-zA-Z\\-]]")
 
+# create frequency tables of relationships by alter and alter's alter
+# alter
+write.csv(tabyl(v_attr$relationship[str_length(v_attr$id) == 10]), 
+          file = '/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/alt_rela_vals_freq_up.csv',
+          row.names = F)
+
+# aalter
+write.csv(tabyl(v_attr$relationship[str_length(v_attr$id) == 11]), 
+          file = '/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/aalt_rela_vals_freq_up.csv',
+          row.names = F)
+
+
 # create groups of relationship types
 fam <- c('Husband', 'Mother-in-law', 'Mother', 'Sister-in-law', 'Sister',
          'Brother-in-law', 'OtherRelative', 'Father', 'Father-in-law', 'HusbandWife',
