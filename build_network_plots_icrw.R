@@ -11,14 +11,14 @@ library(graphlayouts)
 library(snahelper)
 
 # load network
-load("data/combined_igraph.rda")
+load("data/combined_igraph_key_villagers.rda")
 
 # create vector of unique blocks
-blocks <- unique(V(gr_comb)$block)
+blocks <- unique(V(gr_kv)$block)
 
 # create df of blocks and districts together
-dist_blo <- cbind(V(gr_comb)$block %>% as.data.frame,
-                  V(gr_comb)$district %>% as.data.frame)
+dist_blo <- cbind(V(gr_kv)$block %>% as.data.frame,
+                  V(gr_kv)$district %>% as.data.frame)
 colnames(dist_blo) <- c('Block', 'District')
 
 
@@ -26,19 +26,43 @@ colnames(dist_blo) <- c('Block', 'District')
 ### NEW PLOTS WITH LABELS AND SPECIFIC FAMILY VALUES ###
 ########################################################
 
-# set shape for group
+# set shape and size for group
 shape_group <- scale_shape_manual(name = 'Group', values = c('Ego' = 22,
-                                                              'Alter' = 21,
-                                                              'AAlter' = 24))
+                                                            'Alter' = 21,
+                                                            'AAlter' = 24,
+                                                            'Key Villager' = 23))
+
+size_group <- scale_size_manual(name = 'Group', values = c('Ego' = 8,
+                                                            'Alter' = 6,
+                                                            'AAlter' = 4,
+                                                           'Key Villager' = 4))
 
 # set colors for relationships
-colscale_rela <- scale_fill_manual(name = 'Relationship', values = c('Ego' = '#228833', 
-                                                                  'Husband' = '#EE6677',
-                                                                  'Wife' = '#66CCEE',
-                                                                  'Sister-in-law' = '#CCBB44',
-                                                                  'Other Family' = '#4477AA',
-                                                                  'Health Worker' = '#AA3377',
-                                                                  'Non-Family' = '#BBBBBB'))
+colscale_rela <- scale_fill_manual(name = 'Relationship', values = c('Ego' = '#4477AA',
+                                                                     'Family' = '#228833',
+                                                                     'Health Worker' = '#EE6677',
+                                                                     'Non-Family' = '#CCBB44',
+                                                                     'Key Villager' = '#BBBBBB'))
+
+# colscale_rela <- scale_fill_manual(name = 'Relationship', values = c('E' = '#44BB99',
+#                                                                      'H' = '#77AADD',
+#                                                                      'W' = '#BBCC33',
+#                                                                      'SIL' = '#99DDFF',
+#                                                                      'MIL' = '#AAAA00',
+#                                                                      'S' = '#EEDD88',
+#                                                                      'OF' = '#EE8866',
+#                                                                      'HW' = '#FFAABB',
+#                                                                      'NF' = '#BBBBBB'))
+
+# colscale_rela <- scale_fill_manual(name = 'Relationship', values = c('E' = '#228833', 
+#                                                                   'H' = '#EE6677',
+#                                                                   'W' = '#66CCEE',
+#                                                                   'SIL' = '#CCBB44',
+#                                                                   'MIL' = '#',
+#                                                                   'S' = '#',
+#                                                                   'OF' = '#4477AA',
+#                                                                   'HW' = '#AA3377',
+#                                                                   'NF' = '#BBBBBB'))
 
 ### 113041KAB|113040SAV
 
@@ -46,8 +70,8 @@ colscale_rela <- scale_fill_manual(name = 'Relationship', values = c('Ego' = '#2
 i <- 9
 
 # subset graph based on block
-gr <- induced_subgraph(gr_comb, 
-                       vids = which(V(gr_comb)$block == blocks[i]), 
+gr <- induced_subgraph(gr_kv, 
+                       vids = which(V(gr_kv)$block == blocks[i]), 
                        impl = 'create_from_scratch')
 
 # subset based on nodes that contain one of the ids 113041KAB or 113040SAV
@@ -57,23 +81,27 @@ gr <- induced_subgraph(gr,
 
 # plot using ggraph
 ggraph(gr, layout = "stress") + 
-  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
+  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3'))),
                   edge_colour = "grey66", edge_width = 0.5) + 
-  geom_node_point(aes(fill = rela %>% as.factor, 
+  geom_node_point(aes(fill = rela_vals %>% as.factor, 
                       stroke = intv_stroke,
-                      shape = group %>% as.factor), size = 6) +
-  geom_node_text(aes(label = key_ppl), nudge_y = -0.2) + 
+                      shape = group %>% as.factor,
+                      size = group %>% as.factor)) +
+  geom_node_label(aes(label = rela), nudge_y = -0.15, size = 5, label.size = 0,
+                  label.padding = unit(0.05, "lines")) + 
   theme_graph() + 
   scale_edge_linetype_manual(name = 'Tie Strength', 
-                             values = c('1' = 'dashed', '2' = 'solid'),
-                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
+                             values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotted'),
+                             labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager')) +
   theme(text = element_text(size=20)) +
   ggtitle(str_c('Network of 113041KAB|113040SAV within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
-  shape_group + colscale_rela +
-  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
+  shape_group + colscale_rela + size_group +
+  guides(size = "none", linetype = guide_legend(override.aes = list(size = 6)),
+         shape = guide_legend(order = 2, override.aes = list(size = 6)), 
+         fill = guide_legend(order = 1, override.aes = list(shape = 25, size = 6)))
 
 ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/',
-             'results_bihar/network_plots/manual/119060CHA-119058DRO-119061NAN-NEW.png'))
+             'results_bihar/network_plots/manual/119060CHA-119058DRO-119061NAN-NEW-KV-2.png'))
 
 ###################
 ### OLDER PLOTS ###

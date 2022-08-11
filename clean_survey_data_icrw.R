@@ -223,7 +223,8 @@ alter_attr <- tibble(alter_id = character(),
                      know_doc = character(),
                      know_pha = character(),
                      know_shg = character(),
-                     know_rel = character())
+                     know_rel = character(),
+                     know_pra = character())
 
 # create empty tibble of alter-alter ties
 alter_ties <- tibble(from = character(),
@@ -266,7 +267,8 @@ for(i in 1:NROW(ego)){
                             know_doc = ego$alter1_doctor[i],
                             know_pha = ego$alter1_pharmacist[i],
                             know_shg = ego$alter1_shg[i],
-                            know_rel = ego$alter1_religious_leader[i])
+                            know_rel = ego$alter1_religious_leader[i],
+                            know_pra = ego$alter1_pradhan[i])
   } 
   if(is.na(ego$alter2[i]) == F){
     
@@ -299,7 +301,8 @@ for(i in 1:NROW(ego)){
                             know_doc = ego$alter2_doctor[i],
                             know_pha = ego$alter2_pharmacist[i],
                             know_shg = ego$alter2_shg[i],
-                            know_rel = ego$alter2_religious_leader[i])
+                            know_rel = ego$alter2_religious_leader[i],
+                            know_pra = ego$alter2_pradhan[i])
   } 
   if(is.na(ego$alter3[i]) == F){
     
@@ -332,7 +335,8 @@ for(i in 1:NROW(ego)){
                             know_doc = ego$alter3_doctor[i],
                             know_pha = ego$alter3_pharmacist[i],
                             know_shg = ego$alter3_shg[i],
-                            know_rel = ego$alter3_religious_leader[i])
+                            know_rel = ego$alter3_religious_leader[i],
+                            know_pra = ego$alter3_pradhan[i])
   } 
   if(is.na(ego$alter4[i]) == F){
     
@@ -365,7 +369,8 @@ for(i in 1:NROW(ego)){
                             know_doc = ego$alter4_doctor[i],
                             know_pha = ego$alter4_pharmacist[i],
                             know_shg = ego$alter4_shg[i],
-                            know_rel = ego$alter4_religious_leader[i])
+                            know_rel = ego$alter4_religious_leader[i],
+                            know_pra = ego$alter4_pradhan[i])
   } 
   if(is.na(ego$alter5[i]) == F){
     
@@ -398,7 +403,8 @@ for(i in 1:NROW(ego)){
                             know_doc = ego$alter5_doctor[i],
                             know_pha = ego$alter5_pharmacist[i],
                             know_shg = ego$alter5_shg[i],
-                            know_rel = ego$alter5_religious_leader[i])
+                            know_rel = ego$alter5_religious_leader[i],
+                            know_pra = ego$alter5_pradhan[i])
   } 
   
   # go through alter-alter ties and add to edgelist
@@ -531,7 +537,7 @@ save(ego_df, alter_attr, gr_list, gr_list_ego, file="data/ego_igraph.rda")
 
 # create tibble of alter attributes
 alter_df <- as_tibble(alter) %>% 
-  select(district_name:advice_religious_leader)
+  select(geography:advice_religious_leader)
 
 # convert all character variables to factor
 alter_df %<>% 
@@ -833,6 +839,7 @@ v_attr$know_doc <- NA
 v_attr$know_pha <- NA
 v_attr$know_shg <- NA
 v_attr$know_rel <- NA
+v_attr$know_pra <- NA
 
 # fill sex for ego
 v_attr$sex[str_length(v_attr$id) == 9] <- 'Female'
@@ -852,6 +859,7 @@ for(i in 1:NROW(v_attr)){
     v_attr$know_pha[i] <- ego_df$know_pharmacist[ego_df$ego_id == v_attr$id[i]]
     v_attr$know_shg[i] <- ego_df$know_shg[ego_df$ego_id == v_attr$id[i]]
     v_attr$know_rel[i] <- ego_df$know_religious_leader[ego_df$ego_id == v_attr$id[i]]
+    v_attr$know_pra[i] <- ego_df$know_pradhan[ego_df$ego_id == v_attr$id[i]]
   }
   
   # fill other attributes for alter
@@ -867,6 +875,7 @@ for(i in 1:NROW(v_attr)){
     v_attr$know_pha[i] <- alter_attr$know_pha[alter_attr$alter_id == v_attr$id[i]]
     v_attr$know_shg[i] <- alter_attr$know_shg[alter_attr$alter_id == v_attr$id[i]]
     v_attr$know_rel[i] <- alter_attr$know_rel[alter_attr$alter_id == v_attr$id[i]]
+    v_attr$know_pra[i] <- alter_attr$know_pra[alter_attr$alter_id == v_attr$id[i]]
     
     # if alter was interviewed and gave age/using fp use that
     if(v_attr$id[i] %in% alter_df$alter_id){
@@ -879,6 +888,7 @@ for(i in 1:NROW(v_attr)){
       v_attr$know_pha[i] <- alter_df$know_pharmacist[alter_df$alter_id == v_attr$id[i]]
       v_attr$know_shg[i] <- alter_df$know_shg[alter_df$alter_id == v_attr$id[i]]
       v_attr$know_rel[i] <- alter_df$know_religious_leader[alter_df$alter_id == v_attr$id[i]]
+      v_attr$know_pra[i] <- alter_df$know_pradhan[alter_df$alter_id == v_attr$id[i]]
     }
   }
   
@@ -919,17 +929,34 @@ nonfam <- c('Friend', 'Neighbor', 'Landlord', 'Acquaintance', 'Neighbour', 'Bloc
 health <- c('ASHA', 'Doctor', 'ANM', 'AWW', 'Docter', 'Dactor', 'Dr', 'BahnoiDoctor', 'DR',
             'Nurse', 'AnmFaciletor')
 
+other_health <- c('Doctor', 'Docter', 'Dactor', 'Dr', 'BahnoiDoctor', 'DR',
+                  'Nurse', 'AnmFaciletor')
+
 # recode relationship vals into relationships
 v_attr$rela <- v_attr$relationship
 v_attr$rela[v_attr$rela %in% fam] <- 'Other Family'
 v_attr$rela[v_attr$rela %in% nonfam] <- 'Non-Family'
-v_attr$rela[v_attr$rela %in% health] <- 'Health Worker'
+v_attr$rela[v_attr$rela %in% other_health] <- 'Other Health Worker'
 v_attr$rela[str_length(v_attr$id) == 9] <- 'Ego'
 v_attr$rela[v_attr$relationship == 'Sister-in-law'] <- 'Sister-in-law'
+v_attr$rela[v_attr$relationship == 'Mother-in-law'] <- 'Mother-in-law'
+v_attr$rela[v_attr$relationship == 'Sister'] <- 'Sister'
 v_attr$rela[v_attr$relationship == 'Husband'] <- 'Husband'
 v_attr$rela[v_attr$relationship == 'HusbandWife' & v_attr$sex == 'Female'] <- 'Wife'
 v_attr$rela[v_attr$relationship == 'HusbandWife' & v_attr$sex == 'Male'] <- 'Husband'
 
+# relabel relationship values
+v_attr %<>% mutate(rela = recode(rela, 
+                                 "Ego" = "E",
+                                 "Husband" = "H",
+                                 "Wife" = "W",
+                                 "Sister-in-law" = "SIL",
+                                 "Other Family" = "OF",
+                                 "Health Worker" = "HW",
+                                 "Non-Family" = "NF",
+                                 "Mother-in-law" = "MIL",
+                                 "Sister" = "S",
+                                 "Other Health Worker" = "OHW"))
 
 # recode relationship vals into categories
 v_attr$rela_vals <- v_attr$relationship
@@ -963,19 +990,35 @@ v_attr$intv[str_length(v_attr$id) == 9] <- 'Yes'
 v_attr$intv[v_attr$id %in% alter_df$alter_id] <- 'Yes'
 
 # add intv_stroke column
-v_attr %<>% mutate(intv_stroke = recode(intv, Yes = 2, No = 1) %>% as.numeric)
+v_attr %<>% mutate(intv_stroke = recode(intv, Yes = 2, No = 0.5) %>% as.numeric)
 
 # add column of who all ego and alter know
 v_attr$key_ppl <- ''
 
+# set know A3 to 0 if not 1
+v_attr$know_asha[is.na(v_attr$know_asha)] <- 0
+v_attr$know_asha[v_attr$know_asha != 1] <- 0
+v_attr$know_anm[is.na(v_attr$know_anm)] <- 0
+v_attr$know_anm[v_attr$know_anm != 1] <- 0
+v_attr$know_aww[is.na(v_attr$know_aww)] <- 0
+v_attr$know_aww[v_attr$know_aww != 1] <- 0
+
+# create sum column
+v_attr$know_a <- v_attr$know_asha + v_attr$know_anm + v_attr$know_aww
+
 # add AAA
-v_attr$key_ppl[which(v_attr$know_asha == 1 | v_attr$know_anm == 1 | v_attr$know_aww == 1)] <- 'A'
+v_attr$key_ppl[which(v_attr$know_a == 1)] <- 'A1'
+v_attr$key_ppl[which(v_attr$know_a == 2)] <- 'A2'
+v_attr$key_ppl[which(v_attr$know_a == 3)] <- 'A3'
 
 # add DOC
 v_attr$key_ppl[which(v_attr$know_doc == 1)] <- str_c(v_attr$key_ppl[which(v_attr$know_doc == 1)], 'D')
 
 # add PHA
 v_attr$key_ppl[which(v_attr$know_pha == 1)] <- str_c(v_attr$key_ppl[which(v_attr$know_pha == 1)], 'P')
+
+# add MUK
+v_attr$key_ppl[which(v_attr$know_pra == 1)] <- str_c(v_attr$key_ppl[which(v_attr$know_pra == 1)], 'M')
 
 # add SHG
 v_attr$key_ppl[which(v_attr$know_shg == 1)] <- str_c(v_attr$key_ppl[which(v_attr$know_shg == 1)], 'S')
@@ -1056,6 +1099,333 @@ gr_comb %<>% set_edge_attr(name = 'talk_freq', value = edge$talk_freq)
 gr_comb %<>% set_edge_attr(name = 'discuss_fp', value = edge$discuss_fp)
 gr_comb %<>% set_edge_attr(name = 'talk_freq_cat', value = edge$talk_freq_cat)
 
+# loop through ids and create new edgelist if id knows key people
+# pre allocate new edgelist
+edge_add <- tibble(V1 = character(),
+                   V2 = character(),
+                   weight = numeric(),
+                   rela = character(),
+                   rela_vals = character(),
+                   group = character(),
+                   district = character(),
+                   block = character())
+
+for(i in 1:NROW(v_attr)){
+  
+  # asha
+  if(v_attr$know_asha[i] %in% 1){
+    edge_add %<>% add_row(V1 = v_attr$id[i],
+                          V2 = str_c('asha_', v_attr$id[i]),
+                          weight = 3,
+                          rela = "AS",
+                          rela_vals = 'Key Villager',
+                          group = 'Key Villager',
+                          district = v_attr$district[i],
+                          block = v_attr$block[i])
+  }
+  
+  # anm
+  if(v_attr$know_anm[i] %in% 1){
+    edge_add %<>% add_row(V1 = v_attr$id[i],
+                          V2 = str_c('anm_', v_attr$id[i]),
+                          weight = 3,
+                          rela = "AN",
+                          rela_vals = 'Key Villager',
+                          group = 'Key Villager',
+                          district = v_attr$district[i],
+                          block = v_attr$block[i])
+  }
+  
+  # aww
+  if(v_attr$know_aww[i] %in% 1){
+    edge_add %<>% add_row(V1 = v_attr$id[i],
+                          V2 = str_c('aww_', v_attr$id[i]),
+                          weight = 3,
+                          rela = "AW",
+                          rela_vals = 'Key Villager',
+                          group = 'Key Villager',
+                          district = v_attr$district[i],
+                          block = v_attr$block[i])
+  }
+  
+  # doc
+  if(v_attr$know_doc[i] %in% 1){
+    edge_add %<>% add_row(V1 = v_attr$id[i],
+                          V2 = str_c('doc_', v_attr$id[i]),
+                          weight = 3,
+                          rela = "DOC",
+                          rela_vals = 'Key Villager',
+                          group = 'Key Villager',
+                          district = v_attr$district[i],
+                          block = v_attr$block[i])
+  }
+  
+  # pha
+  if(v_attr$know_pha[i] %in% 1){
+    edge_add %<>% add_row(V1 = v_attr$id[i],
+                          V2 = str_c('pha_', v_attr$id[i]),
+                          weight = 3,
+                          rela = "P",
+                          rela_vals = 'Key Villager',
+                          group = 'Key Villager',
+                          district = v_attr$district[i],
+                          block = v_attr$block[i])
+  }
+  
+  # shg
+  if(v_attr$know_shg[i] %in% 1){
+    edge_add %<>% add_row(V1 = v_attr$id[i],
+                          V2 = str_c('shg_', v_attr$id[i]),
+                          weight = 3,
+                          rela = "SHG",
+                          rela_vals = 'Key Villager',
+                          group = 'Key Villager',
+                          district = v_attr$district[i],
+                          block = v_attr$block[i])
+  }
+  
+  # rel
+  if(v_attr$know_rel[i] %in% 1){
+    edge_add %<>% add_row(V1 = v_attr$id[i],
+                          V2 = str_c('rel_', v_attr$id[i]),
+                          weight = 3,
+                          rela = "RL",
+                          rela_vals = 'Key Villager',
+                          group = 'Key Villager',
+                          district = v_attr$district[i],
+                          block = v_attr$block[i])
+  }
+  
+  # pra
+  if(v_attr$know_pra[i] %in% 1){
+    edge_add %<>% add_row(V1 = v_attr$id[i],
+                          V2 = str_c('pra_', v_attr$id[i]),
+                          weight = 3,
+                          rela = "PRA",
+                          rela_vals = 'Key Villager',
+                          group = 'Key Villager',
+                          district = v_attr$district[i],
+                          block = v_attr$block[i])
+  }
+  
+}
+
+# create igraph of key villager relationship
+# create igraph object using edgelist
+gr_rela <- graph_from_edgelist(edge_add[,1:2] %>% as.matrix, directed = F)
+
+# create tibble of node attributes
+v_attr_add <- tibble(id = names(V(gr_rela)))
+v_attr_add$rela <- NA
+v_attr_add$rela_vals <- NA
+v_attr_add$group <- NA
+v_attr_add$district <- NA
+v_attr_add$block <- NA
+
+# loop through ids
+for(i in 1:NROW(v_attr_add)){
+  
+  # if id is in v_attr take those attributes
+  if(v_attr_add$id[i] %in% v_attr$id){
+    v_attr_add$rela[i] <- v_attr$rela[v_attr$id == v_attr_add$id[i]]
+    v_attr_add$rela_vals[i] <- v_attr$rela_vals[v_attr$id == v_attr_add$id[i]]
+    v_attr_add$group[i] <- v_attr$group[v_attr$id == v_attr_add$id[i]]
+    v_attr_add$district[i] <- v_attr$district[v_attr$id == v_attr_add$id[i]]
+    v_attr_add$block[i] <- v_attr$block[v_attr$id == v_attr_add$id[i]]
+  }else{ # else take values from edge_add
+    v_attr_add$rela[i] <- edge_add$rela[edge_add$V2 == v_attr_add$id[i]]
+    v_attr_add$rela_vals[i] <- edge_add$rela_vals[edge_add$V2 == v_attr_add$id[i]]
+    v_attr_add$group[i] <- edge_add$group[edge_add$V2 == v_attr_add$id[i]]
+    v_attr_add$district[i] <- edge_add$district[edge_add$V2 == v_attr_add$id[i]]
+    v_attr_add$block[i] <- edge_add$block[edge_add$V2 == v_attr_add$id[i]]
+  }
+}
+
+# set nodes attributes
+gr_rela %<>% set_vertex_attr(name = 'district', value = v_attr_add$district)
+gr_rela %<>% set_vertex_attr(name = 'block', value = v_attr_add$block)
+gr_rela %<>% set_vertex_attr(name = 'group', value = v_attr_add$group)
+gr_rela %<>% set_vertex_attr(name = 'rela', value = v_attr_add$rela)
+gr_rela %<>% set_vertex_attr(name = 'rela_vals', value = v_attr_add$rela_vals)
+
+# set edge attributes 
+gr_rela %<>% set_edge_attr(name = 'weight', value = edge_add$weight)
+
+# combine igraph objects
+gr_u <- gr_comb %u% gr_rela
+
+# create final tibble of attributes
+v_attr_u <- tibble(id = names(V(gr_u)),
+                   district_1 = vertex_attr(gr_u, name = 'district_1'),
+                   district_2 = vertex_attr(gr_u, name = 'district_2'),
+                   block_1 = vertex_attr(gr_u, name = 'block_1'),
+                   block_2 = vertex_attr(gr_u, name = 'block_2'),
+                   group_1 = vertex_attr(gr_u, name = 'group_1'),
+                   group_2 = vertex_attr(gr_u, name = 'group_2'),
+                   rela_vals_1 = vertex_attr(gr_u, name = 'rela_vals_1'),
+                   rela_vals_2 = vertex_attr(gr_u, name = 'rela_vals_2'),
+                   rela_1 = vertex_attr(gr_u, name = 'rela_1'),
+                   rela_2 = vertex_attr(gr_u, name = 'rela_2'),
+                   intv_stroke = vertex_attr(gr_u, name = 'intv_stroke'))
+
+# consolidate columns
+v_attr_u$district_1[is.na(v_attr_u$district_1)] <- v_attr_u$district_2[is.na(v_attr_u$district_1)]
+v_attr_u$block_1[is.na(v_attr_u$block_1)] <- v_attr_u$block_2[is.na(v_attr_u$block_1)]
+v_attr_u$group_1[is.na(v_attr_u$group_1)] <- v_attr_u$group_2[is.na(v_attr_u$group_1)]
+v_attr_u$rela_vals_1[is.na(v_attr_u$rela_vals_1)] <- v_attr_u$rela_vals_2[is.na(v_attr_u$rela_vals_1)]
+v_attr_u$rela_1[is.na(v_attr_u$rela_1)] <- v_attr_u$rela_2[is.na(v_attr_u$rela_1)]
+v_attr_u$intv_stroke[is.na(v_attr_u$intv_stroke)] <- 0.5
+
+# set final node attributes
+gr_u %<>% set_vertex_attr(name = 'district', value = v_attr_u$district_1)
+gr_u %<>% set_vertex_attr(name = 'block', value = v_attr_u$block_1)
+gr_u %<>% set_vertex_attr(name = 'group', value = v_attr_u$group_1)
+gr_u %<>% set_vertex_attr(name = 'rela', value = v_attr_u$rela_1)
+gr_u %<>% set_vertex_attr(name = 'rela_vals', value = v_attr_u$rela_vals_1)
+gr_u %<>% set_vertex_attr(name = 'intv_stroke', value = v_attr_u$intv_stroke)
+
+# delete erroneous node attributes
+gr_u %<>% delete_vertex_attr(name = 'district_1')
+gr_u %<>% delete_vertex_attr(name = 'district_2')
+gr_u %<>% delete_vertex_attr(name = 'block_1')
+gr_u %<>% delete_vertex_attr(name = 'block_2')
+gr_u %<>% delete_vertex_attr(name = 'group_1')
+gr_u %<>% delete_vertex_attr(name = 'group_2')
+gr_u %<>% delete_vertex_attr(name = 'rela_1')
+gr_u %<>% delete_vertex_attr(name = 'rela_2')
+gr_u %<>% delete_vertex_attr(name = 'rela_vals_1')
+gr_u %<>% delete_vertex_attr(name = 'rela_vals_2')
+
+# create final tibble of edge attributes
+e_attr_u <- tibble(weight_1 = edge_attr(gr_u, name = 'weight_1'),
+                   weight_2 = edge_attr(gr_u, name = 'weight_2'))
+
+# consolidate columns
+e_attr_u$weight_1[is.na(e_attr_u$weight_1)] <- e_attr_u$weight_2[is.na(e_attr_u$weight_1)]
+
+# set final edge attributes
+gr_u %<>% set_edge_attr(name = 'weight', value = e_attr_u$weight_1)
+
+# delete erroneous edge attributes
+gr_u %<>% delete_edge_attr(name = 'weight_1')
+gr_u %<>% delete_edge_attr(name = 'weight_2')
+
+# create new igraph of one key villager node per group of key villagers
+edge_kv <- tibble(id = names(V(gr_comb)),
+                  rela = vertex_attr(gr_comb, 'key_ppl'),
+                  district = vertex_attr(gr_comb, 'district'),
+                  block = vertex_attr(gr_comb, 'block'))
+
+# remove rows w/o key people
+edge_kv %<>% filter(rela != '')
+
+# add kv id
+edge_kv %<>% mutate(kv = str_c(id, '_kv'))
+
+# add additional columns
+edge_kv %<>% mutate(rela_vals = 'Key Villager',
+                    group = 'Key Villager',
+                    weight = 3)
+
+# create igraph
+gr_kv <- graph_from_edgelist(edge_kv %>% select(id, kv) %>% as.matrix, directed = F)
+
+# create tibble of node attributes
+v_attr_kv <- tibble(id = names(V(gr_kv)))
+v_attr_kv$rela <- NA
+v_attr_kv$rela_vals <- NA
+v_attr_kv$group <- NA
+v_attr_kv$district <- NA
+v_attr_kv$block <- NA
+
+# loop through ids
+for(i in 1:NROW(v_attr_kv)){
+  
+  # if id is in v_attr take those attributes
+  if(v_attr_kv$id[i] %in% v_attr$id){
+    v_attr_kv$rela[i] <- v_attr$rela[v_attr$id == v_attr_kv$id[i]]
+    v_attr_kv$rela_vals[i] <- v_attr$rela_vals[v_attr$id == v_attr_kv$id[i]]
+    v_attr_kv$group[i] <- v_attr$group[v_attr$id == v_attr_kv$id[i]]
+    v_attr_kv$district[i] <- v_attr$district[v_attr$id == v_attr_kv$id[i]]
+    v_attr_kv$block[i] <- v_attr$block[v_attr$id == v_attr_kv$id[i]]
+  }else{ # else take values from edge_add
+    v_attr_kv$rela[i] <- edge_kv$rela[edge_kv$kv == v_attr_kv$id[i]]
+    v_attr_kv$rela_vals[i] <- edge_kv$rela_vals[edge_kv$kv == v_attr_kv$id[i]]
+    v_attr_kv$group[i] <- edge_kv$group[edge_kv$kv == v_attr_kv$id[i]]
+    v_attr_kv$district[i] <- edge_kv$district[edge_kv$kv == v_attr_kv$id[i]]
+    v_attr_kv$block[i] <- edge_kv$block[edge_kv$kv == v_attr_kv$id[i]]
+  }
+}
+
+# set nodes attributes
+gr_kv %<>% set_vertex_attr(name = 'district', value = v_attr_kv$district)
+gr_kv %<>% set_vertex_attr(name = 'block', value = v_attr_kv$block)
+gr_kv %<>% set_vertex_attr(name = 'group', value = v_attr_kv$group)
+gr_kv %<>% set_vertex_attr(name = 'rela', value = v_attr_kv$rela)
+gr_kv %<>% set_vertex_attr(name = 'rela_vals', value = v_attr_kv$rela_vals)
+
+# set edge attributes 
+gr_kv %<>% set_edge_attr(name = 'weight', value = edge_kv$weight)
+
+# combine igraph objects
+gr_kv <- gr_comb %u% gr_kv
+
+# create final tibble of attributes
+v_attr_kv <- tibble(id = names(V(gr_kv)),
+                   district_1 = vertex_attr(gr_kv, name = 'district_1'),
+                   district_2 = vertex_attr(gr_kv, name = 'district_2'),
+                   block_1 = vertex_attr(gr_kv, name = 'block_1'),
+                   block_2 = vertex_attr(gr_kv, name = 'block_2'),
+                   group_1 = vertex_attr(gr_kv, name = 'group_1'),
+                   group_2 = vertex_attr(gr_kv, name = 'group_2'),
+                   rela_vals_1 = vertex_attr(gr_kv, name = 'rela_vals_1'),
+                   rela_vals_2 = vertex_attr(gr_kv, name = 'rela_vals_2'),
+                   rela_1 = vertex_attr(gr_kv, name = 'rela_1'),
+                   rela_2 = vertex_attr(gr_kv, name = 'rela_2'),
+                   intv_stroke = vertex_attr(gr_kv, name = 'intv_stroke'))
+
+# consolidate columns
+v_attr_kv$district_1[is.na(v_attr_kv$district_1)] <- v_attr_kv$district_2[is.na(v_attr_kv$district_1)]
+v_attr_kv$block_1[is.na(v_attr_kv$block_1)] <- v_attr_kv$block_2[is.na(v_attr_kv$block_1)]
+v_attr_kv$group_1[is.na(v_attr_kv$group_1)] <- v_attr_kv$group_2[is.na(v_attr_kv$group_1)]
+v_attr_kv$rela_vals_1[is.na(v_attr_kv$rela_vals_1)] <- v_attr_kv$rela_vals_2[is.na(v_attr_kv$rela_vals_1)]
+v_attr_kv$rela_1[is.na(v_attr_kv$rela_1)] <- v_attr_kv$rela_2[is.na(v_attr_kv$rela_1)]
+v_attr_kv$intv_stroke[is.na(v_attr_kv$intv_stroke)] <- 0.5
+
+# set final node attributes
+gr_kv %<>% set_vertex_attr(name = 'district', value = v_attr_kv$district_1)
+gr_kv %<>% set_vertex_attr(name = 'block', value = v_attr_kv$block_1)
+gr_kv %<>% set_vertex_attr(name = 'group', value = v_attr_kv$group_1)
+gr_kv %<>% set_vertex_attr(name = 'rela', value = v_attr_kv$rela_1)
+gr_kv %<>% set_vertex_attr(name = 'rela_vals', value = v_attr_kv$rela_vals_1)
+gr_kv %<>% set_vertex_attr(name = 'intv_stroke', value = v_attr_kv$intv_stroke)
+
+# delete erroneous node attributes
+gr_kv %<>% delete_vertex_attr(name = 'district_1')
+gr_kv %<>% delete_vertex_attr(name = 'district_2')
+gr_kv %<>% delete_vertex_attr(name = 'block_1')
+gr_kv %<>% delete_vertex_attr(name = 'block_2')
+gr_kv %<>% delete_vertex_attr(name = 'group_1')
+gr_kv %<>% delete_vertex_attr(name = 'group_2')
+gr_kv %<>% delete_vertex_attr(name = 'rela_1')
+gr_kv %<>% delete_vertex_attr(name = 'rela_2')
+gr_kv %<>% delete_vertex_attr(name = 'rela_vals_1')
+gr_kv %<>% delete_vertex_attr(name = 'rela_vals_2')
+
+# create final tibble of edge attributes
+e_attr_kv <- tibble(weight_1 = edge_attr(gr_kv, name = 'weight_1'),
+                   weight_2 = edge_attr(gr_kv, name = 'weight_2'))
+
+# consolidate columns
+e_attr_kv$weight_1[is.na(e_attr_kv$weight_1)] <- e_attr_kv$weight_2[is.na(e_attr_kv$weight_1)]
+
+# set final edge attributes
+gr_kv %<>% set_edge_attr(name = 'weight', value = e_attr_kv$weight_1)
+
+# delete erroneous edge attributes
+gr_kv %<>% delete_edge_attr(name = 'weight_1')
+gr_kv %<>% delete_edge_attr(name = 'weight_2')
+
 # # check if all duplicates are from the same block
 # # can only check if don't remove the duplicates above
 # for(i in 1:NROW(dup_id)){
@@ -1063,5 +1433,7 @@ gr_comb %<>% set_edge_attr(name = 'talk_freq_cat', value = edge$talk_freq_cat)
 # }
 
 # Save data to file
-save(gr_comb, v_attr, edge, file="data/combined_igraph.rda")
+save(gr_comb, v_attr, edge, file = "data/combined_igraph.rda")
+save(gr_u, v_attr_u, file = "data/combined_igraph_key_villagers_separate.rda")
+save(gr_kv, v_attr_kv, file = "data/combined_igraph_key_villagers.rda")
 
