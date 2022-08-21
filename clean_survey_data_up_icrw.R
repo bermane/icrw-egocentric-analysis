@@ -547,7 +547,7 @@ save(ego_df, alter_attr, gr_list, gr_list_ego, file="data/ego_igraph_up.rda")
 
 # create tibble of alter attributes
 alter_df <- as_tibble(alter) %>% 
-  select(geography:advice_religious_leader)
+  select(district_name:advice_religious_leader)
 
 # convert all character variables to factor
 alter_df %<>% 
