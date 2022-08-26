@@ -1037,9 +1037,12 @@ library(readstata13)
 ### LOAD EGO AND ALTER DATA AND CLEAN ###
 #########################################
 
+# set wd
+setwd('/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis')
+
 # load ego and alter cleaned and completre data
-ego <- read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/SNA study_EGO_clean_Uttar Pradesh_30June2022.xlsx")
-alter <-read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/SNA study_ALTER_clean_Uttar Pradesh_09Jul2022.xlsx")
+ego <- read_excel(path = "data/SNA study_EGO_clean_Uttar Pradesh_08112022.xlsx")
+alter <-read_excel(path = "data/SNA study_ALTER_clean_Uttar Pradesh_08112022.xlsx")
 
 # # load dta stata file to get PC data for egos
 # ego_pc <- read.dta13(file = 'data/PC_EGO_data_Merge_Uttar Pradesh.dta', convert.factors = F)
@@ -1048,10 +1051,10 @@ alter <-read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R 
 # write_xlsx(ego_pc, "data/ego_pc_complete_up_07122022.xlsx")
 
 # load pc data for egos
-ego_pc <- read_excel(path = '/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_pc_complete_up_07122022.xlsx')
+ego_pc <- read_excel(path = 'data/ego_pc_complete_up_08112022.xlsx')
 
 # load list of duplicate ids
-dup_id <- read_excel(path = '/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/duplicate_ids_up_07112022.xlsx')
+dup_id <- read_excel(path = 'data/duplicate_ids_up_07112022.xlsx')
 
 # clean column names only keep part after last "."
 ego_names <- sapply(colnames(ego), FUN = function(x){
@@ -1087,7 +1090,9 @@ alter[inx] <- lapply(alter[inx], as.character)
 
 # replace character NA values with NA
 ego[ego == "NA"] <- NA
+ego[ego == "Na"] <- NA
 alter[alter == "NA"] <- NA
+alter[alter == "Na"] <- NA
 
 # # fix district, block and village in alter data
 # alter$district_name <- alter$`district name_clean`
@@ -2101,6 +2106,10 @@ blau <- function(perc){
   return(c(b, iqv, k))
 }
 
+if('valid_percent' %in% colnames(sex)){
+  sex %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- sex$n[is.na(sex$percent) == F] %>% sum
 
 # calculate heterogeneity
@@ -2127,10 +2136,15 @@ hetero <- tibble(metric = 'Gender',
 
 # build proportions
 caste <- ea %>% tabyl(alt_caste)
-n <- caste$n[is.na(caste$valid_percent) == F] %>% sum
+
+if('valid_percent' %in% colnames(caste)){
+  caste %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- caste$n[is.na(caste$percent) == F] %>% sum
 
 # calculate heterogeneity
-caste <- blau(na.omit(caste$valid_percent))
+caste <- blau(na.omit(caste$percent))
 
 # create tibble
 dat = tibble(blau = caste[1],
@@ -2186,8 +2200,13 @@ hetero %<>% add_row(metric = 'Caste',
 
 # calculate heterogeneity
 using_fp <- tabyl(ea$alt_using_fp)
-n <- using_fp$n[is.na(using_fp$valid_percent) == F] %>% sum
-using_fp <- blau(na.omit(using_fp$valid_percent))
+
+if('valid_percent' %in% colnames(using_fp)){
+  using_fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- using_fp$n[is.na(using_fp$percent) == F] %>% sum
+using_fp <- blau(na.omit(using_fp$percent))
 dat <- tibble(blau = using_fp[1],
                    iqv = using_fp[2],
                    k = using_fp[3])
@@ -2213,8 +2232,13 @@ hetero %<>% add_row(metric = 'Currently Using Family Planning',
 
 # calculate heterogeneity
 ppl <- tabyl(ea$alt_know_asha)
-n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
-ppl <- blau(na.omit(ppl$valid_percent))
+
+if('valid_percent' %in% colnames(ppl)){
+  ppl %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- ppl$n[is.na(ppl$percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$percent))
 dat <- tibble(blau = ppl[1],
               iqv = ppl[2],
               k = ppl[3])
@@ -2229,8 +2253,13 @@ hetero %<>% add_row(metric = 'Know ASHA',
 # anm
 # calculate heterogeneity
 ppl <- tabyl(ea$alt_know_anm)
-n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
-ppl <- blau(na.omit(ppl$valid_percent))
+
+if('valid_percent' %in% colnames(ppl)){
+  ppl %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- ppl$n[is.na(ppl$percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$percent))
 dat <- tibble(blau = ppl[1],
               iqv = ppl[2],
               k = ppl[3])
@@ -2245,8 +2274,13 @@ hetero %<>% add_row(metric = 'Know ANM',
 # aww
 # calculate heterogeneity
 ppl <- tabyl(ea$alt_know_aww)
-n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
-ppl <- blau(na.omit(ppl$valid_percent))
+
+if('valid_percent' %in% colnames(ppl)){
+  ppl %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- ppl$n[is.na(ppl$percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$percent))
 dat <- tibble(blau = ppl[1],
               iqv = ppl[2],
               k = ppl[3])
@@ -2261,8 +2295,13 @@ hetero %<>% add_row(metric = 'Know AWW',
 # shg
 # calculate heterogeneity
 ppl <- tabyl(ea$alt_know_shg)
-n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
-ppl <- blau(na.omit(ppl$valid_percent))
+
+if('valid_percent' %in% colnames(ppl)){
+  ppl %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- ppl$n[is.na(ppl$percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$percent))
 dat <- tibble(blau = ppl[1],
               iqv = ppl[2],
               k = ppl[3])
@@ -2277,8 +2316,13 @@ hetero %<>% add_row(metric = 'Know SHG',
 # pradhan
 # calculate heterogeneity
 ppl <- tabyl(ea$alt_know_pra)
-n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
-ppl <- blau(na.omit(ppl$valid_percent))
+
+if('valid_percent' %in% colnames(ppl)){
+  ppl %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- ppl$n[is.na(ppl$percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$percent))
 dat <- tibble(blau = ppl[1],
               iqv = ppl[2],
               k = ppl[3])
@@ -2293,8 +2337,13 @@ hetero %<>% add_row(metric = 'Know Pradhan',
 # pharmacist
 # calculate heterogeneity
 ppl <- tabyl(ea$alt_know_pha)
-n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
-ppl <- blau(na.omit(ppl$valid_percent))
+
+if('valid_percent' %in% colnames(ppl)){
+  ppl %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- ppl$n[is.na(ppl$percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$percent))
 dat <- tibble(blau = ppl[1],
               iqv = ppl[2],
               k = ppl[3])
@@ -2309,8 +2358,13 @@ hetero %<>% add_row(metric = 'Know Pharmacist',
 # doctor
 # calculate heterogeneity
 ppl <- tabyl(ea$alt_know_doc)
-n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
-ppl <- blau(na.omit(ppl$valid_percent))
+
+if('valid_percent' %in% colnames(ppl)){
+  ppl %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- ppl$n[is.na(ppl$percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$percent))
 dat <- tibble(blau = ppl[1],
               iqv = ppl[2],
               k = ppl[3])
@@ -2325,8 +2379,13 @@ hetero %<>% add_row(metric = 'Know Doctor',
 # religious leader
 # calculate heterogeneity
 ppl <- tabyl(ea$alt_know_rel)
-n <- ppl$n[is.na(ppl$valid_percent) == F] %>% sum
-ppl <- blau(na.omit(ppl$valid_percent))
+
+if('valid_percent' %in% colnames(ppl)){
+  ppl %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- ppl$n[is.na(ppl$percent) == F] %>% sum
+ppl <- blau(na.omit(ppl$percent))
 dat <- tibble(blau = ppl[1],
               iqv = ppl[2],
               k = ppl[3])
@@ -2343,6 +2402,11 @@ hetero %<>% add_row(metric = 'Know Religious Leader',
 # calculate homophily
 # calculate heterogeneity
 ppl <- tabyl(alt_hw)
+
+if('valid_percent' %in% colnames(ppl)){
+  ppl %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- ppl$n[is.na(ppl$percent) == F] %>% sum
 ppl <- blau(na.omit(ppl$percent))
 dat <- tibble(blau = ppl[1],
@@ -2359,6 +2423,11 @@ hetero %<>% add_row(metric = 'Know Health Worker Category',
 # calculate village leader category
 # calculate heterogeneity
 ppl <- tabyl(alt_vl)
+
+if('valid_percent' %in% colnames(ppl)){
+  ppl %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- ppl$n[is.na(ppl$percent) == F] %>% sum
 ppl <- blau(na.omit(ppl$percent))
 dat <- tibble(blau = ppl[1],
@@ -2402,6 +2471,11 @@ hetero %<>% add_row(metric = 'Know Village Leader Category',
 
 # calculate heterogeneity
 res <- tabyl(ea$alt_residence)
+
+if('valid_percent' %in% colnames(res)){
+  res %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- res$n[is.na(res$percent) == F] %>% sum
 res <- blau(na.omit(res$percent))
 dat <- tibble(blau = res[1],
@@ -2424,6 +2498,11 @@ hetero %<>% add_row(metric = 'Residence',
 
 # calculate homophily
 a <- tabyl(str_detect(ea$alt_learned, "A"))
+
+if('valid_percent' %in% colnames(a)){
+  a %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- a$n[is.na(a$percent) == F] %>% sum
 a <- blau(a$percent)
 dat <- tibble(blau = a[1],
@@ -2438,6 +2517,11 @@ hetero %<>% add_row(metric = 'Social Learning: Get along with family',
                n = n %>% as.character)
 
 b <- tabyl(str_detect(ea$alt_learned, "B"))
+
+if('valid_percent' %in% colnames(b)){
+  b %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- b$n[is.na(b$percent) == F] %>% sum
 b <- blau(b$percent)
 dat <- tibble(blau = b[1],
@@ -2452,6 +2536,11 @@ hetero %<>% add_row(metric = 'Social Learning: Ways of earning',
                n = n %>% as.character)
 
 c <- tabyl(str_detect(ea$alt_learned, "C"))
+
+if('valid_percent' %in% colnames(c)){
+  c %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- c$n[is.na(c$percent) == F] %>% sum
 c <- blau(c$percent)
 dat <- tibble(blau = c[1],
@@ -2466,6 +2555,11 @@ hetero %<>% add_row(metric = 'Social Learning: Take care of children',
                n = n %>% as.character)
 
 d <- tabyl(str_detect(ea$alt_learned, "D"))
+
+if('valid_percent' %in% colnames(d)){
+  d %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- d$n[is.na(d$percent) == F] %>% sum
 d <- blau(d$percent)
 dat <- tibble(blau = d[1],
@@ -2480,6 +2574,11 @@ hetero %<>% add_row(metric = 'Social Learning: Get health care',
                n = n %>% as.character)
 
 e <- tabyl(str_detect(ea$alt_learned, "E"))
+
+if('valid_percent' %in% colnames(e)){
+  e %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- e$n[is.na(e$percent) == F] %>% sum
 e <- blau(e$percent)
 dat <- tibble(blau = e[1],
@@ -2494,6 +2593,11 @@ hetero %<>% add_row(metric = 'Social Learning: Apply for government schemes',
                n = n %>% as.character)
 
 f <- tabyl(str_detect(ea$alt_learned, "F"))
+
+if('valid_percent' %in% colnames(f)){
+  f %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- f$n[is.na(f$percent) == F] %>% sum
 f <- blau(f$percent)
 dat <- tibble(blau = f[1],
@@ -2508,6 +2612,11 @@ hetero %<>% add_row(metric = 'Social Learning: Plan no. of children to have',
                n = n %>% as.character)
 
 g <- tabyl(str_detect(ea$alt_learned, "G"))
+
+if('valid_percent' %in% colnames(g)){
+  g %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- g$n[is.na(g$percent) == F] %>% sum
 g <- blau(g$percent)
 dat <- tibble(blau = g[1],
@@ -2530,6 +2639,11 @@ hetero %<>% add_row(metric = 'Social Learning: FP methods',
 
 # calculate heterogeneity
 fp <- tabyl(ea$alt_encourage_fp)
+
+if('valid_percent' %in% colnames(fp)){
+  fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- fp$n[is.na(fp$percent) == F] %>% sum
 fp <- blau(na.omit(fp$percent))
 dat <- tibble(blau = fp[1],
@@ -2552,6 +2666,11 @@ hetero %<>% add_row(metric = 'Encourage Use of Family Planning',
 
 # calculate heterogeneity
 fp <- tabyl(ea$alt_discuss_fp)
+
+if('valid_percent' %in% colnames(fp)){
+  fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- fp$n[is.na(fp$percent) == F] %>% sum
 fp <- blau(na.omit(fp$percent))
 dat <- tibble(blau = fp[1],
@@ -2574,6 +2693,11 @@ hetero %<>% add_row(metric = 'Discuss FP Methods Freely',
 
 # calculate heterogeneity
 fp <- tabyl(ea$alt_help_ego)
+
+if('valid_percent' %in% colnames(fp)){
+  fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- fp$n[is.na(fp$percent) == F] %>% sum
 fp <- blau(na.omit(fp$percent))
 dat <- tibble(blau = fp[1],
@@ -2596,6 +2720,11 @@ hetero %<>% add_row(metric = 'Alter Help/Advise Ego',
 
 # calculate heterogeneity
 fp <- tabyl(ea$alt_helped_by_ego)
+
+if('valid_percent' %in% colnames(fp)){
+  fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- fp$n[is.na(fp$percent) == F] %>% sum
 fp <- blau(na.omit(fp$percent))
 dat <- tibble(blau = fp[1],
@@ -2618,6 +2747,11 @@ hetero %<>% add_row(metric = 'Ego Help/Advise Alter',
 
 # calculate heterogeneity
 fp <- tabyl(ea$alt_against_advice)
+
+if('valid_percent' %in% colnames(fp)){
+  fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- fp$n[is.na(fp$percent) == F] %>% sum
 fp <- blau(na.omit(fp$percent))
 dat <- tibble(blau = fp[1],
@@ -2640,6 +2774,11 @@ hetero %<>% add_row(metric = 'Going Against Advice',
 
 # calculate heterogeneity
 fp <- tabyl(ea$alt_support_no_child)
+
+if('valid_percent' %in% colnames(fp)){
+  fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
 n <- fp$n[is.na(fp$percent) == F] %>% sum
 fp <- blau(na.omit(fp$percent))
 dat <- tibble(blau = fp[1],
@@ -3488,9 +3627,9 @@ homo_alt %<>% add_row(metric = 'Live in Same Household (%)',
 
 ```{r, echo = F, warning = F, message = F, results = 'asis'}
 
-#####################################
-### HETEROGENEITY OF EGO'S ALTERS ###
-#####################################
+###########################################
+### HETEROGENEITY OF ALTERS AND AALTERS ###
+###########################################
 
 ###########
 ### SEX ###
@@ -3511,10 +3650,14 @@ blau <- function(perc){
   return(c(b, iqv, k))
 }
 
-n <- sex$n[is.na(sex$valid_percent) == F] %>% sum
+if('valid_percent' %in% colnames(sex)){
+  sex %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- sex$n[is.na(sex$percent) == F] %>% sum
 
 # calculate heterogeneity
-sex <- blau(na.omit(sex$valid_percent))
+sex <- blau(na.omit(sex$percent))
 
 # create tibble
 dat = tibble(blau = sex[1],
@@ -3538,10 +3681,14 @@ hetero_alt <- tibble(metric = 'Gender',
 # build proportions
 caste <- ea %>% tabyl(alt_caste)
 
-n <- caste$n[is.na(caste$valid_percent) == F] %>% sum
+if('valid_percent' %in% colnames(caste)){
+  caste %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- caste$n[is.na(caste$percent) == F] %>% sum
 
 # calculate heterogeneity
-caste <- blau(na.omit(caste$valid_percent))
+caste <- blau(na.omit(caste$percent))
 
 # create tibble
 dat = tibble(blau = caste[1],
@@ -3597,8 +3744,13 @@ hetero_alt %<>% add_row(metric = 'Caste',
 
 # calculate heterogeneity
 using_fp <- tabyl(ea$alt_using_fp)
-n <- using_fp$n[is.na(using_fp$valid_percent) == F] %>% sum
-using_fp <- blau(na.omit(using_fp$valid_percent))
+
+if('valid_percent' %in% colnames(using_fp)){
+  using_fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- using_fp$n[is.na(using_fp$percent) == F] %>% sum
+using_fp <- blau(na.omit(using_fp$percent))
 dat <- tibble(blau = using_fp[1],
                    iqv = using_fp[2],
                    k = using_fp[3])
@@ -3778,8 +3930,13 @@ hetero_alt %<>% add_row(metric = 'Currently Using Family Planning',
 
 # calculate heterogeneity
 res <- tabyl(ea$alt_residence)
-n <- res$n[is.na(res$valid_percent) == F] %>% sum
-res <- blau(na.omit(res$valid_percent))
+
+if('valid_percent' %in% colnames(res)){
+  res %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- res$n[is.na(res$percent) == F] %>% sum
+res <- blau(na.omit(res$percent))
 dat <- tibble(blau = res[1],
               iqv = res[2],
               k = res[3])
@@ -3800,8 +3957,13 @@ hetero_alt %<>% add_row(metric = 'Residence',
 
 # calculate homophily
 a <- tabyl(str_detect(ea$alt_learned, "A"))
-n <- a$n[is.na(a$valid_percent) == F] %>% sum
-a <- blau(na.omit(a$valid_percent))
+
+if('valid_percent' %in% colnames(a)){
+  a %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- a$n[is.na(a$percent) == F] %>% sum
+a <- blau(na.omit(a$percent))
 dat <- tibble(blau = a[1],
               iqv = a[2],
               k = a[3])
@@ -3814,8 +3976,13 @@ hetero_alt %<>% add_row(metric = 'Social Learning: Get along with family',
                n = n %>% as.character)
 
 b <- tabyl(str_detect(ea$alt_learned, "B"))
-n <- b$n[is.na(b$valid_percent) == F] %>% sum
-b <- blau(na.omit(b$valid_percent))
+
+if('valid_percent' %in% colnames(b)){
+  b %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- b$n[is.na(b$percent) == F] %>% sum
+b <- blau(na.omit(b$percent))
 dat <- tibble(blau = b[1],
               iqv = b[2],
               k = b[3])
@@ -3828,8 +3995,13 @@ hetero_alt %<>% add_row(metric = 'Social Learning: Ways of earning',
                n = n %>% as.character)
 
 c <- tabyl(str_detect(ea$alt_learned, "C"))
-n <- c$n[is.na(c$valid_percent) == F] %>% sum
-c <- blau(na.omit(c$valid_percent))
+
+if('valid_percent' %in% colnames(c)){
+  c %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- c$n[is.na(c$percent) == F] %>% sum
+c <- blau(na.omit(c$percent))
 dat <- tibble(blau = c[1],
               iqv = c[2],
               k = c[3])
@@ -3842,8 +4014,13 @@ hetero_alt %<>% add_row(metric = 'Social Learning: Take care of children',
                n = n %>% as.character)
 
 d <- tabyl(str_detect(ea$alt_learned, "D"))
-n <- d$n[is.na(d$valid_percent) == F] %>% sum
-d <- blau(na.omit(d$valid_percent))
+
+if('valid_percent' %in% colnames(d)){
+  d %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- d$n[is.na(d$percent) == F] %>% sum
+d <- blau(na.omit(d$percent))
 dat <- tibble(blau = d[1],
               iqv = d[2],
               k = d[3])
@@ -3856,8 +4033,13 @@ hetero_alt %<>% add_row(metric = 'Social Learning: Get health care',
                n = n %>% as.character)
 
 e <- tabyl(str_detect(ea$alt_learned, "E"))
-n <- e$n[is.na(e$valid_percent) == F] %>% sum
-e <- blau(na.omit(e$valid_percent))
+
+if('valid_percent' %in% colnames(e)){
+  e %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- e$n[is.na(e$percent) == F] %>% sum
+e <- blau(na.omit(e$percent))
 dat <- tibble(blau = e[1],
               iqv = e[2],
               k = e[3])
@@ -3870,8 +4052,13 @@ hetero_alt %<>% add_row(metric = 'Social Learning: Apply for government schemes'
                n = n %>% as.character)
 
 f <- tabyl(str_detect(ea$alt_learned, "F"))
-n <- f$n[is.na(f$valid_percent) == F] %>% sum
-f <- blau(na.omit(f$valid_percent))
+
+if('valid_percent' %in% colnames(f)){
+  f %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- f$n[is.na(f$percent) == F] %>% sum
+f <- blau(na.omit(f$percent))
 dat <- tibble(blau = f[1],
               iqv = f[2],
               k = f[3])
@@ -3884,8 +4071,13 @@ hetero_alt %<>% add_row(metric = 'Social Learning: Plan no. of children to have'
                n = n %>% as.character)
 
 g <- tabyl(str_detect(ea$alt_learned, "G"))
-n <- g$n[is.na(g$valid_percent) == F] %>% sum
-g <- blau(na.omit(g$valid_percent))
+
+if('valid_percent' %in% colnames(g)){
+  g %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- g$n[is.na(g$percent) == F] %>% sum
+g <- blau(na.omit(g$percent))
 dat <- tibble(blau = g[1],
               iqv = g[2],
               k = g[3])
@@ -3906,8 +4098,13 @@ hetero_alt %<>% add_row(metric = 'Social Learning: FP methods',
 
 # calculate heterogeneity
 fp <- tabyl(ea$alt_encourage_fp)
-n <- fp$n[is.na(fp$valid_percent) == F] %>% sum
-fp <- blau(na.omit(fp$valid_percent))
+
+if('valid_percent' %in% colnames(fp)){
+  fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- fp$n[is.na(fp$percent) == F] %>% sum
+fp <- blau(na.omit(fp$percent))
 dat <- tibble(blau = fp[1],
              iqv = fp[2],
               k = fp[3])
@@ -3928,8 +4125,13 @@ hetero_alt %<>% add_row(metric = 'Encourage Use of Family Planning',
 
 # calculate heterogeneity
 fp <- tabyl(ea$alt_discuss_fp)
-n <- fp$n[is.na(fp$valid_percent) == F] %>% sum
-fp <- blau(na.omit(fp$valid_percent))
+
+if('valid_percent' %in% colnames(fp)){
+  fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- fp$n[is.na(fp$percent) == F] %>% sum
+fp <- blau(na.omit(fp$percent))
 dat <- tibble(blau = fp[1],
              iqv = fp[2],
               k = fp[3])
@@ -3950,8 +4152,13 @@ hetero_alt %<>% add_row(metric = 'Discuss FP Methods Freely',
 
 # calculate heterogeneity
 fp <- tabyl(ea$alt_help_ego)
-n <- fp$n[is.na(fp$valid_percent) == F] %>% sum
-fp <- blau(na.omit(fp$valid_percent))
+
+if('valid_percent' %in% colnames(fp)){
+  fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- fp$n[is.na(fp$percent) == F] %>% sum
+fp <- blau(na.omit(fp$percent))
 dat <- tibble(blau = fp[1],
              iqv = fp[2],
               k = fp[3])
@@ -3972,8 +4179,13 @@ hetero_alt %<>% add_row(metric = "Alter's Alter Help/Advise Alter",
 
 # calculate heterogeneity
 fp <- tabyl(ea$alt_helped_by_ego)
-n <- fp$n[is.na(fp$valid_percent) == F] %>% sum
-fp <- blau(na.omit(fp$valid_percent))
+
+if('valid_percent' %in% colnames(fp)){
+  fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- fp$n[is.na(fp$percent) == F] %>% sum
+fp <- blau(na.omit(fp$percent))
 dat <- tibble(blau = fp[1],
              iqv = fp[2],
               k = fp[3])
@@ -3994,8 +4206,13 @@ hetero_alt %<>% add_row(metric = "Alter Help/Advise Alter's Alter",
 
 # calculate heterogeneity
 fp <- tabyl(ea$alt_against_advice)
-n <- fp$n[is.na(fp$valid_percent) == F] %>% sum
-fp <- blau(na.omit(fp$valid_percent))
+
+if('valid_percent' %in% colnames(fp)){
+  fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- fp$n[is.na(fp$percent) == F] %>% sum
+fp <- blau(na.omit(fp$percent))
 dat <- tibble(blau = fp[1],
              iqv = fp[2],
               k = fp[3])
@@ -4016,8 +4233,13 @@ hetero_alt %<>% add_row(metric = 'Going Against Advise',
 
 # calculate heterogeneity
 fp <- tabyl(ea$alt_support_no_child)
-n <- fp$n[is.na(fp$valid_percent) == F] %>% sum
-fp <- blau(na.omit(fp$valid_percent))
+
+if('valid_percent' %in% colnames(fp)){
+  fp %<>% select(-percent) %>% rename(percent = valid_percent)
+}
+
+n <- fp$n[is.na(fp$percent) == F] %>% sum
+fp <- blau(na.omit(fp$percent))
 dat <- tibble(blau = fp[1],
              iqv = fp[2],
               k = fp[3])
@@ -4096,9 +4318,12 @@ library(readstata13)
 ### LOAD EGO AND ALTER DATA AND CLEAN ###
 #########################################
 
+# set wd
+setwd('/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis')
+
 # load ego and alter cleaned and completre data
-ego <- read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/SNA study_EGO_clean_Uttar Pradesh_30June2022.xlsx")
-alter <-read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/SNA study_ALTER_clean_Uttar Pradesh_09Jul2022.xlsx")
+ego <- read_excel(path = "data/SNA study_EGO_clean_Uttar Pradesh_08112022.xlsx")
+alter <-read_excel(path = "data/SNA study_ALTER_clean_Uttar Pradesh_08112022.xlsx")
 
 # # load dta stata file to get PC data for egos
 # ego_pc <- read.dta13(file = 'data/PC_EGO_data_Merge_Uttar Pradesh.dta', convert.factors = F)
@@ -4107,7 +4332,7 @@ alter <-read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R 
 # write_xlsx(ego_pc, "data/ego_pc_complete_up_07122022.xlsx")
 
 # load pc data for egos
-ego_pc <- read_excel(path = 'data/ego_pc_complete_up_07122022.xlsx')
+ego_pc <- read_excel(path = 'data/ego_pc_complete_up_08112022.xlsx')
 
 # load list of duplicate ids
 dup_id <- read_excel(path = 'data/duplicate_ids_up_07112022.xlsx')
@@ -4146,7 +4371,9 @@ alter[inx] <- lapply(alter[inx], as.character)
 
 # replace character NA values with NA
 ego[ego == "NA"] <- NA
+ego[ego == "Na"] <- NA
 alter[alter == "NA"] <- NA
+alter[alter == "Na"] <- NA
 
 # # fix district, block and village in alter data
 # alter$district_name <- alter$`district name_clean`
@@ -4601,7 +4828,7 @@ alter_tie$yrs_known <- as.numeric(alter_tie$yrs_known)
 
 ```
 
-##### We cannot calculate length of relationship in the same way because we don't have Alter's age/year married, which is necessary for cases where the response was "known since marriage" (n = ~600)
+##### We cannot calculate length of relationship in the same way because we don't have Alter's age/year married, which is necessary for cases where the response was "known since marriage"
 
 ```{r, echo = F, warning = F, message = F, results = 'asis'}
 
