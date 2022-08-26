@@ -910,33 +910,103 @@ v_attr$sex[is.na(v_attr$sex)] <- 'Missing'
 # clean up relationship values
 v_attr$relationship <- str_remove_all(v_attr$relationship, "[^[\\da-zA-Z\\-]]")
 
+# create relationship key
+rela_key <- c(`Bhabi` = "Sister-in-law",
+              `Bhagnee` = "Other Relative",
+              `Chacherisas` = "Other Relative",
+              `Chachi` = "Other Relative",
+              `Chachisash` = "Other Relative",
+              `Other_Relative ` = "Other Relative",
+              `ANM` = "Health Worker",
+              `ASHA` = "Health Worker",
+              `AWW` = "Health Worker",
+              `BahnoiDoctor` = "Health Worker",
+              `DR` = "Health Worker",
+              `Dactor` = "Health Worker",
+              `Docter` = "Health Worker",
+              `Doctor` = "Health Worker",
+              `Dr` = "Health Worker",
+              `Landlord` = "Other",
+              `Neighbor` = "Other",
+              `Bcm` = "Other",
+              `Bahan` = "Sister",
+              `Bahu` = "Daughter-in-law",
+              `Barebahu` = "Daughter-in-law",
+              `Barebeta` = "Son",
+              `Barebeti` = "Daughter",
+              `Beta` = "Son",
+              `Beti` = "Daughter",
+              `Bhabhi` = "Sister-in-law",
+              `Bhabi` = "Sister-in-law",
+              `Bhaganee` = "Other Relative",
+              `Bhu` = "Daughter-in-law",
+              `Aunty` = "Other Relative",
+              `Bohu` = "Daughter-in-law",
+              `Buasas` = "Other Relative",
+              `Buaa` = "Other Relative",
+              `Chacha` = "Other Relative",
+              `Chachaji` = "Other Relative",
+              `Chachaji` = "Other Relative",
+              `Chacherisash` = "Other Relative",
+              `Chachi` = "Other Relative",
+              `Chhotebahu` = "Daughter-in-law",
+              `Chhotebeti` = "Daughter",
+              `Chhotibeti` = "Daughter",
+              `Dadi` = "Other Relative",
+              `Jethanikalarka` = "Other Relative",
+              `Jija` = "Brother-in-law",
+              `Mami` = "Other Relative",
+              `Mausisash` = "Other Relative",
+              `OthRelative` = "Other Relative",
+              `Patoh` = "Other Relative",
+              `ANM` = "Health Worker",
+              `ASHA` = "Health Worker",
+              `AWW` = "Health Worker",
+              `Shgvolentear` = "Health Worker",
+              `Trainer` = "Health Worker",
+              `VCM` = "Other",
+              `AnmFaciletor` = "Health Worker",
+              `Awwsahsyika` = "Health Worker",
+              `Dr` = "Health Worker",
+              `Doctor` = "Health Worker",
+              `Dr` = "Health Worker",
+              `Facilater` = "Health Worker",
+              `Facilator` = "Health Worker",
+              `Faciletor` = "Health Worker",
+              `Nurse` = "Health Worker",
+              `Acquaintance` = "Other",
+              `Blockmanager` = "Other",
+              `Councilor` = "Other",
+              `Neighbour` = "Other",
+              `Saheli` = "Friend",
+              `OtherRelative` = "Other Relative")
+
 # create groups of relationship types
-fam <- c('Husband', 'Mother-in-law', 'Mother', 'Sister-in-law', 'Sister',
-         'Brother-in-law', 'OtherRelative', 'Father', 'Father-in-law', 'HusbandWife',
-         'OthRelative', 'Brother', 'Daughter', 'Son', 'Beti', 'Barebeti', 'Beta',
-         'Chachisash', 'Chachi',
-         'Bhagnee', 'Chacherisas', 'Bhabi', 'Beta',
-         'Bahu', 'Chacha', 'Bhu', 'Chacherisash', 'Jija', 'Bohu',
-         'Jethanikalarka', 'Buasas', 'Chachaji', 'Awwsahsyika', 
-         'Bhabhi', 'Mausisash', 'Bhaganee', 'Buaa', 'Mami',
-         'Dadi', 'Patoh', 'Barebeta',
-         'Chhotibeti', 'Barebahu', 'Chhotebahu', 'Bahan', 'Chhotebeti')
+fam <- c('Husband',
+         'Mother-in-law',
+         'Father-in-law',
+         'Sister-in-law',
+         'Brother-in-law',
+         'Friend',
+         'Father',
+         'Mother',
+         'Sister',
+         'Brother',
+         'Daughter-in-law',
+         'Son',
+         'Daughter',
+         'Wife',
+         'Other Relative')
 
-nonfam <- c('Friend', 'Neighbor', 'Landlord', 'Acquaintance', 'Neighbour', 'Blockmanager',
-            'Shgvolentear', 'Trainer', 'Saheli', 'Bcm', 'Aunty', 'VCM',
-            'Facilator', 'Councilor', 'Faciletor', 'Facilater')
+nonfam <- c('Other')
 
-health <- c('ASHA', 'Doctor', 'ANM', 'AWW', 'Docter', 'Dactor', 'Dr', 'BahnoiDoctor', 'DR',
-            'Nurse', 'AnmFaciletor')
-
-other_health <- c('Doctor', 'Docter', 'Dactor', 'Dr', 'BahnoiDoctor', 'DR',
-                  'Nurse', 'AnmFaciletor')
+health <- c('Health Worker')
 
 # recode relationship vals into relationships
 v_attr$rela <- v_attr$relationship
-v_attr$rela[v_attr$rela %in% fam] <- 'Other Family'
+v_attr$rela[v_attr$rela %in% fam] <- 'Family'
 v_attr$rela[v_attr$rela %in% nonfam] <- 'Non-Family'
-v_attr$rela[v_attr$rela %in% other_health] <- 'Other Health Worker'
+v_attr$rela[v_attr$rela %in% health] <- 'Health Worker'
 v_attr$rela[str_length(v_attr$id) == 9] <- 'Ego'
 v_attr$rela[v_attr$relationship == 'Sister-in-law'] <- 'Sister-in-law'
 v_attr$rela[v_attr$relationship == 'Mother-in-law'] <- 'Mother-in-law'
@@ -960,6 +1030,7 @@ v_attr %<>% mutate(rela = recode(rela,
 
 # recode relationship vals into categories
 v_attr$rela_vals <- v_attr$relationship
+v_attr %<>% mutate(rela_vals = recode(rela_vals, !!!rela_key))
 v_attr$rela_vals[v_attr$rela_vals %in% fam] <- 'Family'
 v_attr$rela_vals[v_attr$rela_vals %in% nonfam] <- 'Non-Family'
 v_attr$rela_vals[v_attr$rela_vals %in% health] <- 'Health Worker'
