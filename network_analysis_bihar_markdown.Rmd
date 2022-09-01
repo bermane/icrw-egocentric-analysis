@@ -192,20 +192,25 @@ ego_ego_met %>%
 # ego table by block
 ego_ego_met %>% 
             group_by(block) %>% 
-            summarize(degree = mean(deg, na.rm = T) %>% round(2),
+            summarize(district = district[1],
+                      geography = geography[1],
+                      degree = mean(deg, na.rm = T) %>% round(2),
                       betweenness = mean(bet, na.rm = T) %>% round(2),
                       closeness = mean(clo, na.rm = T) %>% round(2)) %>%
             mutate(n = ego_ego_met %>% group_by(block) %>% tally() %>% .$n) %>%
+  arrange(geography, block) %>%
   kbl(caption = 'Ego Mean Degree, Betweenness and Closeness Centrality by Block') %>%
   kable_classic_2('hover', full_width = F, position = 'left')
 
 # write ego table by district
 ego_ego_met %>% 
             group_by(district) %>% 
-            summarize(degree = mean(deg, na.rm = T) %>% round(2),
+            summarize(geography = geography[1],
+                      degree = mean(deg, na.rm = T) %>% round(2),
                       betweenness = mean(bet, na.rm = T) %>% round(2),
                       closeness = mean(clo, na.rm = T) %>% round(2)) %>%
             mutate(n = ego_ego_met %>% group_by(district) %>% tally() %>% .$n) %>%
+  arrange(geography) %>%
   kbl(caption = 'Ego Mean Degree, Betweenness and Closeness Centrality by District') %>%
   kable_classic_2('hover', full_width = F, position = 'left')
 
@@ -272,22 +277,27 @@ ego_alt_met %<>% add_column(geography = ego_df$geography,
 # write ego_alt table by block
 ego_alt_met %>% 
             group_by(block) %>% 
-            summarize(mean_degree = mean(mean_deg, na.rm = T) %>% round(2),
+            summarize(district = district[1],
+                      geography = geography[1],
+                      mean_degree = mean(mean_deg, na.rm = T) %>% round(2),
                       mean_betweenness = mean(mean_bet, na.rm = T) %>% round(2),
                       mean_closeness = mean(mean_clo, na.rm = T) %>% round(2),
                       mean_density = mean(dens, na.rm = T) %>% round(2)) %>%
             mutate(n = ego_alt_met %>% group_by(block) %>% tally() %>% .$n) %>%
+  arrange(geography, block) %>%
   kbl(caption = 'Alter Mean Degree, Betweenness, Closeness Centrality, and Density by Block') %>%
   kable_classic_2('hover', full_width = F, position = 'left')
 
 # write ego_alt table by district
 ego_alt_met %>% 
             group_by(district) %>% 
-            summarize(mean_degree = mean(mean_deg, na.rm = T) %>% round(2),
+            summarize(geography = geography[1],
+                      mean_degree = mean(mean_deg, na.rm = T) %>% round(2),
                       mean_betweenness = mean(mean_bet, na.rm = T) %>% round(2),
                       mean_closeness = mean(mean_clo, na.rm = T) %>% round(2),
                       mean_density = mean(dens, na.rm = T) %>% round(2)) %>%
             mutate(n = ego_alt_met %>% group_by(district) %>% tally() %>% .$n) %>%
+  arrange(geography) %>%
   kbl(caption = 'Alter Mean Degree, Betweenness, Closeness Centrality, and Density by District') %>%
   kable_classic_2('hover', full_width = F, position = 'left')
 
@@ -362,20 +372,25 @@ alt_alt_met %<>% add_column(geography = alter_df$geography,
 # write alt_alt table by block
 alt_alt_met %>% 
             group_by(block) %>% 
-            summarize(degree = mean(deg, na.rm = T) %>% round(2),
+            summarize(district = district[1],
+                      geography = geography[1],
+                      degree = mean(deg, na.rm = T) %>% round(2),
                       betweenness = mean(bet, na.rm = T) %>% round(2),
                       closeness = mean(clo, na.rm = T) %>% round(2)) %>%
             mutate(n = alt_alt_met %>% group_by(block) %>% tally() %>% .$n) %>%
+  arrange(geography, district, block) %>%
   kbl(caption = 'Alter Mean Degree, Betweenness and Closeness Centrality by Block') %>%
   kable_classic_2('hover', full_width = F, position = 'left')
 
 # write alt_alt table by district
 alt_alt_met %>% 
             group_by(district) %>% 
-            summarize(degree = mean(deg, na.rm = T) %>% round(2),
+            summarize(geography = geography[1],
+                      degree = mean(deg, na.rm = T) %>% round(2),
                       betweenness = mean(bet, na.rm = T) %>% round(2),
                       closeness = mean(clo, na.rm = T) %>% round(2)) %>%
             mutate(n = alt_alt_met %>% group_by(district) %>% tally() %>% .$n) %>%
+  arrange(geography, district) %>%
   kbl(caption = 'Alter Mean Degree, Betweenness and Closeness Centrality by District') %>%
   kable_classic_2('hover', full_width = F, position = 'left')
 
@@ -443,22 +458,27 @@ alt_aalt_met %<>% add_column(geography = alter_df$geography,
 # write alt_aalt table by block
 alt_aalt_met %>% 
             group_by(block) %>% 
-            summarize(mean_degree = mean(mean_deg, na.rm = T) %>% round(2),
+            summarize(district = district[1],
+                      geography = geography[1],
+                      mean_degree = mean(mean_deg, na.rm = T) %>% round(2),
                       mean_betweenness = mean(mean_bet, na.rm = T) %>% round(2),
                       mean_closeness = mean(mean_clo, na.rm = T) %>% round(2),
                       mean_density = mean(dens, na.rm = T) %>% round(2)) %>%
             mutate(n = alt_aalt_met %>% group_by(block) %>% tally() %>% .$n) %>%
+  arrange(geography, district, block) %>%
   kbl(caption = 'AAlter Mean Degree, Betweenness, Closeness Centrality, and Density by Block') %>%
   kable_classic_2('hover', full_width = F, position = 'left')
 
 # write alt_aalt table by district
 alt_aalt_met %>% 
             group_by(district) %>% 
-            summarize(mean_degree = mean(mean_deg, na.rm = T) %>% round(2),
+            summarize(geography = geography[1],
+                      mean_degree = mean(mean_deg, na.rm = T) %>% round(2),
                       mean_betweenness = mean(mean_bet, na.rm = T) %>% round(2),
                       mean_closeness = mean(mean_clo, na.rm = T) %>% round(2),
                       mean_density = mean(dens, na.rm = T) %>% round(2)) %>%
             mutate(n = alt_aalt_met %>% group_by(district) %>% tally() %>% .$n) %>%
+  arrange(geography, district) %>%
   kbl(caption = 'AAlter Mean Degree, Betweenness, Closeness Centrality, and Density by District') %>%
   kable_classic_2('hover', full_width = F, position = 'left')
 
