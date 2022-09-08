@@ -13,6 +13,35 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+
+#####################################
+###SET FILE LOCATIONS TO RUN CODE####
+#####################################
+
+# ego igraph file
+ego_igraph_f <- "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_igraph.rda"
+
+# combined igraph file
+combined_igraph_f <- "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/combined_igraph.rda"
+
+# alter igraph file
+alter_igraph_f <- "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/alter_igraph.rda"
+
+# ego data file
+ego_data_f <- "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_clean_complete_11012022.xlsx"
+
+# alter data file
+alter_data_f <- "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/alter_clean_complete_11012022.xlsx"
+
+# ego pc data file
+ego_pc_f <- "data/ego_pc_complete_12012022.xlsx"
+
+# duplicate id file
+dup_id_f <- 'data/duplicate_ids_02022022.xlsx'
+
+```
+
 # 1. Centrality and Density Measures
 ## A) Ego Metrics
 
@@ -33,7 +62,7 @@ library(kableExtra)
 #######################################
 
 # load ego igraph objects
-load("/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_igraph.rda")
+load(ego_igraph_f)
 
 # measures based on ego
 ego_ego_met <- gr_list_ego %>%
@@ -322,7 +351,7 @@ ego_alt_met %>%
 ########################################
 
 # load alter igraph objects
-load("/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/alter_igraph.rda")
+load(alter_igraph_f)
 
 # create table of unique blocks showing district as well
 # write.csv(alter_df %>% select(district_name, block_name) %>% distinct(block_name, .keep_all = T), 
@@ -1039,9 +1068,6 @@ ggraph(gr_list_ego[[80]], 'dh') +
 
 # ggsave(filename = 'results/figures/ego_net_81.png')
 
-# clear workspace
-rm(list=ls())
-
 ```
 
 ```{r, echo = F, warning = F, message = F, results = 'asis'}
@@ -1067,15 +1093,15 @@ library(readstata13)
 #########################################
 
 # load ego and alter cleaned data
-ego <- read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_clean_complete_11012022.xlsx")
+ego <- read_excel(path = ego_data_f)
 
-alter <-read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/alter_clean_complete_11012022.xlsx")
+alter <-read_excel(path = alter_data_f)
 
 # load pc data
-ego_pc <- read_excel(path = "data/ego_pc_complete_12012022.xlsx")
+ego_pc <- read_excel(path = ego_pc_f)
 
 # load list of duplicate ids
-dup_id <- read_excel(path = 'data/duplicate_ids_02022022.xlsx')
+dup_id <- read_excel(path = dup_id_f)
 
 # remove first row with 'qe' names
 ego <- ego[-1,]
@@ -4314,9 +4340,6 @@ hetero_alt %>%
 
 ```{r, echo = F, warning = F, message = F, results = 'asis'}
 
-# clear workspace
-rm(list=ls())
-
 # this code loads csv data of ego and alter interviews
 # and calculates tie intensity and strength
 
@@ -4334,14 +4357,15 @@ library(readstata13)
 #########################################
 
 # load ego and alter cleaned data
-ego <- read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_clean_complete_11012022.xlsx")
-alter <-read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/alter_clean_complete_11012022.xlsx")
+ego <- read_excel(path = ego_data_f)
+
+alter <-read_excel(path = alter_data_f)
 
 # load pc data
-ego_pc <- read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_pc_complete_12012022.xlsx")
+ego_pc <- read_excel(path = ego_pc_f)
 
 # load list of duplicate ids
-dup_id <- read_excel(path = '/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/duplicate_ids_02022022.xlsx')
+dup_id <- read_excel(path = dup_id_f)
 
 # remove first row with 'qe' names
 ego <- ego[-1,]
@@ -4975,7 +4999,7 @@ library(graphlayouts)
 library(snahelper)
 
 # load network
-load("data/combined_igraph.rda")
+load(combined_igraph_f)
 
 # create vector of unique blocks
 blocks <- unique(V(gr_comb)$block)
