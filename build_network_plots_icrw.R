@@ -30,12 +30,14 @@ colnames(dist_blo) <- c('Block', 'District')
 shape_group <- scale_shape_manual(name = 'Group', values = c('Ego' = 22,
                                                             'Alter' = 21,
                                                             'AAlter' = 24,
-                                                            'Key Villager' = 23))
+                                                            'Key Villager' = 23),
+                                  limits = force)
 
 size_group <- scale_size_manual(name = 'Group', values = c('Ego' = 8,
                                                             'Alter' = 6,
                                                             'AAlter' = 4,
-                                                           'Key Villager' = 4))
+                                                           'Key Villager' = 4),
+                                limits = force)
 
 # set colors for relationships
 colscale_rela <- scale_fill_manual(name = 'Relationship', values = c('Ego' = '#4477AA',
@@ -45,7 +47,8 @@ colscale_rela <- scale_fill_manual(name = 'Relationship', values = c('Ego' = '#4
                                                                      'Other Health Worker' = '#AA3377',
                                                                      'Non-Family' = '#CCBB44',
                                                                      'Other Non-Family' = '#000000',
-                                                                     'Key Villager' = '#BBBBBB'))
+                                                                     'Key Villager' = '#BBBBBB'),
+                                   limits = force)
 
 # colscale_rela <- scale_fill_manual(name = 'Relationship', values = c('E' = '#44BB99',
 #                                                                      'H' = '#77AADD',
@@ -84,7 +87,7 @@ gr <- induced_subgraph(gr,
 
 # plot using ggraph
 ggraph(gr, layout = "stress") + 
-  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3'))),
+  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3', '4'))),
                   edge_colour = "grey66", edge_width = 0.5) + 
   geom_node_point(aes(fill = rela_vals %>% as.factor, 
                       stroke = intv_stroke,
@@ -94,8 +97,8 @@ ggraph(gr, layout = "stress") +
                   label.padding = unit(0.05, "lines")) + 
   theme_graph() + 
   scale_edge_linetype_manual(name = 'Tie Strength', 
-                             values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotted'),
-                             labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager')) +
+                             values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotdash', '4' = 'dotted'),
+                             labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager', '4' = 'Same Person')) +
   theme(text = element_text(size=20)) +
   ggtitle(str_c('Network of 113041KAB|113040SAV within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
   shape_group + colscale_rela + size_group +
@@ -164,19 +167,19 @@ for(i in seq_along(id_ego)){
                          impl = 'create_from_scratch')
 
 # plot using ggraph
-ggraph(gr, layout = "stress") + 
-  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3'))),
-                  edge_colour = "grey66", edge_width = 0.5) + 
-  geom_node_point(aes(fill = rela_vals %>% as.factor, 
-                      stroke = intv_stroke,
-                      shape = group %>% as.factor,
-                      size = group %>% as.factor)) +
-  geom_node_label(aes(label = rela), nudge_y = -0.15, size = 4, label.size = 0,
-                  label.padding = unit(0.05, "lines")) + 
-  theme_graph() + 
-  scale_edge_linetype_manual(name = 'Tie Strength', 
-                             values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotted'),
-                             labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager')) +
+  ggraph(gr, layout = "stress") + 
+    geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3', '4'))),
+                    edge_colour = "grey66", edge_width = 0.5) + 
+    geom_node_point(aes(fill = factor(rela_vals), 
+                        stroke = intv_stroke,
+                        shape = factor(group),
+                        size = factor(group))) +
+    geom_node_label(aes(label = rela), nudge_y = -0.15, size = 4, label.size = 0,
+                    label.padding = unit(0.05, "lines")) + 
+    theme_graph() + 
+    scale_edge_linetype_manual(name = 'Tie Strength', 
+                               values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotdash', '4' = 'dotted'),
+                               labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager', '4' = 'Same Person')) +
   theme(text = element_text(size=20)) +
   ggtitle(str_c('Network of ', eid ,' within Block of ', block[which(id == id_ego[i])], ', District of ', district[which(id == id_ego[i])])) +
   shape_group + colscale_rela + size_group +

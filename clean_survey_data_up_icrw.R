@@ -484,12 +484,6 @@ for(i in 1:NROW(ego)){
 alter_attr %<>% mutate(across(c(sex, age, talk_freq, preg, using_fp, know_asha,
                                 know_anm, know_aww, know_doc, know_pha, know_shg, know_rel), as.numeric))
 
-# change duplicate ids so we know same person
-# for(i in 1:NROW(dup_id)){
-#   alter_attr[alter_attr == dup_id$duplicate_id[i]] <- dup_id$id[i]
-#   alter_ties[alter_ties == dup_id$duplicate_id[i]] <- dup_id$id[i]
-# }
-
 # check freq table of alter tie weights
 alter_ties %>% tabyl(weight) 
 
@@ -825,10 +819,11 @@ edge$weight[str_length(edge$V1) == 10 & str_length(edge$V2) == 10] <- 1
 #aalter to aalter weight 1
 edge$weight[str_length(edge$V1) == 11 & str_length(edge$V2) == 11] <- 1
 
-# change duplicate ids so we know same person
-for(i in 1:NROW(dup_id)){
-  edge[edge == dup_id$duplicate_id[i]] <- dup_id$id[i]
-}
+# add duplicate ids as edges
+edge %<>% rbind(edge,
+                tibble(V1 = dup_id$id,
+                       V2 = dup_id$duplicate_id,
+                       weight = 4))
 
 # create igraph object using edgelist
 gr_comb <- graph_from_edgelist(edge[,1:2] %>% as.matrix, directed = F)
@@ -1287,6 +1282,10 @@ for(i in 1:NROW(edge)){
   }
 }
 
+# remove additional edge attributes for duplicate id rows
+edge$talk_freq[(length(edge$talk_freq) - NROW(dup_id) + 1):length(edge$talk_freq)] <- NA
+edge$discuss_fp[(length(edge$discuss_fp) - NROW(dup_id) + 1):length(edge$discuss_fp)] <- NA
+
 # reset values
 edge %<>% mutate(talk_freq = recode(talk_freq,
                                     `1` = 'Daily',
@@ -1649,12 +1648,6 @@ gr_kv %<>% set_edge_attr(name = 'weight', value = e_attr_kv$weight_1)
 # delete erroneous edge attributes
 gr_kv %<>% delete_edge_attr(name = 'weight_1')
 gr_kv %<>% delete_edge_attr(name = 'weight_2')
-
-# # check if all duplicates are from the same block
-# # can only check if don't remove the duplicates above
-# for(i in 1:NROW(dup_id)){
-#   print(v_attr$block[v_attr$id == dup_id$id[i]] == v_attr$block[v_attr$id == dup_id$duplicate_id[i]])
-# }
 
 # Save data to file
 save(gr_comb, v_attr, edge, file = "data/combined_igraph_up.rda")
