@@ -1021,7 +1021,7 @@ ggplot(deg_alt_edu, aes(x = deg %>% as.factor,
 
 ```
 
-``````{r, echo = F, warning = F, message = F, results = 'asis', fig.width = 13,fig.height = 8}
+```{r, echo = F, warning = F, message = F, results = 'asis', fig.width = 13,fig.height = 8}
 ##################################
 ### PLOTS OF NETWORK STRUCTURE ###
 ##################################
@@ -2155,7 +2155,7 @@ if('valid_percent' %in% colnames(sex)){
 n <- sex$n[is.na(sex$percent) == F] %>% sum
 
 # calculate heterogeneity
-sex <- blau(sex$percent)
+sex <- blau(na.omit(sex$percent))
 
 # create tibble
 dat = tibble(blau = sex[1],
@@ -2547,7 +2547,7 @@ if('valid_percent' %in% colnames(a)){
 }
 
 n <- a$n[is.na(a$percent) == F] %>% sum
-a <- blau(a$percent)
+a <- blau(na.omit(a$percent))
 dat <- tibble(blau = a[1],
               iqv = a[2],
               k = a[3])
@@ -2566,7 +2566,7 @@ if('valid_percent' %in% colnames(b)){
 }
 
 n <- b$n[is.na(b$percent) == F] %>% sum
-b <- blau(b$percent)
+b <- blau(na.omit(b$percent))
 dat <- tibble(blau = b[1],
               iqv = b[2],
               k = b[3])
@@ -2585,7 +2585,7 @@ if('valid_percent' %in% colnames(c)){
 }
 
 n <- c$n[is.na(c$percent) == F] %>% sum
-c <- blau(c$percent)
+c <- blau(na.omit(c$percent))
 dat <- tibble(blau = c[1],
               iqv = c[2],
               k = c[3])
@@ -2604,7 +2604,7 @@ if('valid_percent' %in% colnames(d)){
 }
 
 n <- d$n[is.na(d$percent) == F] %>% sum
-d <- blau(d$percent)
+d <- blau(na.omit(d$percent))
 dat <- tibble(blau = d[1],
               iqv = d[2],
               k = d[3])
@@ -2623,7 +2623,7 @@ if('valid_percent' %in% colnames(e)){
 }
 
 n <- e$n[is.na(e$percent) == F] %>% sum
-e <- blau(e$percent)
+e <- blau(na.omit(e$percent))
 dat <- tibble(blau = e[1],
               iqv = e[2],
               k = e[3])
@@ -2642,7 +2642,7 @@ if('valid_percent' %in% colnames(f)){
 }
 
 n <- f$n[is.na(f$percent) == F] %>% sum
-f <- blau(f$percent)
+f <- blau(na.omit(f$percent))
 dat <- tibble(blau = f[1],
               iqv = f[2],
               k = f[3])
@@ -2661,7 +2661,7 @@ if('valid_percent' %in% colnames(g)){
 }
 
 n <- g$n[is.na(g$percent) == F] %>% sum
-g <- blau(g$percent)
+g <- blau(na.omit(g$percent))
 dat <- tibble(blau = g[1],
               iqv = g[2],
               k = g[3])
@@ -4981,171 +4981,4 @@ num_sub_block %>%
   kbl(caption = "Multiplexity (Number of Different Things Discussed) By Block") %>%
   kable_classic_2('hover', full_width = F, position = 'left')
 
-```
-
-# 5. Selected Network Plots
-
-```{r, echo = F, warning = F, message = F, results = 'asis', fig.width = 13,fig.height = 8}
-# this code loads an overview network linking all egos, alters, and aalters
-# in order to generate full network plots showcasing different attributes
-
-# load packages
-library(tidyverse)
-library(igraph)
-library(ggraph)
-library(janitor)
-library(magrittr)
-library(graphlayouts)
-library(snahelper)
-
-# load network
-load(combined_igraph_f)
-
-# create vector of unique blocks
-blocks <- unique(V(gr_comb)$block)
-
-# create df of blocks and districts together
-dist_blo <- cbind(V(gr_comb)$block %>% as.data.frame,
-                  V(gr_comb)$district %>% as.data.frame)
-colnames(dist_blo) <- c('Block', 'District')
-
-# set colors for group
-colscale_group <- scale_fill_manual(name = "Group", values = c('Ego' = '#228833', 
-                                                               'Alter' = '#EE6677',
-                                                               'AAlter' = '#CCBB44'))
-
-# set shapes for relationships
-shape_rela <- scale_shape_manual(name = 'Relationship', values = c('Ego' = 22,
-                                                                   'Family' = 21,
-                                                                   'Health Worker' = 24,
-                                                                   'Non-Family' = 23))
-
-
-##########################
-### CREATE MANUAL PLOT ###
-##########################
-
-### 113041KAB|113040SAV
-
-# looking in block 9 since there is an example of 1 alter to 2 egos
-i <- 9
-
-# subset graph based on block
-gr <- induced_subgraph(gr_comb, 
-                       vids = which(V(gr_comb)$block == blocks[i]), 
-                       impl = 'create_from_scratch')
-
-# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
-gr <- induced_subgraph(gr, 
-                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "113041KAB|113040SAV")), 
-                       impl = 'create_from_scratch')
-
-# plot using ggraph
-ggraph(gr, layout = "stress") + 
-  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
-                  edge_colour = "grey66", edge_width = 0.5) + 
-  geom_node_point(aes(fill = group %>% as.factor, 
-                      stroke = intv_stroke,
-                      shape = rela_vals %>% as.factor), size = 6) +
-  theme_graph() + 
-  scale_edge_linetype_manual(name = 'Tie Strength', 
-                             values = c('1' = 'dashed', '2' = 'solid'),
-                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
-  theme(text = element_text(size=20)) +
-  ggtitle(str_c('Network of 113041KAB|113040SAV within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
-  colscale_group + shape_rela +
-  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
-
-### 119060CHA|119058DRO|119061NAN
-### Block "Ghanshyampur"
-
-i <- which(blocks == "Ghanshyampur")
-
-# subset graph based on block
-gr <- induced_subgraph(gr_comb, 
-                       vids = which(V(gr_comb)$block == blocks[i]), 
-                       impl = 'create_from_scratch')
-
-# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
-gr <- induced_subgraph(gr, 
-                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "119060CHA|119058DRO|119061NAN")), 
-                       impl = 'create_from_scratch')
-
-# plot using ggraph
-ggraph(gr, layout = "stress") + 
-  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
-                  edge_colour = "grey66", edge_width = 0.5) + 
-  geom_node_point(aes(fill = group %>% as.factor, 
-                      stroke = intv_stroke,
-                      shape = rela_vals %>% as.factor), size = 6) +
-  theme_graph() + 
-  scale_edge_linetype_manual(name = 'Tie Strength', 
-                             values = c('1' = 'dashed', '2' = 'solid'),
-                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
-  theme(text = element_text(size=20)) +
-  ggtitle(str_c('Network of 119060CHA|119058DRO|119061NAN within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
-  colscale_group + shape_rela +
-  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
-
-### 233112MEE|233113LAL
-### Block "Bagaha"
-
-i <- which(blocks == "Bagaha")
-
-# subset graph based on block
-gr <- induced_subgraph(gr_comb, 
-                       vids = which(V(gr_comb)$block == blocks[i]), 
-                       impl = 'create_from_scratch')
-
-# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
-gr <- induced_subgraph(gr, 
-                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "233112MEE|233113LAL")), 
-                       impl = 'create_from_scratch')
-
-# plot using ggraph
-ggraph(gr, layout = "stress") + 
-  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
-                  edge_colour = "grey66", edge_width = 0.5) + 
-  geom_node_point(aes(fill = group %>% as.factor, 
-                      stroke = intv_stroke,
-                      shape = rela_vals %>% as.factor), size = 6) +
-  theme_graph() + 
-  scale_edge_linetype_manual(name = 'Tie Strength', 
-                             values = c('1' = 'dashed', '2' = 'solid'),
-                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
-  theme(text = element_text(size=20)) +
-  ggtitle(str_c('Network of 233112MEE|233113LAL within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
-  colscale_group + shape_rela +
-  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
-
-### 230102BAB|230100SOB|230101BIN|235239NEH
-### Block "Narkatiaganj"
-
-i <- which(blocks == "Narkatiaganj")
-
-# subset graph based on block
-gr <- induced_subgraph(gr_comb, 
-                       vids = which(V(gr_comb)$block == blocks[i]), 
-                       impl = 'create_from_scratch')
-
-# subset based on nodes that contain one of the ids 113041KAB or 113040SAV
-gr <- induced_subgraph(gr, 
-                       vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "230102BAB|230100SOB|230101BIN|235239NEH")), 
-                       impl = 'create_from_scratch')
-
-# plot using ggraph
-ggraph(gr, layout = "stress") + 
-  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1'))),
-                  edge_colour = "grey66", edge_width = 0.5) + 
-  geom_node_point(aes(fill = group %>% as.factor, 
-                      stroke = intv_stroke,
-                      shape = rela_vals %>% as.factor), size = 6) +
-  theme_graph() + 
-  scale_edge_linetype_manual(name = 'Tie Strength', 
-                             values = c('1' = 'dashed', '2' = 'solid'),
-                             labels = c('1' = 'Indirect', '2' = 'Direct')) +
-  theme(text = element_text(size=20)) +
-  ggtitle(str_c('Network of 230102BAB|230100SOB|230101BIN|235239NEH within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
-  colscale_group + shape_rela +
-  guides(shape = guide_legend(order = 2), fill = guide_legend(order = 1, override.aes = list(shape = 25)))
 ```

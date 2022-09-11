@@ -2154,7 +2154,7 @@ if('valid_percent' %in% colnames(sex)){
 n <- sex$n[is.na(sex$percent) == F] %>% sum
 
 # calculate heterogeneity
-sex <- blau(sex$percent)
+sex <- blau(na.omit(sex$percent))
 
 # create tibble
 dat = tibble(blau = sex[1],
@@ -2545,7 +2545,7 @@ if('valid_percent' %in% colnames(a)){
 }
 
 n <- a$n[is.na(a$percent) == F] %>% sum
-a <- blau(a$percent)
+a <- blau(na.omit(a$percent))
 dat <- tibble(blau = a[1],
               iqv = a[2],
               k = a[3])
@@ -2564,7 +2564,7 @@ if('valid_percent' %in% colnames(b)){
 }
 
 n <- b$n[is.na(b$percent) == F] %>% sum
-b <- blau(b$percent)
+b <- blau(na.omit(b$percent))
 dat <- tibble(blau = b[1],
               iqv = b[2],
               k = b[3])
@@ -2583,7 +2583,7 @@ if('valid_percent' %in% colnames(c)){
 }
 
 n <- c$n[is.na(c$percent) == F] %>% sum
-c <- blau(c$percent)
+c <- blau(na.omit(c$percent))
 dat <- tibble(blau = c[1],
               iqv = c[2],
               k = c[3])
@@ -2602,7 +2602,7 @@ if('valid_percent' %in% colnames(d)){
 }
 
 n <- d$n[is.na(d$percent) == F] %>% sum
-d <- blau(d$percent)
+d <- blau(na.omit(d$percent))
 dat <- tibble(blau = d[1],
               iqv = d[2],
               k = d[3])
@@ -2621,7 +2621,7 @@ if('valid_percent' %in% colnames(e)){
 }
 
 n <- e$n[is.na(e$percent) == F] %>% sum
-e <- blau(e$percent)
+e <- blau(na.omit(e$percent))
 dat <- tibble(blau = e[1],
               iqv = e[2],
               k = e[3])
@@ -2640,7 +2640,7 @@ if('valid_percent' %in% colnames(f)){
 }
 
 n <- f$n[is.na(f$percent) == F] %>% sum
-f <- blau(f$percent)
+f <- blau(na.omit(f$percent))
 dat <- tibble(blau = f[1],
               iqv = f[2],
               k = f[3])
@@ -2659,7 +2659,7 @@ if('valid_percent' %in% colnames(g)){
 }
 
 n <- g$n[is.na(g$percent) == F] %>% sum
-g <- blau(g$percent)
+g <- blau(na.omit(g$percent))
 dat <- tibble(blau = g[1],
               iqv = g[2],
               k = g[3])
@@ -4993,8 +4993,3 @@ num_sub_block %>%
 
 ```
 
-# 5. Selected Network Plots
-
-```{r, echo = F, warning = F, message = F, results = 'asis', fig.width = 13,fig.height = 8}
-
-```
