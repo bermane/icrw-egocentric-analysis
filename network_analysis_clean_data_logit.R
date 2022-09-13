@@ -1674,6 +1674,27 @@ hetero %<>% full_join(tib %>% select(-k),
 dat_bihar %<>% full_join(homo, by = 'ego_id') %>%
   full_join(hetero, by = 'ego_id')
 
+########################################
+### CALCULATE BASIC NETWORK MEASURES ###
+########################################
+
+# load ego igraph
+load("/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_igraph.rda")
+
+# measures based on ego
+ego_net <- gr_list_ego %>%
+  map_dfr(~ tibble(ego_deg_cen = degree(.x, v = 'ego')),
+          .id = 'ego_id')
+
+# add mean values based on alters
+ego_net %<>% full_join(gr_list %>%
+  map_dfr(~ tibble(alt_mean_deg_cen = mean(degree(.x)),
+                   density = edge_density(.x)),
+          .id = 'ego_id'))
+
+# add network measture to dat
+dat_bihar %<>% full_join(ego_net, by = 'ego_id')
+
 # clean environment
 rm(list=setdiff(ls(), "dat_bihar"))
 
@@ -3345,5 +3366,46 @@ hetero %<>% full_join(tib %>% select(-k),
 dat_up %<>% full_join(homo, by = 'ego_id') %>%
   full_join(hetero, by = 'ego_id')
 
+########################################
+### CALCULATE BASIC NETWORK MEASURES ###
+########################################
+
+# load ego igraph
+load("/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_igraph_up.rda")
+
+# measures based on ego
+ego_net <- gr_list_ego %>%
+  map_dfr(~ tibble(ego_deg_cen = degree(.x, v = 'ego')),
+          .id = 'ego_id')
+
+# add mean values based on alters
+ego_net %<>% full_join(gr_list %>%
+                         map_dfr(~ tibble(alt_mean_deg_cen = mean(degree(.x)),
+                                          density = edge_density(.x)),
+                                 .id = 'ego_id'))
+
+# add network measture to dat
+dat_up %<>% full_join(ego_net, by = 'ego_id')
+
+###############################
+### MERGE BIHAR AND UP DATA ###
+###############################
+
+# merge dataframes
+dat <- rbind(dat_bihar, dat_up)
+
 # clean environment
-rm(list=setdiff(ls(), c("dat_bihar", "dat_up")))
+rm(list=setdiff(ls(), c("dat")))
+
+########################
+### CLEAN JOINT DATA ###
+########################
+
+# caste values of 4 should be 0
+dat %<>% mutate(caste = replace(caste, caste == 4, 0))
+
+# husband education 98 is missing
+dat %<>% mutate(husband_education = replace(husband_education, husband_education == 98, NA))
+
+# set state as factor
+dat %<>% mutate(state = factor(state, levels = c('bihar', 'up')))
