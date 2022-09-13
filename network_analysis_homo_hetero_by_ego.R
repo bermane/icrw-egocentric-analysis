@@ -225,9 +225,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_help_ego = ego$alter1_help,
                    alt_helped_by_ego = ego$alter1_helped,
                    alt_against_advice = ego$alter1_follow_advice,
-                   alt_support_no_child = ego$alter1_nochild,
-                   ego_age = ego_pc$pcq102,
-                   alt_age = ego$alter1_age),
+                   alt_support_no_child = ego$alter1_nochild),
             tibble(ego_id = ego$woman_id,
                    alter_name = ego$alter2,
                    ego_sex = 2,
@@ -272,9 +270,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_help_ego = ego$alter2_help,
                    alt_helped_by_ego = ego$alter2_helped,
                    alt_against_advice = ego$alter2_follow_advice,
-                   alt_support_no_child = ego$alter2_nochild,
-                   ego_age = ego_pc$pcq102,
-                   alt_age = ego$alter2_age),
+                   alt_support_no_child = ego$alter2_nochild),
             tibble(ego_id = ego$woman_id,
                    alter_name = ego$alter3,
                    ego_sex = 2,
@@ -319,9 +315,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_help_ego = ego$alter3_help,
                    alt_helped_by_ego = ego$alter3_helped,
                    alt_against_advice = ego$alter3_follow_advice,
-                   alt_support_no_child = ego$alter3_nochild,
-                   ego_age = ego_pc$pcq102,
-                   alt_age = ego$alter3_age),
+                   alt_support_no_child = ego$alter3_nochild),
             tibble(ego_id = ego$woman_id,
                    alter_name = ego$alter4,
                    ego_sex = 2,
@@ -366,9 +360,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_help_ego = ego$alter4_help,
                    alt_helped_by_ego = ego$alter4_helped,
                    alt_against_advice = ego$alter4_follow_advice,
-                   alt_support_no_child = ego$alter4_nochild,
-                   ego_age = ego_pc$pcq102,
-                   alt_age = ego$alter4_age),
+                   alt_support_no_child = ego$alter4_nochild),
             tibble(ego_id = ego$woman_id,
                    alter_name = ego$alter5,
                    ego_sex = 2,
@@ -413,9 +405,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_help_ego = ego$alter5_help,
                    alt_helped_by_ego = ego$alter5_helped,
                    alt_against_advice = ego$alter5_follow_advice,
-                   alt_support_no_child = ego$alter5_nochild,
-                   ego_age = ego_pc$pcq102,
-                   alt_age = ego$alter5_age))
+                   alt_support_no_child = ego$alter5_nochild))
 
 # drop rows for missing alters
 ea %<>% filter(is.na(alter_name) == F)
@@ -440,6 +430,32 @@ homo <- ea %>%
   select(ego_id, homo_gender) %>% # only keep homophily
   distinct %>% # remove duplicates
   arrange(ego_id) # arrange by ego id
+
+#############
+### CASTE ###
+#############
+
+# check unique values
+# unique(ea$ego_caste)
+# unique(ea$alt_caste)
+
+# set to numeric
+ea$alt_caste <- as.numeric(ea$alt_caste)
+
+# set don't know to NA
+ea$alt_caste[ea$alt_caste == 9] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_caste == alt_caste, na.rm = T), 
+                     n = NROW(ego_caste[is.na(ego_caste) == F & is.na(alt_caste) == F]), 
+                     homo_caste = sum/n) %>% # calculate homophily
+              select(ego_id, homo_caste) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+  , by = 'ego_id')
 
 #################
 ### EDUCATION ###
@@ -514,28 +530,6 @@ homo <- homo %>%
               arrange(ego_id) # arrange by ego id
             , by = 'ego_id')
 
-###########
-### AGE ###
-###########
-
-# check unique values
-# unique(ea$ego_age)
-# unique(ea$alt_age)
-
-# convert to numeric
-ea$ego_age <- as.numeric(ea$ego_age)
-ea$alt_age <- as.numeric(ea$alt_age)
-
-# summarise and update homophily output
-homo <- homo %>% 
-  full_join(ea %>% 
-              group_by(ego_id) %>% # group by ego id
-              mutate(homo_age = homo_sd(ego_age, alt_age)[1]) %>% # calculate homophily
-              select(ego_id, homo_age) %>% # only keep homophily
-              distinct %>% # remove duplicates
-              arrange(ego_id) # arrange by ego id
-            , by = 'ego_id')
-
 #####################
 ### PRACTICING FP ###
 #####################
@@ -567,6 +561,325 @@ homo <- homo %>%
                      n = NROW(ego_using_fp[is.na(ego_using_fp) == F & is.na(alt_using_fp) == F]), 
                      homo_using_fp = sum/n) %>% # calculate homophily
               select(ego_id, homo_using_fp) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+###############################
+### PEOPLE KNOWN IN VILLAGE ###
+###############################
+
+# check some values
+# unique(ea$ego_know_asha)
+# unique(ea$alt_know_asha)
+
+# for ego, 1 is Yes, 2 is heard, 9 is don't know/haven't heard
+# for alter 1 is Yes, 2 is No, 9 is not sure
+# we should change ego values of 9 to 2 to match alter
+# remove alter rows with 9
+
+# do individuals first
+# asha
+# recode values
+ea$ego_know_asha[ea$ego_know_asha == '9'] <- '2'
+ea$alt_know_asha[ea$alt_know_asha == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_asha == alt_know_asha, na.rm = T), 
+                     n = NROW(ego_know_asha[is.na(ego_know_asha) == F & is.na(alt_know_asha) == F]), 
+                     homo_know_asha = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_asha) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# anm
+# recode values
+ea$ego_know_anm[ea$ego_know_anm == '9'] <- '2'
+ea$alt_know_anm[ea$alt_know_anm == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_anm == alt_know_anm, na.rm = T), 
+                     n = NROW(ego_know_anm[is.na(ego_know_anm) == F & is.na(alt_know_anm) == F]), 
+                     homo_know_anm = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_anm) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# aww
+# recode values
+ea$ego_know_aww[ea$ego_know_aww == '9'] <- '2'
+ea$alt_know_aww[ea$alt_know_aww == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_aww == alt_know_aww, na.rm = T), 
+                     n = NROW(ego_know_aww[is.na(ego_know_aww) == F & is.na(alt_know_aww) == F]), 
+                     homo_know_aww = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_aww) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# shg
+# recode values
+ea$ego_know_shg[ea$ego_know_shg == '9'] <- '2'
+ea$alt_know_shg[ea$alt_know_shg == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_shg == alt_know_shg, na.rm = T), 
+                     n = NROW(ego_know_shg[is.na(ego_know_shg) == F & is.na(alt_know_shg) == F]), 
+                     homo_know_shg = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_shg) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# pradhan
+# recode values
+ea$ego_know_pra[ea$ego_know_pra == '9'] <- '2'
+ea$alt_know_pra[ea$alt_know_pra == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_pra == alt_know_pra, na.rm = T), 
+                     n = NROW(ego_know_pra[is.na(ego_know_pra) == F & is.na(alt_know_pra) == F]), 
+                     homo_know_pra = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_pra) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# pharmacist
+# recode values
+ea$ego_know_pha[ea$ego_know_pha == '9'] <- '2'
+ea$alt_know_pha[ea$alt_know_pha == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_pha == alt_know_pha, na.rm = T), 
+                     n = NROW(ego_know_pha[is.na(ego_know_pha) == F & is.na(alt_know_pha) == F]), 
+                     homo_know_pha = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_pha) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# doctor
+# recode values
+ea$ego_know_doc[ea$ego_know_doc == '9'] <- '2'
+ea$alt_know_doc[ea$alt_know_doc == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_doc == alt_know_doc, na.rm = T), 
+                     n = NROW(ego_know_doc[is.na(ego_know_doc) == F & is.na(alt_know_doc) == F]), 
+                     homo_know_doc = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_doc) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# religious leader
+# recode values
+ea$ego_know_rel[ea$ego_know_rel == '9'] <- '2'
+ea$alt_know_rel[ea$alt_know_rel == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_rel == alt_know_rel, na.rm = T), 
+                     n = NROW(ego_know_rel[is.na(ego_know_rel) == F & is.na(alt_know_rel) == F]), 
+                     homo_know_rel = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_rel) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+
+### NEED TO RECODE BY CATEGORY ### !!!!
+
+# # now by category
+# # first all values to numeric
+# ea %<>% mutate(across(c(ego_know_asha,
+#                         ego_know_anm,
+#                         ego_know_aww,
+#                         ego_know_shg,
+#                         ego_know_pra,
+#                         ego_know_pha,
+#                         ego_know_doc,
+#                         ego_know_rel,
+#                         alt_know_asha,
+#                         alt_know_anm,
+#                         alt_know_aww,
+#                         alt_know_shg,
+#                         alt_know_pra,
+#                         alt_know_pha,
+#                         alt_know_doc,
+#                         alt_know_rel), as.numeric))
+# 
+# # exchange 2s for 0s
+# ea %<>% mutate(across(c(ego_know_asha,
+#                         ego_know_anm,
+#                         ego_know_aww,
+#                         ego_know_shg,
+#                         ego_know_pra,
+#                         ego_know_pha,
+#                         ego_know_doc,
+#                         ego_know_rel,
+#                         alt_know_asha,
+#                         alt_know_anm,
+#                         alt_know_aww,
+#                         alt_know_shg,
+#                         alt_know_pra,
+#                         alt_know_pha,
+#                         alt_know_doc,
+#                         alt_know_rel),
+#                       ~ ifelse(. == 2, 0, .)))
+# 
+# # calculate health worker category
+# ego_hw <- ea %>% 
+#   select(ego_know_asha,
+#          ego_know_anm,
+#          ego_know_aww,
+#          ego_know_pha,
+#          ego_know_doc) %>%
+#   rowSums(na.rm = T)
+# 
+# ego_hw <- ego_hw > 0
+# 
+# alt_hw <- ea %>% 
+#   select(alt_know_asha,
+#          alt_know_anm,
+#          alt_know_aww,
+#          alt_know_pha,
+#          alt_know_doc) %>%
+#   rowSums(na.rm = T)
+# 
+# alt_hw <- alt_hw > 0
+# 
+# # calculate homophily
+# hw <- ego_hw == alt_hw
+# dat <- tabyl(hw) %>%
+#   adorn_pct_formatting(digits = 2)
+# 
+# # calculate village leader category
+# ego_vl <- ea %>% 
+#   select(ego_know_pra,
+#          ego_know_rel) %>%
+#   rowSums(na.rm = T)
+# 
+# ego_vl <- ego_vl > 0
+# 
+# alt_vl <- ea %>% 
+#   select(alt_know_pra,
+#          alt_know_rel) %>%
+#   rowSums(na.rm = T)
+# 
+# alt_vl <- alt_vl > 0
+# 
+# # calculate homophily
+# vl <- ego_vl == alt_vl
+# dat <- tabyl(vl) %>%
+#   adorn_pct_formatting(digits = 2)
+# 
+# # if valid percent remove percent and change name of valid percent
+# if('valid_percent' %in% colnames(dat)){
+#   dat %<>% select(-percent) %>% rename(percent = valid_percent)
+# }
+# 
+# # add to homophily output
+# homo %<>% add_row(metric = 'Know Village Leader Category (%)',
+#                   value = dat %>% filter(vl == 'TRUE') %>% select(percent) %>% as.character,
+#                   N = str_c(dat %>% filter(vl == 'TRUE') %>% select(n),
+#                             '/',
+#                             dat %>% filter(vl == 'TRUE') %>% select(n) +
+#                               dat %>% filter(vl == 'FALSE') %>% select(n)))
+# 
+# # now total number of people
+# ego_ppl <- ea %>%
+#   select(ego_know_asha,
+#          ego_know_anm,
+#          ego_know_aww,
+#          ego_know_shg,
+#          ego_know_pra,
+#          ego_know_pha,
+#          ego_know_doc,
+#          ego_know_rel) %>%
+#   rowSums(na.rm = T)
+# 
+# alt_ppl <- ea %>%
+#   select(alt_know_asha,
+#          alt_know_anm,
+#          alt_know_aww,
+#          alt_know_shg,
+#          alt_know_pra,
+#          alt_know_pha,
+#          alt_know_doc,
+#          alt_know_rel) %>%
+#   rowSums(na.rm = T)
+# 
+# # calculate sd homophily
+# ppl_sd <- homo_sd(ego_ppl, alt_ppl)
+# dat <- tibble(aed = ppl_sd[1],
+#               n = ppl_sd[2])
+# 
+# # add to homophily output
+# homo %<>% add_row(metric = 'Total Number of Important People Known (AED)',
+#                   value = dat %>% select(aed) %>% as.character,
+#                   N = dat %>% select(n) %>% as.character)
+
+##########################
+### NUMBER OF CHILDREN ###
+##########################
+
+# check unique values
+# unique(ea$ego_sons)
+# unique(ea$alt_sons)
+# unique(ea$ego_daughters)
+# unique(ea$alt_daughters)
+
+# change husband values to same as ego
+ea$alt_sons[ea$alt_relationship == "Husband पति"] <- ea$ego_sons[ea$alt_relationship == "Husband पति"]
+ea$alt_daughters[ea$alt_relationship == "Husband पति"] <- ea$ego_daughters[ea$alt_relationship == "Husband पति"]
+
+# convert to numeric
+ea$ego_sons <- as.numeric(ea$ego_sons)
+ea$alt_sons <- as.numeric(ea$alt_sons)
+ea$ego_daughters <- as.numeric(ea$ego_daughters)
+ea$alt_daughters <- as.numeric(ea$alt_daughters)
+
+# set don't know to NA
+ea$alt_sons[ea$alt_sons == 99] <- NA
+ea$alt_daughters[ea$alt_daughters == 99] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(homo_num_sons = homo_sd(ego_sons, alt_sons)[1],
+                     homo_num_daughters = homo_sd(ego_daughters, alt_daughters)[1],
+                     homo_num_children = homo_sd(ego_sons + ego_daughters, alt_sons + alt_daughters)[1]) %>% # calculate homophily
+              select(ego_id, homo_num_sons, homo_num_daughters, homo_num_children) %>% # only keep homophily
               distinct %>% # remove duplicates
               arrange(ego_id) # arrange by ego id
             , by = 'ego_id')
@@ -1604,9 +1917,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_help_ego = ego$alter1_help,
                    alt_helped_by_ego = ego$alter1_helped,
                    alt_against_advice = ego$alter1_follow_advice,
-                   alt_support_no_child = ego$alter1_nochild,
-                   ego_age = ego_pc$pcq102,
-                   alt_age = ego$alter1_age),
+                   alt_support_no_child = ego$alter1_nochild),
             tibble(ego_id = ego$woman_id,
                    alter_name = ego$alter2,
                    ego_sex = 2,
@@ -1651,9 +1962,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_help_ego = ego$alter2_help,
                    alt_helped_by_ego = ego$alter2_helped,
                    alt_against_advice = ego$alter2_follow_advice,
-                   alt_support_no_child = ego$alter2_nochild,
-                   ego_age = ego_pc$pcq102,
-                   alt_age = ego$alter2_age),
+                   alt_support_no_child = ego$alter2_nochild),
             tibble(ego_id = ego$woman_id,
                    alter_name = ego$alter3,
                    ego_sex = 2,
@@ -1698,9 +2007,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_help_ego = ego$alter3_help,
                    alt_helped_by_ego = ego$alter3_helped,
                    alt_against_advice = ego$alter3_follow_advice,
-                   alt_support_no_child = ego$alter3_nochild,
-                   ego_age = ego_pc$pcq102,
-                   alt_age = ego$alter3_age),
+                   alt_support_no_child = ego$alter3_nochild),
             tibble(ego_id = ego$woman_id,
                    alter_name = ego$alter4,
                    ego_sex = 2,
@@ -1745,9 +2052,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_help_ego = ego$alter4_help,
                    alt_helped_by_ego = ego$alter4_helped,
                    alt_against_advice = ego$alter4_follow_advice,
-                   alt_support_no_child = ego$alter4_nochild,
-                   ego_age = ego_pc$pcq102,
-                   alt_age = ego$alter4_age),
+                   alt_support_no_child = ego$alter4_nochild),
             tibble(ego_id = ego$woman_id,
                    alter_name = ego$alter5,
                    ego_sex = 2,
@@ -1792,9 +2097,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_help_ego = ego$alter5_help,
                    alt_helped_by_ego = ego$alter5_helped,
                    alt_against_advice = ego$alter5_follow_advice,
-                   alt_support_no_child = ego$alter5_nochild,
-                   ego_age = ego_pc$pcq102,
-                   alt_age = ego$alter5_age))
+                   alt_support_no_child = ego$alter5_nochild))
 
 # drop rows for missing alters
 ea %<>% filter(is.na(alter_name) == F)
@@ -1819,6 +2122,32 @@ homo <- ea %>%
   select(ego_id, homo_gender) %>% # only keep homophily
   distinct %>% # remove duplicates
   arrange(ego_id) # arrange by ego id
+
+#############
+### CASTE ###
+#############
+
+# check unique values
+# unique(ea$ego_caste)
+# unique(ea$alt_caste)
+
+# set to numeric
+ea$alt_caste <- as.numeric(ea$alt_caste)
+
+# set don't know to NA
+ea$alt_caste[ea$alt_caste == 9] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_caste == alt_caste, na.rm = T), 
+                     n = NROW(ego_caste[is.na(ego_caste) == F & is.na(alt_caste) == F]), 
+                     homo_caste = sum/n) %>% # calculate homophily
+              select(ego_id, homo_caste) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
 
 #################
 ### EDUCATION ###
@@ -1893,28 +2222,6 @@ homo <- homo %>%
               arrange(ego_id) # arrange by ego id
             , by = 'ego_id')
 
-###########
-### AGE ###
-###########
-
-# check unique values
-# unique(ea$ego_age)
-# unique(ea$alt_age)
-
-# convert to numeric
-ea$ego_age <- as.numeric(ea$ego_age)
-ea$alt_age <- as.numeric(ea$alt_age)
-
-# summarise and update homophily output
-homo <- homo %>% 
-  full_join(ea %>% 
-              group_by(ego_id) %>% # group by ego id
-              mutate(homo_age = homo_sd(ego_age, alt_age)[1]) %>% # calculate homophily
-              select(ego_id, homo_age) %>% # only keep homophily
-              distinct %>% # remove duplicates
-              arrange(ego_id) # arrange by ego id
-            , by = 'ego_id')
-
 #####################
 ### PRACTICING FP ###
 #####################
@@ -1946,6 +2253,325 @@ homo <- homo %>%
                      n = NROW(ego_using_fp[is.na(ego_using_fp) == F & is.na(alt_using_fp) == F]), 
                      homo_using_fp = sum/n) %>% # calculate homophily
               select(ego_id, homo_using_fp) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+###############################
+### PEOPLE KNOWN IN VILLAGE ###
+###############################
+
+# check some values
+# unique(ea$ego_know_asha)
+# unique(ea$alt_know_asha)
+
+# for ego, 1 is Yes, 2 is heard, 9 is don't know/haven't heard
+# for alter 1 is Yes, 2 is No, 9 is not sure
+# we should change ego values of 9 to 2 to match alter
+# remove alter rows with 9
+
+# do individuals first
+# asha
+# recode values
+ea$ego_know_asha[ea$ego_know_asha == '9'] <- '2'
+ea$alt_know_asha[ea$alt_know_asha == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_asha == alt_know_asha, na.rm = T), 
+                     n = NROW(ego_know_asha[is.na(ego_know_asha) == F & is.na(alt_know_asha) == F]), 
+                     homo_know_asha = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_asha) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# anm
+# recode values
+ea$ego_know_anm[ea$ego_know_anm == '9'] <- '2'
+ea$alt_know_anm[ea$alt_know_anm == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_anm == alt_know_anm, na.rm = T), 
+                     n = NROW(ego_know_anm[is.na(ego_know_anm) == F & is.na(alt_know_anm) == F]), 
+                     homo_know_anm = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_anm) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# aww
+# recode values
+ea$ego_know_aww[ea$ego_know_aww == '9'] <- '2'
+ea$alt_know_aww[ea$alt_know_aww == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_aww == alt_know_aww, na.rm = T), 
+                     n = NROW(ego_know_aww[is.na(ego_know_aww) == F & is.na(alt_know_aww) == F]), 
+                     homo_know_aww = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_aww) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# shg
+# recode values
+ea$ego_know_shg[ea$ego_know_shg == '9'] <- '2'
+ea$alt_know_shg[ea$alt_know_shg == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_shg == alt_know_shg, na.rm = T), 
+                     n = NROW(ego_know_shg[is.na(ego_know_shg) == F & is.na(alt_know_shg) == F]), 
+                     homo_know_shg = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_shg) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# pradhan
+# recode values
+ea$ego_know_pra[ea$ego_know_pra == '9'] <- '2'
+ea$alt_know_pra[ea$alt_know_pra == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_pra == alt_know_pra, na.rm = T), 
+                     n = NROW(ego_know_pra[is.na(ego_know_pra) == F & is.na(alt_know_pra) == F]), 
+                     homo_know_pra = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_pra) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# pharmacist
+# recode values
+ea$ego_know_pha[ea$ego_know_pha == '9'] <- '2'
+ea$alt_know_pha[ea$alt_know_pha == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_pha == alt_know_pha, na.rm = T), 
+                     n = NROW(ego_know_pha[is.na(ego_know_pha) == F & is.na(alt_know_pha) == F]), 
+                     homo_know_pha = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_pha) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# doctor
+# recode values
+ea$ego_know_doc[ea$ego_know_doc == '9'] <- '2'
+ea$alt_know_doc[ea$alt_know_doc == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_doc == alt_know_doc, na.rm = T), 
+                     n = NROW(ego_know_doc[is.na(ego_know_doc) == F & is.na(alt_know_doc) == F]), 
+                     homo_know_doc = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_doc) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+# religious leader
+# recode values
+ea$ego_know_rel[ea$ego_know_rel == '9'] <- '2'
+ea$alt_know_rel[ea$alt_know_rel == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_rel == alt_know_rel, na.rm = T), 
+                     n = NROW(ego_know_rel[is.na(ego_know_rel) == F & is.na(alt_know_rel) == F]), 
+                     homo_know_rel = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_rel) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
+
+### NEED TO RECODE BY CATEGORY ### !!!!
+
+# # now by category
+# # first all values to numeric
+# ea %<>% mutate(across(c(ego_know_asha,
+#                         ego_know_anm,
+#                         ego_know_aww,
+#                         ego_know_shg,
+#                         ego_know_pra,
+#                         ego_know_pha,
+#                         ego_know_doc,
+#                         ego_know_rel,
+#                         alt_know_asha,
+#                         alt_know_anm,
+#                         alt_know_aww,
+#                         alt_know_shg,
+#                         alt_know_pra,
+#                         alt_know_pha,
+#                         alt_know_doc,
+#                         alt_know_rel), as.numeric))
+# 
+# # exchange 2s for 0s
+# ea %<>% mutate(across(c(ego_know_asha,
+#                         ego_know_anm,
+#                         ego_know_aww,
+#                         ego_know_shg,
+#                         ego_know_pra,
+#                         ego_know_pha,
+#                         ego_know_doc,
+#                         ego_know_rel,
+#                         alt_know_asha,
+#                         alt_know_anm,
+#                         alt_know_aww,
+#                         alt_know_shg,
+#                         alt_know_pra,
+#                         alt_know_pha,
+#                         alt_know_doc,
+#                         alt_know_rel),
+#                       ~ ifelse(. == 2, 0, .)))
+# 
+# # calculate health worker category
+# ego_hw <- ea %>% 
+#   select(ego_know_asha,
+#          ego_know_anm,
+#          ego_know_aww,
+#          ego_know_pha,
+#          ego_know_doc) %>%
+#   rowSums(na.rm = T)
+# 
+# ego_hw <- ego_hw > 0
+# 
+# alt_hw <- ea %>% 
+#   select(alt_know_asha,
+#          alt_know_anm,
+#          alt_know_aww,
+#          alt_know_pha,
+#          alt_know_doc) %>%
+#   rowSums(na.rm = T)
+# 
+# alt_hw <- alt_hw > 0
+# 
+# # calculate homophily
+# hw <- ego_hw == alt_hw
+# dat <- tabyl(hw) %>%
+#   adorn_pct_formatting(digits = 2)
+# 
+# # calculate village leader category
+# ego_vl <- ea %>% 
+#   select(ego_know_pra,
+#          ego_know_rel) %>%
+#   rowSums(na.rm = T)
+# 
+# ego_vl <- ego_vl > 0
+# 
+# alt_vl <- ea %>% 
+#   select(alt_know_pra,
+#          alt_know_rel) %>%
+#   rowSums(na.rm = T)
+# 
+# alt_vl <- alt_vl > 0
+# 
+# # calculate homophily
+# vl <- ego_vl == alt_vl
+# dat <- tabyl(vl) %>%
+#   adorn_pct_formatting(digits = 2)
+# 
+# # if valid percent remove percent and change name of valid percent
+# if('valid_percent' %in% colnames(dat)){
+#   dat %<>% select(-percent) %>% rename(percent = valid_percent)
+# }
+# 
+# # add to homophily output
+# homo %<>% add_row(metric = 'Know Village Leader Category (%)',
+#                   value = dat %>% filter(vl == 'TRUE') %>% select(percent) %>% as.character,
+#                   N = str_c(dat %>% filter(vl == 'TRUE') %>% select(n),
+#                             '/',
+#                             dat %>% filter(vl == 'TRUE') %>% select(n) +
+#                               dat %>% filter(vl == 'FALSE') %>% select(n)))
+# 
+# # now total number of people
+# ego_ppl <- ea %>%
+#   select(ego_know_asha,
+#          ego_know_anm,
+#          ego_know_aww,
+#          ego_know_shg,
+#          ego_know_pra,
+#          ego_know_pha,
+#          ego_know_doc,
+#          ego_know_rel) %>%
+#   rowSums(na.rm = T)
+# 
+# alt_ppl <- ea %>%
+#   select(alt_know_asha,
+#          alt_know_anm,
+#          alt_know_aww,
+#          alt_know_shg,
+#          alt_know_pra,
+#          alt_know_pha,
+#          alt_know_doc,
+#          alt_know_rel) %>%
+#   rowSums(na.rm = T)
+# 
+# # calculate sd homophily
+# ppl_sd <- homo_sd(ego_ppl, alt_ppl)
+# dat <- tibble(aed = ppl_sd[1],
+#               n = ppl_sd[2])
+# 
+# # add to homophily output
+# homo %<>% add_row(metric = 'Total Number of Important People Known (AED)',
+#                   value = dat %>% select(aed) %>% as.character,
+#                   N = dat %>% select(n) %>% as.character)
+
+##########################
+### NUMBER OF CHILDREN ###
+##########################
+
+# check unique values
+# unique(ea$ego_sons)
+# unique(ea$alt_sons)
+# unique(ea$ego_daughters)
+# unique(ea$alt_daughters)
+
+# change husband values to same as ego
+ea$alt_sons[ea$alt_relationship == "Husband पति"] <- ea$ego_sons[ea$alt_relationship == "Husband पति"]
+ea$alt_daughters[ea$alt_relationship == "Husband पति"] <- ea$ego_daughters[ea$alt_relationship == "Husband पति"]
+
+# convert to numeric
+ea$ego_sons <- as.numeric(ea$ego_sons)
+ea$alt_sons <- as.numeric(ea$alt_sons)
+ea$ego_daughters <- as.numeric(ea$ego_daughters)
+ea$alt_daughters <- as.numeric(ea$alt_daughters)
+
+# set don't know to NA
+ea$alt_sons[ea$alt_sons == 99] <- NA
+ea$alt_daughters[ea$alt_daughters == 99] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(homo_num_sons = homo_sd(ego_sons, alt_sons)[1],
+                     homo_num_daughters = homo_sd(ego_daughters, alt_daughters)[1],
+                     homo_num_children = homo_sd(ego_sons + ego_daughters, alt_sons + alt_daughters)[1]) %>% # calculate homophily
+              select(ego_id, homo_num_sons, homo_num_daughters, homo_num_children) %>% # only keep homophily
               distinct %>% # remove duplicates
               arrange(ego_id) # arrange by ego id
             , by = 'ego_id')
