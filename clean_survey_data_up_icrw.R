@@ -34,7 +34,7 @@ alter <-read_excel(path = "data/SNA study_ALTER_clean_Uttar Pradesh_08112022.xls
 ego_pc <- read_excel(path = 'data/ego_pc_complete_up_08112022.xlsx')
 
 # load list of duplicate ids
-dup_id <- read_excel(path = 'data/duplicate_ids_up_07112022.xlsx')
+dup_id <- read_excel(path = 'data/duplicate_ids_up_09142022.xlsx')
 
 # clean column names only keep part after last "."
 ego_names <- sapply(colnames(ego), FUN = function(x){

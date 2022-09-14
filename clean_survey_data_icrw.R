@@ -29,7 +29,7 @@ alter <-read_excel(path = "data/alter_clean_complete_11012022.xlsx")
 ego_pc <- read_excel(path = 'data/ego_pc_complete_12012022.xlsx')
 
 # load list of duplicate ids
-dup_id <- read_excel(path = 'data/duplicate_ids_02022022.xlsx')
+dup_id <- read_excel(path = 'data/duplicate_ids_bihar_09142022.xlsx')
 
 # remove first row with 'qe' names
 ego <- ego[-1,]
