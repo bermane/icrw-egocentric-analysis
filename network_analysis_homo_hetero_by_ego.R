@@ -11,6 +11,42 @@ library(igraph)
 library(readstata13)
 library(writexl)
 
+#####################################
+###SET FILE LOCATIONS TO RUN CODE####
+#####################################
+
+##################
+### BIHAR DATA ###
+##################
+
+# ego igraph file
+ego_igraph_bihar <- "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_igraph.rda"
+
+# ego data file
+ego_data_bihar <- "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_clean_complete_11012022.xlsx"
+
+# alter data file
+alter_data_bihar <- "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/alter_clean_complete_11012022.xlsx"
+
+# ego pc data file
+ego_pc_bihar <- "data/ego_pc_complete_12012022.xlsx"
+
+################
+### UP FILES ###
+################
+
+# ego igraph file
+ego_igraph_up <- "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_igraph_up.rda"
+
+# ego data file
+ego_data_up <- "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/SNA study_EGO_clean_Uttar Pradesh_08112022.xlsx"
+
+# alter data file
+alter_data_up <- "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/SNA study_ALTER_clean_Uttar Pradesh_08112022.xlsx"
+
+# ego pc data file
+ego_pc_up <- "data/ego_pc_complete_up_08112022.xlsx"
+
 #######################
 ### LOAD BIHAR DATA ###
 #######################
@@ -20,8 +56,8 @@ library(writexl)
 #########################################
 
 # load ego and alter cleaned and completre data
-ego <- read_excel(path = "data/ego_clean_complete_11012022.xlsx")
-alter <-read_excel(path = "data/alter_clean_complete_11012022.xlsx")
+ego <- read_excel(path = ego_data_bihar)
+alter <-read_excel(path = alter_data_bihar)
 
 # # load dta stata file to get PC data for egos
 # ego_pc <- read.dta13(file = 'data/ego_clean_12012022de.dta', convert.factors = F)
@@ -30,10 +66,7 @@ alter <-read_excel(path = "data/alter_clean_complete_11012022.xlsx")
 # write_xlsx(ego_pc, "data/ego_pc_complete_12012022.xlsx")
 
 # load pc data for egos
-ego_pc <- read_excel(path = 'data/ego_pc_complete_12012022.xlsx')
-
-# load list of duplicate ids
-dup_id <- read_excel(path = 'data/duplicate_ids_02022022.xlsx')
+ego_pc <- read_excel(path = ego_pc_bihar)
 
 # remove first row with 'qe' names
 ego <- ego[-1,]
@@ -1679,11 +1712,13 @@ dat_bihar %<>% full_join(homo, by = 'ego_id') %>%
 ########################################
 
 # load ego igraph
-load("/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_igraph.rda")
+load(ego_igraph_bihar)
 
 # measures based on ego
 ego_net <- gr_list_ego %>%
-  map_dfr(~ tibble(ego_deg_cen = degree(.x, v = 'ego')),
+  map_dfr(~ tibble(ego_deg_cen = degree(.x, v = 'ego'),
+                   ego_bet_cen = betweenness(.x, v = 'ego', weights = NA),
+                   ego_clo_cen = closeness(.x, v = 'ego', weights = NA)),
           .id = 'ego_id')
 
 # add mean values based on alters
@@ -1695,9 +1730,6 @@ ego_net %<>% full_join(gr_list %>%
 # add network measture to dat
 dat_bihar %<>% full_join(ego_net, by = 'ego_id')
 
-# clean environment
-rm(list=setdiff(ls(), "dat_bihar"))
-
 ####################
 ### LOAD UP DATA ###
 ####################
@@ -1707,20 +1739,17 @@ rm(list=setdiff(ls(), "dat_bihar"))
 #########################################
 
 # load ego and alter cleaned and completre data
-ego <- read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/SNA study_EGO_clean_Uttar Pradesh_08112022.xlsx")
-alter <-read_excel(path = "/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/SNA study_ALTER_clean_Uttar Pradesh_08112022.xlsx")
+ego <- read_excel(path = ego_data_up)
+alter <-read_excel(path = alter_data_up)
 
 # # load dta stata file to get PC data for egos
-# ego_pc <- read.dta13(file = 'data/PC_EGO_data_Merge_Uttar Pradesh.dta', convert.factors = F)
+# ego_pc <- read.dta13(file = 'data/ego_clean_12012022de.dta', convert.factors = F)
 # 
 # # write to file as xlsx
-# write_xlsx(ego_pc, "data/ego_pc_complete_up_07122022.xlsx")
+# write_xlsx(ego_pc, "data/ego_pc_complete_12012022.xlsx")
 
 # load pc data for egos
-ego_pc <- read_excel(path = "data/ego_pc_complete_up_08112022.xlsx")
-
-# load list of duplicate ids
-dup_id <- read_excel(path = 'data/duplicate_ids_up_07112022.xlsx')
+ego_pc <- read_excel(path = ego_pc_up)
 
 # clean column names only keep part after last "."
 ego_names <- sapply(colnames(ego), FUN = function(x){
@@ -3371,11 +3400,13 @@ dat_up %<>% full_join(homo, by = 'ego_id') %>%
 ########################################
 
 # load ego igraph
-load("/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/ego_igraph_up.rda")
+load(ego_igraph_up)
 
 # measures based on ego
 ego_net <- gr_list_ego %>%
-  map_dfr(~ tibble(ego_deg_cen = degree(.x, v = 'ego')),
+  map_dfr(~ tibble(ego_deg_cen = degree(.x, v = 'ego'),
+                   ego_bet_cen = betweenness(.x, v = 'ego', weights = NA),
+                   ego_clo_cen = closeness(.x, v = 'ego', weights = NA)),
           .id = 'ego_id')
 
 # add mean values based on alters
@@ -3394,18 +3425,11 @@ dat_up %<>% full_join(ego_net, by = 'ego_id')
 # merge dataframes
 dat <- rbind(dat_bihar, dat_up)
 
+dat[is.na(dat)] <- NA
+
 # clean environment
 rm(list=setdiff(ls(), c("dat")))
 
-########################
-### CLEAN JOINT DATA ###
-########################
+# save to file
+# write.csv(dat, file = '/Users/bermane/Team Braintree Dropbox/Ethan Berman/Mac (2)/Desktop/ego_homo_hetero/ego_homo_hetero.csv', row.names = F)
 
-# caste values of 4 should be 0
-dat %<>% mutate(caste = replace(caste, caste == 4, 0))
-
-# husband education 98 is missing
-dat %<>% mutate(husband_education = replace(husband_education, husband_education == 98, NA))
-
-# set state as factor
-dat %<>% mutate(state = factor(state, levels = c('bihar', 'up')))
