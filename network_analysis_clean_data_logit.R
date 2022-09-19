@@ -153,6 +153,36 @@ alter_know[alter_know == 0] <- NA
 alter %<>% add_column(alter_know)
 rm(alter_know)
 
+##################################################
+### CREATE PC VARIABLE IF EGO HAS EVER USED FP ###
+##################################################
+
+# create single col if ego has EVER used FP from list of questions pcq303a-l
+# create df of all rows of interest
+ego_ever_used_fp <- ego_pc %>% select(pcq303a, pcq303b, pcq303c, pcq303d, pcq303e,
+                                      pcq303f, pcq303g, pcq303h, pcq303i)
+
+# sum if all columns are NA
+ego_ever_used_fp_na <- rowSums(is.na(ego_ever_used_fp), na.rm = T)
+
+# create na mask
+ego_ever_used_fp_na[ego_ever_used_fp_na < NCOL(ego_ever_used_fp)] <- 0
+ego_ever_used_fp_na[ego_ever_used_fp_na == NCOL(ego_ever_used_fp)] <- 1
+
+# sum if ever used
+ego_ever_used_fp <- rowSums(ego_ever_used_fp == 1, na.rm = T)
+
+# set all ever used to 1 and never used to 2
+ego_ever_used_fp[ego_ever_used_fp > 0] <- 1
+ego_ever_used_fp[ego_ever_used_fp == 0] <- 2
+
+# set to NA if all answers are NA
+ego_ever_used_fp[ego_ever_used_fp_na == 1] <- NA
+
+# put back into ego_pc
+ego_pc$ego_ever_used_fp <- ego_ever_used_fp
+rm(ego_ever_used_fp_na, ego_ever_used_fp)
+
 ###########################################
 ### CREATE INITIAL DATA TABLE OF VALUES ###
 ###########################################
@@ -167,15 +197,36 @@ sum(ego_pc$qe6 == ego$woman_id)
 dat_bihar <- tibble(
   ego_id = ego$woman_id,
   state = 'bihar',
-  mcontra_neigh_num = ego$contra_neighbour_num,
+  parity = ego_pc$pcq209,
+  sons = ego_pc$pcq205s,
+  daughters = ego_pc$pcq205d,
+  neighbors_using_modern_fp = ego$contra_neighbour_num,
   preg = ego_pc$pcq230,
   using_fp = ego_pc$pcq311,
   fp_method = ego_pc$pcq312,
   age = ego_pc$pcq102,
   education = ego_pc$pcq103,
   caste = ego_pc$pcq111,
-  husband_education = ego_pc$pcq115
+  husband_education = ego_pc$pcq115,
+  want_more_children = ego_pc$pcq404
 )
+
+# fix some values
+# if missing sons, daughters, parity means 0
+# if missing preg, means no (2)
+# husband education 98 is NA
+dat_bihar %<>% mutate(sons = replace(sons, is.na(sons), 0)) %>%
+  mutate(daughters = replace(daughters, is.na(daughters), 0)) %>%
+  mutate(parity = replace(parity, is.na(parity), 0)) %>%
+  mutate(preg = replace(preg, is.na(preg), 2)) %>%
+  mutate(husband_education = replace(husband_education, husband_education == 98, NA)) %>%
+  mutate(children = sons + daughters)
+
+# if preg fill want more children from other question
+dat_bihar$want_more_children[dat_bihar$preg %in% 1] <- ego_pc$pcq403[dat_bihar$preg %in% 1]
+
+# calc diff ego and husband education
+dat_bihar$ego_husband_edu_diff <- dat_bihar$education - dat_bihar$husband_education
 
 ##################################
 ### CALCULATE HOMOPHILY OF EGO ###
@@ -212,7 +263,7 @@ ea <- rbind(
     alt_friends = ego$alter1_friends,
     ego_neigh = ego$neighbours,
     alt_neigh = ego$alter1_neighbours,
-    ego_using_fp = ego_pc$pcq311,
+    ego_using_fp = ego_pc$pcq312,
     alt_using_fp = ego$alter1_using_fp,
     ego_know_asha = ego$know_asha,
     ego_know_anm = ego$know_anm,
@@ -244,7 +295,20 @@ ea <- rbind(
     alt_against_advice = ego$alter1_follow_advice,
     alt_support_no_child = ego$alter1_nochild,
     ego_age = ego_pc$pcq102,
-    alt_age = ego$alter1_age
+    alt_age = ego$alter1_age,
+    alt_yrs_known = ego$alter1_yrs_known,
+    alt_freq_talk_fp = ego$alter1_freq_talk_fp,
+    alt_talk_subjects = ego$alter1_subjects,
+    ego_age_married = ego_pc$pcq201b,
+    alt_talked_number_children = ego$alter1_howmany_child,
+    alt_say_bad_things_fp = ego$alter1_approve_fp,
+    alt_talked_fp_methods = ego$alter1_preg,
+    alt_info_get_fp = ego$alter1_get_fp,
+    alt_info_sideeff_fp = ego$alter1_sideeff_fp,
+    alt_used_fp = ego$alter1_used_fp,
+    neighbors_using_fp = ego$contra_neighbour_num,
+    ego_used_fp = ego_pc$ego_ever_used_fp,
+    alt_borrow_rupees = ego$alter1_borrow
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -261,7 +325,7 @@ ea <- rbind(
     alt_friends = ego$alter2_friends,
     ego_neigh = ego$neighbours,
     alt_neigh = ego$alter2_neighbours,
-    ego_using_fp = ego_pc$pcq311,
+    ego_using_fp = ego_pc$pcq312,
     alt_using_fp = ego$alter2_using_fp,
     ego_know_asha = ego$know_asha,
     ego_know_anm = ego$know_anm,
@@ -293,7 +357,20 @@ ea <- rbind(
     alt_against_advice = ego$alter2_follow_advice,
     alt_support_no_child = ego$alter2_nochild,
     ego_age = ego_pc$pcq102,
-    alt_age = ego$alter2_age
+    alt_age = ego$alter2_age,
+    alt_yrs_known = ego$alter2_yrs_known,
+    alt_freq_talk_fp = ego$alter2_freq_talk_fp,
+    alt_talk_subjects = ego$alter2_subjects,
+    ego_age_married = ego_pc$pcq201b,
+    alt_talked_number_children = ego$alter2_howmany_child,
+    alt_say_bad_things_fp = ego$alter2_approve_fp,
+    alt_talked_fp_methods = ego$alter2_preg,
+    alt_info_get_fp = ego$alter2_get_fp,
+    alt_info_sideeff_fp = ego$alter2_sideeff_fp,
+    alt_used_fp = ego$alter2_used_fp,
+    neighbors_using_fp = ego$contra_neighbour_num,
+    ego_used_fp = ego_pc$ego_ever_used_fp,
+    alt_borrow_rupees = ego$alter2_borrow
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -310,7 +387,7 @@ ea <- rbind(
     alt_friends = ego$alter3_friends,
     ego_neigh = ego$neighbours,
     alt_neigh = ego$alter3_neighbours,
-    ego_using_fp = ego_pc$pcq311,
+    ego_using_fp = ego_pc$pcq312,
     alt_using_fp = ego$alter3_using_fp,
     ego_know_asha = ego$know_asha,
     ego_know_anm = ego$know_anm,
@@ -342,7 +419,20 @@ ea <- rbind(
     alt_against_advice = ego$alter3_follow_advice,
     alt_support_no_child = ego$alter3_nochild,
     ego_age = ego_pc$pcq102,
-    alt_age = ego$alter3_age
+    alt_age = ego$alter3_age,
+    alt_yrs_known = ego$alter3_yrs_known,
+    alt_freq_talk_fp = ego$alter3_freq_talk_fp,
+    alt_talk_subjects = ego$alter3_subjects,
+    ego_age_married = ego_pc$pcq201b,
+    alt_talked_number_children = ego$alter3_howmany_child,
+    alt_say_bad_things_fp = ego$alter3_approve_fp,
+    alt_talked_fp_methods = ego$alter3_preg,
+    alt_info_get_fp = ego$alter3_get_fp,
+    alt_info_sideeff_fp = ego$alter3_sideeff_fp,
+    alt_used_fp = ego$alter3_used_fp,
+    neighbors_using_fp = ego$contra_neighbour_num,
+    ego_used_fp = ego_pc$ego_ever_used_fp,
+    alt_borrow_rupees = ego$alter3_borrow
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -359,7 +449,7 @@ ea <- rbind(
     alt_friends = ego$alter4_friends,
     ego_neigh = ego$neighbours,
     alt_neigh = ego$alter4_neighbours,
-    ego_using_fp = ego_pc$pcq311,
+    ego_using_fp = ego_pc$pcq312,
     alt_using_fp = ego$alter4_using_fp,
     ego_know_asha = ego$know_asha,
     ego_know_anm = ego$know_anm,
@@ -391,7 +481,20 @@ ea <- rbind(
     alt_against_advice = ego$alter4_follow_advice,
     alt_support_no_child = ego$alter4_nochild,
     ego_age = ego_pc$pcq102,
-    alt_age = ego$alter4_age
+    alt_age = ego$alter4_age,
+    alt_yrs_known = ego$alter4_yrs_known,
+    alt_freq_talk_fp = ego$alter4_freq_talk_fp,
+    alt_talk_subjects = ego$alter4_subjects,
+    ego_age_married = ego_pc$pcq201b,
+    alt_talked_number_children = ego$alter4_howmany_child,
+    alt_say_bad_things_fp = ego$alter4_approve_fp,
+    alt_talked_fp_methods = ego$alter4_preg,
+    alt_info_get_fp = ego$alter4_get_fp,
+    alt_info_sideeff_fp = ego$alter4_sideeff_fp,
+    alt_used_fp = ego$alter4_used_fp,
+    neighbors_using_fp = ego$contra_neighbour_num,
+    ego_used_fp = ego_pc$ego_ever_used_fp,
+    alt_borrow_rupees = ego$alter4_borrow
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -408,7 +511,7 @@ ea <- rbind(
     alt_friends = ego$alter5_friends,
     ego_neigh = ego$neighbours,
     alt_neigh = ego$alter5_neighbours,
-    ego_using_fp = ego_pc$pcq311,
+    ego_using_fp = ego_pc$pcq312,
     alt_using_fp = ego$alter5_using_fp,
     ego_know_asha = ego$know_asha,
     ego_know_anm = ego$know_anm,
@@ -440,7 +543,20 @@ ea <- rbind(
     alt_against_advice = ego$alter5_follow_advice,
     alt_support_no_child = ego$alter5_nochild,
     ego_age = ego_pc$pcq102,
-    alt_age = ego$alter5_age
+    alt_age = ego$alter5_age,
+    alt_yrs_known = ego$alter5_yrs_known,
+    alt_freq_talk_fp = ego$alter5_freq_talk_fp,
+    alt_talk_subjects = ego$alter5_subjects,
+    ego_age_married = ego_pc$pcq201b,
+    alt_talked_number_children = ego$alter5_howmany_child,
+    alt_say_bad_things_fp = ego$alter5_approve_fp,
+    alt_talked_fp_methods = ego$alter5_preg,
+    alt_info_get_fp = ego$alter5_get_fp,
+    alt_info_sideeff_fp = ego$alter5_sideeff_fp,
+    alt_used_fp = ego$alter5_used_fp,
+    neighbors_using_fp = ego$contra_neighbour_num,
+    ego_used_fp = ego_pc$ego_ever_used_fp,
+    alt_borrow_rupees = ego$alter5_borrow
   )
 )
 
@@ -582,7 +698,9 @@ homo <- homo %>%
 #####################
 
 # PC ego values
-# 1 = Yes, 2 = No
+# 1-10 are modern
+# 11, 12, 96 are traditional
+# 0 are missing
 
 # alt values
 # 1 = Yes, 2 = No, 9 = Don't Know
@@ -590,6 +708,10 @@ homo <- homo %>%
 # check unique values
 # unique(ea$ego_using_fp)
 # unique(ea$alt_using_fp)
+
+# set ego values to modern only is 1, 0 is not using any FP, so 2
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% 1:10, 1))
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(0, 11, 12), 2))
 
 # set values to numeric
 ea$alt_using_fp <- as.numeric(ea$alt_using_fp)
@@ -755,9 +877,546 @@ tib %<>% add_column(ego_id = unique(ea$ego_id), .before = 1)
 # create hetero output (since first var)
 hetero <- tib %>% select(-k)
 
-####################################
-### TIE STRENGTH OF EGO'S ALTERS ###
-####################################
+####################################################
+### TIE STRENGTH/SOCIAL PATHWAYS OF EGO'S ALTERS ###
+####################################################
+
+########################
+### MEAN YEARS KNOWN ###
+########################
+
+# check unique values
+# unique(ea$alt_yrs_known)
+# unique(ea$ego_age_married)
+
+# set to numeric
+ea$alt_yrs_known <- as.numeric(ea$alt_yrs_known)
+
+# reset values of 99 based on ego age and age of marriage
+ea$alt_yrs_known[ea$alt_yrs_known == 99] <- ea$ego_age[ea$alt_yrs_known == 99] - ea$ego_age_married[ea$alt_yrs_known == 99]
+
+ts <- ea %>%
+  group_by(ego_id) %>% # group by ego id
+  mutate(alt_mean_years_known = mean(alt_yrs_known), na.rm = T) %>% 
+  select(ego_id, alt_mean_years_known) %>%
+  distinct # remove duplicates
+
+##########################
+### TALK FREQ ABOUT FP ###
+##########################
+
+# check unique values
+# unique(ea$alt_freq_talk_fp)
+
+# set to numeric
+ea$alt_freq_talk_fp <- as.numeric(ea$alt_freq_talk_fp)
+
+# lets calc percent of alters talk fp at least once a week, and at least once a month
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_freq_talk_fp == 1, na.rm = T),
+        n = NROW(alt_freq_talk_fp[is.na(alt_freq_talk_fp) == F]),
+        alt_percent_talk_fp_weekly = sum / n
+      ) %>%
+      select(ego_id, alt_percent_talk_fp_weekly) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_freq_talk_fp %in% c(1, 2), na.rm = T),
+        n = NROW(alt_freq_talk_fp[is.na(alt_freq_talk_fp) == F]),
+        alt_percent_talk_fp_monthly = sum / n
+      ) %>%
+      select(ego_id, alt_percent_talk_fp_monthly) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+
+#########################
+### MEAN MULTIPLEXITY ###
+#########################
+
+# average of number of things discussed
+
+# check unique values
+unique(ea$alt_talk_subjects)
+
+# count number of subjects
+num_sub <- str_split(ea$alt_talk_subjects, ',')
+num_sub <- sapply(num_sub, function(x) length(x))
+
+# add to tibble
+ea$alt_number_talk_subjects <- num_sub
+
+# summarize and join
+
+ts <- ts %>%
+  full_join(ea %>%
+  group_by(ego_id) %>% # group by ego id
+  mutate(alt_mean_talk_subjects = mean(alt_number_talk_subjects), na.rm = T) %>% 
+  select(ego_id, alt_mean_talk_subjects) %>%
+  distinct
+  , by = 'ego_id')
+
+#########################################
+### TALKED ABOUT NUM CHILDREN TO HAVE ###
+#########################################
+
+# proportion of ego's alters
+
+# check unique values
+# unique(ea$alt_talked_number_children)
+
+# set to numeric
+ea$alt_talked_number_children <- as.numeric(ea$alt_talked_number_children)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_talked_number_children == 1, na.rm = T),
+        n = NROW(alt_talked_number_children[is.na(alt_talked_number_children) == F]),
+        alt_percent_talked_number_children = sum / n
+      ) %>%
+      select(ego_id, alt_percent_talked_number_children) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#########################
+### DISCUSS FP FREELY ###
+#########################
+
+# check unique values
+# unique(ea$alt_discuss_fp)
+
+# set to numeric
+ea$alt_discuss_fp <- as.numeric(ea$alt_discuss_fp)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_discuss_fp == 1, na.rm = T),
+        n = NROW(alt_discuss_fp[is.na(alt_discuss_fp) == F]),
+        alt_percent_discuss_fp_freely = sum / n
+      ) %>%
+      select(ego_id, alt_percent_discuss_fp_freely) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+############################
+### ENCOURAGE TO USE FP ###
+############################
+
+# check unique values
+# unique(ea$alt_encourage_fp)
+
+# set to numeric
+ea$alt_encourage_fp <- as.numeric(ea$alt_encourage_fp)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_encourage_fp == 1, na.rm = T),
+        n = NROW(alt_encourage_fp[is.na(alt_encourage_fp) == F]),
+        alt_percent_encourage_fp = sum / n
+      ) %>%
+      select(ego_id, alt_percent_encourage_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+###################################
+### SUPPORT NOT HAVING CHILDREN ###
+###################################
+
+# check unique values
+# unique(ea$alt_support_no_child)
+
+# set to numeric
+ea$alt_support_no_child <- as.numeric(ea$alt_support_no_child)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_support_no_child == 1, na.rm = T),
+        n = NROW(alt_support_no_child[is.na(alt_support_no_child) == F]),
+        alt_percent_support_no_child = sum / n
+      ) %>%
+      select(ego_id, alt_percent_support_no_child) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+###############################################
+### WOULD NOT SAY BAD THINGS ABOUT USING FP ###
+###############################################
+
+# check unique values
+# unique(ea$alt_say_bad_things_fp)
+
+# set to numeric
+ea$alt_say_bad_things_fp <- as.numeric(ea$alt_say_bad_things_fp)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_say_bad_things_fp == 2, na.rm = T),
+        n = NROW(alt_say_bad_things_fp[is.na(alt_say_bad_things_fp) == F]),
+        alt_percent_not_say_bad_things_fp = sum / n
+      ) %>%
+      select(ego_id, alt_percent_not_say_bad_things_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#############################################
+### INDEX OF 5 SOCIAL INFLUENCE VARIABLES ###
+#############################################
+
+# add index to ea
+ea$social_influence_index <- (ea$alt_talked_number_children == 1) +
+  (ea$alt_discuss_fp == 1) +
+  (ea$alt_encourage_fp == 1) +
+  (ea$alt_support_no_child == 1) +
+  (ea$alt_say_bad_things_fp == 2)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_social_influence_index = mean(social_influence_index, na.rm = T)) %>%
+      select(ego_id, alt_mean_social_influence_index) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_total_social_influence_index = sum(social_influence_index, na.rm = T)) %>%
+      select(ego_id, alt_total_social_influence_index) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+###############################
+### TALKED ABOUT FP METHODS ###
+###############################
+
+# check unique values
+# unique(ea$alt_talked_fp_methods)
+
+# set to numeric
+ea$alt_talked_fp_methods <- as.numeric(ea$alt_talked_fp_methods)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_talked_fp_methods == 1, na.rm = T),
+        n = NROW(alt_talked_fp_methods[is.na(alt_talked_fp_methods) == F]),
+        alt_percent_talked_fp_methods = sum / n
+      ) %>%
+      select(ego_id, alt_percent_talked_fp_methods) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#####################################
+### RECEIVED INFO WHERE TO GET FP ###
+#####################################
+
+# check unique values
+# unique(ea$alt_info_get_fp)
+
+# set to numeric
+ea$alt_info_get_fp <- as.numeric(ea$alt_info_get_fp)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_info_get_fp == 1, na.rm = T),
+        n = NROW(alt_info_get_fp[is.na(alt_info_get_fp) == F]),
+        alt_percent_info_get_fp = sum / n
+      ) %>%
+      select(ego_id, alt_percent_info_get_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#####################################
+### RECEIVED INFO SIDE EFFECTS FP ###
+#####################################
+
+# check unique values
+# unique(ea$alt_info_sideeff_fp)
+
+# set to numeric
+ea$alt_info_sideeff_fp <- as.numeric(ea$alt_info_sideeff_fp)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_info_sideeff_fp == 1, na.rm = T),
+        n = NROW(alt_info_sideeff_fp[is.na(alt_info_sideeff_fp) == F]),
+        alt_percent_info_sideeff_fp = sum / n
+      ) %>%
+      select(ego_id, alt_percent_info_sideeff_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#######################################
+### ALTER CURRENTLY USING MODERN FP ###
+#######################################
+
+# check unique values
+# unique(ea$alt_using_fp)
+
+# set NA values back to 9
+# some of these values will be 2 (or missing since not using)
+# but it doesn't matter since we are looking at the proportion of 1 vs any other answer
+ea$alt_using_fp[is.na(ea$alt_using_fp)] <- 9
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_using_fp == 1, na.rm = T),
+        n = NROW(alt_using_fp[is.na(alt_using_fp) == F]),
+        alt_percent_using_fp = sum / n
+      ) %>%
+      select(ego_id, alt_percent_using_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#################################
+### ALTER EVER USED MODERN FP ###
+#################################
+
+# check unique values
+# unique(ea$alt_used_fp)
+
+# set to numeric
+ea$alt_used_fp <- as.numeric(ea$alt_used_fp)
+
+# if using fp is 1 set used fp to 1
+ea$alt_used_fp[ea$alt_using_fp == 1] <- 1
+
+# do not set NA values to 2 (have not ever used)
+# because we don't know if that person has ever used
+# with CURRENT we assume the skipped people are not 
+# CURRENTLY USING
+
+# if alter is husband change to same value as ego
+ea$alt_used_fp[str_detect(ea$alt_relationship, 'Husband')] <-
+  ea$ego_used_fp[str_detect(ea$alt_relationship, 'Husband')]
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_used_fp == 1, na.rm = T),
+        n = NROW(alt_used_fp[is.na(alt_used_fp) == F]),
+        alt_percent_used_fp = sum / n
+      ) %>%
+      select(ego_id, alt_percent_used_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+######################
+### ALTER HELP EGO ###
+######################
+
+# check unique values
+# unique(ea$alt_help_ego)
+
+# set to numeric
+ea$alt_help_ego <- as.numeric(ea$alt_help_ego)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_help_ego == 1, na.rm = T),
+        n = NROW(alt_help_ego[is.na(alt_help_ego) == F]),
+        alt_percent_help_ego = sum / n
+      ) %>%
+      select(ego_id, alt_percent_help_ego) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+######################
+### EGO HELP ALTER ###
+######################
+
+# check unique values
+# unique(ea$alt_helped_by_ego)
+
+# set to numeric
+ea$alt_helped_by_ego <- as.numeric(ea$alt_helped_by_ego)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_helped_by_ego == 1, na.rm = T),
+        n = NROW(alt_helped_by_ego[is.na(alt_helped_by_ego) == F]),
+        alt_percent_helped_by_ego = sum / n
+      ) %>%
+      select(ego_id, alt_percent_helped_by_ego) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#############################
+### EASY TO FOLLOW ADVICE ###
+#############################
+
+# check unique values
+# unique(ea$alt_against_advice)
+
+# set to numeric
+ea$alt_against_advice <- as.numeric(ea$alt_against_advice)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_against_advice %in% c(3, 4), na.rm = T),
+        n = NROW(alt_against_advice[is.na(alt_against_advice) == F]),
+        alt_percent_easy_follow_advice = sum / n
+      ) %>%
+      select(ego_id, alt_percent_easy_follow_advice) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#################################
+### BORROW RUPEES OR HH ITEMS ###
+#################################
+
+# check unique values
+# unique(ea$alt_borrow_rupees)
+
+# set to numeric
+ea$alt_borrow_rupees <- as.numeric(ea$alt_borrow_rupees)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_borrow_rupees == 1, na.rm = T),
+        n = NROW(alt_borrow_rupees[is.na(alt_borrow_rupees) == F]),
+        alt_percent_borrow_rps_hh = sum / n
+      ) %>%
+      select(ego_id, alt_percent_borrow_rps_hh) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+###########################################
+### INDEX OF 4 SOCIAL SUPPORT VARIABLES ###
+###########################################
+
+# add index to ea
+ea$social_support_index <- (ea$alt_help_ego == 1) +
+  (ea$alt_helped_by_ego == 1) +
+  (ea$alt_against_advice %in% c(3, 4)) +
+  (ea$alt_borrow_rupees == 1)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_social_support_index = mean(social_support_index, na.rm = T)) %>%
+      select(ego_id, alt_mean_social_support_index) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_total_social_support_index = sum(social_support_index, na.rm = T)) %>%
+      select(ego_id, alt_total_social_support_index) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
 
 ########################################
 ### CALCULATE BASIC NETWORK MEASURES ###
@@ -1031,8 +1690,11 @@ dat_bihar %<>%
 dat_bihar %<>% full_join(homo, by = 'ego_id') %>%
   full_join(hetero, by = 'ego_id')
 
-# add network measture to dat
+# add network measures to dat
 dat_bihar %<>% full_join(ego_net, by = 'ego_id')
+
+# add tie strength measures to dat
+dat_bihar %<>% full_join(ts, by = 'ego_id')
 
 # clean environment
 rm(list = setdiff(ls(), "dat_bihar"))
@@ -1190,6 +1852,36 @@ alter_know[alter_know == 0] <- NA
 alter %<>% add_column(alter_know)
 rm(alter_know)
 
+##################################################
+### CREATE PC VARIABLE IF EGO HAS EVER USED FP ###
+##################################################
+
+# create single col if ego has EVER used FP from list of questions pcq303a-l
+# create df of all rows of interest
+ego_ever_used_fp <- ego_pc %>% select(pcq303a, pcq303b, pcq303c, pcq303d, pcq303e,
+                                      pcq303f, pcq303g, pcq303h, pcq303i)
+
+# sum if all columns are NA
+ego_ever_used_fp_na <- rowSums(is.na(ego_ever_used_fp), na.rm = T)
+
+# create na mask
+ego_ever_used_fp_na[ego_ever_used_fp_na < NCOL(ego_ever_used_fp)] <- 0
+ego_ever_used_fp_na[ego_ever_used_fp_na == NCOL(ego_ever_used_fp)] <- 1
+
+# sum if ever used
+ego_ever_used_fp <- rowSums(ego_ever_used_fp == 1, na.rm = T)
+
+# set all ever used to 1 and never used to 2
+ego_ever_used_fp[ego_ever_used_fp > 0] <- 1
+ego_ever_used_fp[ego_ever_used_fp == 0] <- 2
+
+# set to NA if all answers are NA
+ego_ever_used_fp[ego_ever_used_fp_na == 1] <- NA
+
+# put back into ego_pc
+ego_pc$ego_ever_used_fp <- ego_ever_used_fp
+rm(ego_ever_used_fp_na, ego_ever_used_fp)
+
 ###########################################
 ### CREATE INITIAL DATA TABLE OF VALUES ###
 ###########################################
@@ -1204,15 +1896,36 @@ sum(ego_pc$qe6 == ego$woman_id)
 dat_up <- tibble(
   ego_id = ego$woman_id,
   state = 'up',
-  mcontra_neigh_num = ego$contra_neighbour_num,
+  parity = ego_pc$pcq209,
+  sons = ego_pc$pcq205s,
+  daughters = ego_pc$pcq205d,
+  neighbors_using_modern_fp = ego$contra_neighbour_num,
   preg = ego_pc$pcq230,
   using_fp = ego_pc$pcq311,
   fp_method = ego_pc$pcq312,
   age = ego_pc$pcq102,
   education = ego_pc$pcq103,
   caste = ego_pc$pcq111,
-  husband_education = ego_pc$pcq115
+  husband_education = ego_pc$pcq115,
+  want_more_children = ego_pc$pcq404
 )
+
+# fix some values
+# if missing sons, daughters, parity means 0
+# if missing preg, means no (2)
+# husband education 98 is NA
+dat_up %<>% mutate(sons = replace(sons, is.na(sons), 0)) %>%
+  mutate(daughters = replace(daughters, is.na(daughters), 0)) %>%
+  mutate(parity = replace(parity, is.na(parity), 0)) %>%
+  mutate(preg = replace(preg, is.na(preg), 2)) %>%
+  mutate(husband_education = replace(husband_education, husband_education == 98, NA)) %>%
+  mutate(children = sons + daughters)
+
+# if preg fill want more children from other question
+dat_up$want_more_children[dat_up$preg %in% 1] <- ego_pc$pcq403[dat_up$preg %in% 1]
+
+# calc diff ego and husband education
+dat_up$ego_husband_edu_diff <- dat_up$education - dat_up$husband_education
 
 ##################################
 ### CALCULATE HOMOPHILY OF EGO ###
@@ -1249,7 +1962,7 @@ ea <- rbind(
     alt_friends = ego$alter1_friends,
     ego_neigh = ego$neighbours,
     alt_neigh = ego$alter1_neighbours,
-    ego_using_fp = ego_pc$pcq311,
+    ego_using_fp = ego_pc$pcq312,
     alt_using_fp = ego$alter1_using_fp,
     ego_know_asha = ego$know_asha,
     ego_know_anm = ego$know_anm,
@@ -1281,7 +1994,20 @@ ea <- rbind(
     alt_against_advice = ego$alter1_follow_advice,
     alt_support_no_child = ego$alter1_nochild,
     ego_age = ego_pc$pcq102,
-    alt_age = ego$alter1_age
+    alt_age = ego$alter1_age,
+    alt_yrs_known = ego$alter1_yrs_known,
+    alt_freq_talk_fp = ego$alter1_freq_talk_fp,
+    alt_talk_subjects = ego$alter1_subjects,
+    ego_age_married = ego_pc$pcq201b,
+    alt_talked_number_children = ego$alter1_howmany_child,
+    alt_say_bad_things_fp = ego$alter1_approve_fp,
+    alt_talked_fp_methods = ego$alter1_preg,
+    alt_info_get_fp = ego$alter1_get_fp,
+    alt_info_sideeff_fp = ego$alter1_sideeff_fp,
+    alt_used_fp = ego$alter1_used_fp,
+    neighbors_using_fp = ego$contra_neighbour_num,
+    ego_used_fp = ego_pc$ego_ever_used_fp,
+    alt_borrow_rupees = ego$alter1_borrow
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -1298,7 +2024,7 @@ ea <- rbind(
     alt_friends = ego$alter2_friends,
     ego_neigh = ego$neighbours,
     alt_neigh = ego$alter2_neighbours,
-    ego_using_fp = ego_pc$pcq311,
+    ego_using_fp = ego_pc$pcq312,
     alt_using_fp = ego$alter2_using_fp,
     ego_know_asha = ego$know_asha,
     ego_know_anm = ego$know_anm,
@@ -1330,7 +2056,20 @@ ea <- rbind(
     alt_against_advice = ego$alter2_follow_advice,
     alt_support_no_child = ego$alter2_nochild,
     ego_age = ego_pc$pcq102,
-    alt_age = ego$alter2_age
+    alt_age = ego$alter2_age,
+    alt_yrs_known = ego$alter2_yrs_known,
+    alt_freq_talk_fp = ego$alter2_freq_talk_fp,
+    alt_talk_subjects = ego$alter2_subjects,
+    ego_age_married = ego_pc$pcq201b,
+    alt_talked_number_children = ego$alter2_howmany_child,
+    alt_say_bad_things_fp = ego$alter2_approve_fp,
+    alt_talked_fp_methods = ego$alter2_preg,
+    alt_info_get_fp = ego$alter2_get_fp,
+    alt_info_sideeff_fp = ego$alter2_sideeff_fp,
+    alt_used_fp = ego$alter2_used_fp,
+    neighbors_using_fp = ego$contra_neighbour_num,
+    ego_used_fp = ego_pc$ego_ever_used_fp,
+    alt_borrow_rupees = ego$alter2_borrow
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -1347,7 +2086,7 @@ ea <- rbind(
     alt_friends = ego$alter3_friends,
     ego_neigh = ego$neighbours,
     alt_neigh = ego$alter3_neighbours,
-    ego_using_fp = ego_pc$pcq311,
+    ego_using_fp = ego_pc$pcq312,
     alt_using_fp = ego$alter3_using_fp,
     ego_know_asha = ego$know_asha,
     ego_know_anm = ego$know_anm,
@@ -1379,7 +2118,20 @@ ea <- rbind(
     alt_against_advice = ego$alter3_follow_advice,
     alt_support_no_child = ego$alter3_nochild,
     ego_age = ego_pc$pcq102,
-    alt_age = ego$alter3_age
+    alt_age = ego$alter3_age,
+    alt_yrs_known = ego$alter3_yrs_known,
+    alt_freq_talk_fp = ego$alter3_freq_talk_fp,
+    alt_talk_subjects = ego$alter3_subjects,
+    ego_age_married = ego_pc$pcq201b,
+    alt_talked_number_children = ego$alter3_howmany_child,
+    alt_say_bad_things_fp = ego$alter3_approve_fp,
+    alt_talked_fp_methods = ego$alter3_preg,
+    alt_info_get_fp = ego$alter3_get_fp,
+    alt_info_sideeff_fp = ego$alter3_sideeff_fp,
+    alt_used_fp = ego$alter3_used_fp,
+    neighbors_using_fp = ego$contra_neighbour_num,
+    ego_used_fp = ego_pc$ego_ever_used_fp,
+    alt_borrow_rupees = ego$alter3_borrow
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -1396,7 +2148,7 @@ ea <- rbind(
     alt_friends = ego$alter4_friends,
     ego_neigh = ego$neighbours,
     alt_neigh = ego$alter4_neighbours,
-    ego_using_fp = ego_pc$pcq311,
+    ego_using_fp = ego_pc$pcq312,
     alt_using_fp = ego$alter4_using_fp,
     ego_know_asha = ego$know_asha,
     ego_know_anm = ego$know_anm,
@@ -1428,7 +2180,20 @@ ea <- rbind(
     alt_against_advice = ego$alter4_follow_advice,
     alt_support_no_child = ego$alter4_nochild,
     ego_age = ego_pc$pcq102,
-    alt_age = ego$alter4_age
+    alt_age = ego$alter4_age,
+    alt_yrs_known = ego$alter4_yrs_known,
+    alt_freq_talk_fp = ego$alter4_freq_talk_fp,
+    alt_talk_subjects = ego$alter4_subjects,
+    ego_age_married = ego_pc$pcq201b,
+    alt_talked_number_children = ego$alter4_howmany_child,
+    alt_say_bad_things_fp = ego$alter4_approve_fp,
+    alt_talked_fp_methods = ego$alter4_preg,
+    alt_info_get_fp = ego$alter4_get_fp,
+    alt_info_sideeff_fp = ego$alter4_sideeff_fp,
+    alt_used_fp = ego$alter4_used_fp,
+    neighbors_using_fp = ego$contra_neighbour_num,
+    ego_used_fp = ego_pc$ego_ever_used_fp,
+    alt_borrow_rupees = ego$alter4_borrow
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -1445,7 +2210,7 @@ ea <- rbind(
     alt_friends = ego$alter5_friends,
     ego_neigh = ego$neighbours,
     alt_neigh = ego$alter5_neighbours,
-    ego_using_fp = ego_pc$pcq311,
+    ego_using_fp = ego_pc$pcq312,
     alt_using_fp = ego$alter5_using_fp,
     ego_know_asha = ego$know_asha,
     ego_know_anm = ego$know_anm,
@@ -1477,7 +2242,20 @@ ea <- rbind(
     alt_against_advice = ego$alter5_follow_advice,
     alt_support_no_child = ego$alter5_nochild,
     ego_age = ego_pc$pcq102,
-    alt_age = ego$alter5_age
+    alt_age = ego$alter5_age,
+    alt_yrs_known = ego$alter5_yrs_known,
+    alt_freq_talk_fp = ego$alter5_freq_talk_fp,
+    alt_talk_subjects = ego$alter5_subjects,
+    ego_age_married = ego_pc$pcq201b,
+    alt_talked_number_children = ego$alter5_howmany_child,
+    alt_say_bad_things_fp = ego$alter5_approve_fp,
+    alt_talked_fp_methods = ego$alter5_preg,
+    alt_info_get_fp = ego$alter5_get_fp,
+    alt_info_sideeff_fp = ego$alter5_sideeff_fp,
+    alt_used_fp = ego$alter5_used_fp,
+    neighbors_using_fp = ego$contra_neighbour_num,
+    ego_used_fp = ego_pc$ego_ever_used_fp,
+    alt_borrow_rupees = ego$alter5_borrow
   )
 )
 
@@ -1619,7 +2397,9 @@ homo <- homo %>%
 #####################
 
 # PC ego values
-# 1 = Yes, 2 = No
+# 1-10 are modern
+# 11, 12, 96 are traditional
+# 0 are missing
 
 # alt values
 # 1 = Yes, 2 = No, 9 = Don't Know
@@ -1627,6 +2407,10 @@ homo <- homo %>%
 # check unique values
 # unique(ea$ego_using_fp)
 # unique(ea$alt_using_fp)
+
+# set ego values to modern only is 1, 0 is not using any FP, so 2
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% 1:10, 1))
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(0, 11, 12), 2))
 
 # set values to numeric
 ea$alt_using_fp <- as.numeric(ea$alt_using_fp)
@@ -1792,9 +2576,546 @@ tib %<>% add_column(ego_id = unique(ea$ego_id), .before = 1)
 # create hetero output (since first var)
 hetero <- tib %>% select(-k)
 
-####################################
-### TIE STRENGTH OF EGO'S ALTERS ###
-####################################
+####################################################
+### TIE STRENGTH/SOCIAL PATHWAYS OF EGO'S ALTERS ###
+####################################################
+
+########################
+### MEAN YEARS KNOWN ###
+########################
+
+# check unique values
+# unique(ea$alt_yrs_known)
+# unique(ea$ego_age_married)
+
+# set to numeric
+ea$alt_yrs_known <- as.numeric(ea$alt_yrs_known)
+
+# reset values of 99 based on ego age and age of marriage
+ea$alt_yrs_known[ea$alt_yrs_known == 99] <- ea$ego_age[ea$alt_yrs_known == 99] - ea$ego_age_married[ea$alt_yrs_known == 99]
+
+ts <- ea %>%
+  group_by(ego_id) %>% # group by ego id
+  mutate(alt_mean_years_known = mean(alt_yrs_known), na.rm = T) %>% 
+  select(ego_id, alt_mean_years_known) %>%
+  distinct # remove duplicates
+
+##########################
+### TALK FREQ ABOUT FP ###
+##########################
+
+# check unique values
+# unique(ea$alt_freq_talk_fp)
+
+# set to numeric
+ea$alt_freq_talk_fp <- as.numeric(ea$alt_freq_talk_fp)
+
+# lets calc percent of alters talk fp at least once a week, and at least once a month
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_freq_talk_fp == 1, na.rm = T),
+        n = NROW(alt_freq_talk_fp[is.na(alt_freq_talk_fp) == F]),
+        alt_percent_talk_fp_weekly = sum / n
+      ) %>%
+      select(ego_id, alt_percent_talk_fp_weekly) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_freq_talk_fp %in% c(1, 2), na.rm = T),
+        n = NROW(alt_freq_talk_fp[is.na(alt_freq_talk_fp) == F]),
+        alt_percent_talk_fp_monthly = sum / n
+      ) %>%
+      select(ego_id, alt_percent_talk_fp_monthly) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+
+#########################
+### MEAN MULTIPLEXITY ###
+#########################
+
+# average of number of things discussed
+
+# check unique values
+unique(ea$alt_talk_subjects)
+
+# count number of subjects
+num_sub <- str_split(ea$alt_talk_subjects, ',')
+num_sub <- sapply(num_sub, function(x) length(x))
+
+# add to tibble
+ea$alt_number_talk_subjects <- num_sub
+
+# summarize and join
+
+ts <- ts %>%
+  full_join(ea %>%
+              group_by(ego_id) %>% # group by ego id
+              mutate(alt_mean_talk_subjects = mean(alt_number_talk_subjects), na.rm = T) %>% 
+              select(ego_id, alt_mean_talk_subjects) %>%
+              distinct
+            , by = 'ego_id')
+
+#########################################
+### TALKED ABOUT NUM CHILDREN TO HAVE ###
+#########################################
+
+# proportion of ego's alters
+
+# check unique values
+# unique(ea$alt_talked_number_children)
+
+# set to numeric
+ea$alt_talked_number_children <- as.numeric(ea$alt_talked_number_children)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_talked_number_children == 1, na.rm = T),
+        n = NROW(alt_talked_number_children[is.na(alt_talked_number_children) == F]),
+        alt_percent_talked_number_children = sum / n
+      ) %>%
+      select(ego_id, alt_percent_talked_number_children) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#########################
+### DISCUSS FP FREELY ###
+#########################
+
+# check unique values
+# unique(ea$alt_discuss_fp)
+
+# set to numeric
+ea$alt_discuss_fp <- as.numeric(ea$alt_discuss_fp)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_discuss_fp == 1, na.rm = T),
+        n = NROW(alt_discuss_fp[is.na(alt_discuss_fp) == F]),
+        alt_percent_discuss_fp_freely = sum / n
+      ) %>%
+      select(ego_id, alt_percent_discuss_fp_freely) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+############################
+### ENCOURAGE TO USE FP ###
+############################
+
+# check unique values
+# unique(ea$alt_encourage_fp)
+
+# set to numeric
+ea$alt_encourage_fp <- as.numeric(ea$alt_encourage_fp)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_encourage_fp == 1, na.rm = T),
+        n = NROW(alt_encourage_fp[is.na(alt_encourage_fp) == F]),
+        alt_percent_encourage_fp = sum / n
+      ) %>%
+      select(ego_id, alt_percent_encourage_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+###################################
+### SUPPORT NOT HAVING CHILDREN ###
+###################################
+
+# check unique values
+# unique(ea$alt_support_no_child)
+
+# set to numeric
+ea$alt_support_no_child <- as.numeric(ea$alt_support_no_child)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_support_no_child == 1, na.rm = T),
+        n = NROW(alt_support_no_child[is.na(alt_support_no_child) == F]),
+        alt_percent_support_no_child = sum / n
+      ) %>%
+      select(ego_id, alt_percent_support_no_child) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+###############################################
+### WOULD NOT SAY BAD THINGS ABOUT USING FP ###
+###############################################
+
+# check unique values
+# unique(ea$alt_say_bad_things_fp)
+
+# set to numeric
+ea$alt_say_bad_things_fp <- as.numeric(ea$alt_say_bad_things_fp)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_say_bad_things_fp == 2, na.rm = T),
+        n = NROW(alt_say_bad_things_fp[is.na(alt_say_bad_things_fp) == F]),
+        alt_percent_not_say_bad_things_fp = sum / n
+      ) %>%
+      select(ego_id, alt_percent_not_say_bad_things_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#############################################
+### INDEX OF 5 SOCIAL INFLUENCE VARIABLES ###
+#############################################
+
+# add index to ea
+ea$social_influence_index <- (ea$alt_talked_number_children == 1) +
+  (ea$alt_discuss_fp == 1) +
+  (ea$alt_encourage_fp == 1) +
+  (ea$alt_support_no_child == 1) +
+  (ea$alt_say_bad_things_fp == 2)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_social_influence_index = mean(social_influence_index, na.rm = T)) %>%
+      select(ego_id, alt_mean_social_influence_index) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_total_social_influence_index = sum(social_influence_index, na.rm = T)) %>%
+      select(ego_id, alt_total_social_influence_index) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+###############################
+### TALKED ABOUT FP METHODS ###
+###############################
+
+# check unique values
+# unique(ea$alt_talked_fp_methods)
+
+# set to numeric
+ea$alt_talked_fp_methods <- as.numeric(ea$alt_talked_fp_methods)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_talked_fp_methods == 1, na.rm = T),
+        n = NROW(alt_talked_fp_methods[is.na(alt_talked_fp_methods) == F]),
+        alt_percent_talked_fp_methods = sum / n
+      ) %>%
+      select(ego_id, alt_percent_talked_fp_methods) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#####################################
+### RECEIVED INFO WHERE TO GET FP ###
+#####################################
+
+# check unique values
+# unique(ea$alt_info_get_fp)
+
+# set to numeric
+ea$alt_info_get_fp <- as.numeric(ea$alt_info_get_fp)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_info_get_fp == 1, na.rm = T),
+        n = NROW(alt_info_get_fp[is.na(alt_info_get_fp) == F]),
+        alt_percent_info_get_fp = sum / n
+      ) %>%
+      select(ego_id, alt_percent_info_get_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#####################################
+### RECEIVED INFO SIDE EFFECTS FP ###
+#####################################
+
+# check unique values
+# unique(ea$alt_info_sideeff_fp)
+
+# set to numeric
+ea$alt_info_sideeff_fp <- as.numeric(ea$alt_info_sideeff_fp)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_info_sideeff_fp == 1, na.rm = T),
+        n = NROW(alt_info_sideeff_fp[is.na(alt_info_sideeff_fp) == F]),
+        alt_percent_info_sideeff_fp = sum / n
+      ) %>%
+      select(ego_id, alt_percent_info_sideeff_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#######################################
+### ALTER CURRENTLY USING MODERN FP ###
+#######################################
+
+# check unique values
+# unique(ea$alt_using_fp)
+
+# set NA values back to 9
+# some of these values will be 2 (or missing since not using)
+# but it doesn't matter since we are looking at the proportion of 1 vs any other answer
+ea$alt_using_fp[is.na(ea$alt_using_fp)] <- 9
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_using_fp == 1, na.rm = T),
+        n = NROW(alt_using_fp[is.na(alt_using_fp) == F]),
+        alt_percent_using_fp = sum / n
+      ) %>%
+      select(ego_id, alt_percent_using_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#################################
+### ALTER EVER USED MODERN FP ###
+#################################
+
+# check unique values
+# unique(ea$alt_used_fp)
+
+# set to numeric
+ea$alt_used_fp <- as.numeric(ea$alt_used_fp)
+
+# if using fp is 1 set used fp to 1
+ea$alt_used_fp[ea$alt_using_fp == 1] <- 1
+
+# do not set NA values to 2 (have not ever used)
+# because we don't know if that person has ever used
+# with CURRENT we assume the skipped people are not 
+# CURRENTLY USING
+
+# if alter is husband change to same value as ego
+ea$alt_used_fp[str_detect(ea$alt_relationship, 'Husband')] <-
+  ea$ego_used_fp[str_detect(ea$alt_relationship, 'Husband')]
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_used_fp == 1, na.rm = T),
+        n = NROW(alt_used_fp[is.na(alt_used_fp) == F]),
+        alt_percent_used_fp = sum / n
+      ) %>%
+      select(ego_id, alt_percent_used_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+######################
+### ALTER HELP EGO ###
+######################
+
+# check unique values
+# unique(ea$alt_help_ego)
+
+# set to numeric
+ea$alt_help_ego <- as.numeric(ea$alt_help_ego)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_help_ego == 1, na.rm = T),
+        n = NROW(alt_help_ego[is.na(alt_help_ego) == F]),
+        alt_percent_help_ego = sum / n
+      ) %>%
+      select(ego_id, alt_percent_help_ego) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+######################
+### EGO HELP ALTER ###
+######################
+
+# check unique values
+# unique(ea$alt_helped_by_ego)
+
+# set to numeric
+ea$alt_helped_by_ego <- as.numeric(ea$alt_helped_by_ego)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_helped_by_ego == 1, na.rm = T),
+        n = NROW(alt_helped_by_ego[is.na(alt_helped_by_ego) == F]),
+        alt_percent_helped_by_ego = sum / n
+      ) %>%
+      select(ego_id, alt_percent_helped_by_ego) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#############################
+### EASY TO FOLLOW ADVICE ###
+#############################
+
+# check unique values
+# unique(ea$alt_against_advice)
+
+# set to numeric
+ea$alt_against_advice <- as.numeric(ea$alt_against_advice)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_against_advice %in% c(3, 4), na.rm = T),
+        n = NROW(alt_against_advice[is.na(alt_against_advice) == F]),
+        alt_percent_easy_follow_advice = sum / n
+      ) %>%
+      select(ego_id, alt_percent_easy_follow_advice) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#################################
+### BORROW RUPEES OR HH ITEMS ###
+#################################
+
+# check unique values
+# unique(ea$alt_borrow_rupees)
+
+# set to numeric
+ea$alt_borrow_rupees <- as.numeric(ea$alt_borrow_rupees)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_borrow_rupees == 1, na.rm = T),
+        n = NROW(alt_borrow_rupees[is.na(alt_borrow_rupees) == F]),
+        alt_percent_borrow_rps_hh = sum / n
+      ) %>%
+      select(ego_id, alt_percent_borrow_rps_hh) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+###########################################
+### INDEX OF 4 SOCIAL SUPPORT VARIABLES ###
+###########################################
+
+# add index to ea
+ea$social_support_index <- (ea$alt_help_ego == 1) +
+  (ea$alt_helped_by_ego == 1) +
+  (ea$alt_against_advice %in% c(3, 4)) +
+  (ea$alt_borrow_rupees == 1)
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_social_support_index = mean(social_support_index, na.rm = T)) %>%
+      select(ego_id, alt_mean_social_support_index) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_total_social_support_index = sum(social_support_index, na.rm = T)) %>%
+      select(ego_id, alt_total_social_support_index) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
 
 ########################################
 ### CALCULATE BASIC NETWORK MEASURES ###
@@ -2105,8 +3426,11 @@ dat_up %<>%
 dat_up %<>% full_join(homo, by = 'ego_id') %>%
   full_join(hetero, by = 'ego_id')
 
-# add network measture to dat
+# add network measures to dat
 dat_up %<>% full_join(ego_net, by = 'ego_id')
+
+# add tie strength measures to dat
+dat_up %<>% full_join(ts, by = 'ego_id')
 
 ###############################
 ### MERGE BIHAR AND UP DATA ###

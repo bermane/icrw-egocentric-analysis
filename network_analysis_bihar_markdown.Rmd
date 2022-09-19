@@ -1241,7 +1241,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter1_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter1_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter1_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -1286,7 +1286,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter2_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter2_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter2_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -1331,7 +1331,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter3_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter3_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter3_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -1376,7 +1376,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter4_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter4_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter4_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -1421,7 +1421,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter5_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter5_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter5_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -1630,7 +1630,9 @@ homo %<>% add_row(metric = 'Number of Friends (AED)',
 #####################
 
 # PC ego values
-# 1 = Yes, 2 = No
+# 1-10 are modern
+# 11, 12, 96 are traditional
+# 0 are missing
 
 # alt values
 # 1 = Yes, 2 = No, 9 = Don't Know
@@ -1638,6 +1640,10 @@ homo %<>% add_row(metric = 'Number of Friends (AED)',
 # check unique values
 # unique(ea$ego_using_fp)
 # unique(ea$alt_using_fp)
+
+# set ego values to modern only is 1, 0 is not using any FP, so 2
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% 1:10, 1))
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(0, 11, 12), 2))
 
 # set values to numeric
 ea$alt_using_fp <- as.numeric(ea$alt_using_fp)
@@ -2875,7 +2881,7 @@ ego_alter_old <- rbind(tibble(ego_id = ego$woman_id,
                               alt_friends = ego$alter1_friends,
                               ego_neigh = ego$neighbours,
                               alt_neigh = ego$alter1_neighbours,
-                              ego_using_fp = ego_pc$pcq311,
+                              ego_using_fp = ego_pc$pcq312,
                               alt_using_fp = ego$alter1_using_fp,
                               ego_know_asha = ego$know_asha,
                               ego_know_anm = ego$know_anm,
@@ -2921,7 +2927,7 @@ ego_alter_old <- rbind(tibble(ego_id = ego$woman_id,
                               alt_friends = ego$alter2_friends,
                               ego_neigh = ego$neighbours,
                               alt_neigh = ego$alter2_neighbours,
-                              ego_using_fp = ego_pc$pcq311,
+                              ego_using_fp = ego_pc$pcq312,
                               alt_using_fp = ego$alter2_using_fp,
                               ego_know_asha = ego$know_asha,
                               ego_know_anm = ego$know_anm,
@@ -2967,7 +2973,7 @@ ego_alter_old <- rbind(tibble(ego_id = ego$woman_id,
                               alt_friends = ego$alter3_friends,
                               ego_neigh = ego$neighbours,
                               alt_neigh = ego$alter3_neighbours,
-                              ego_using_fp = ego_pc$pcq311,
+                              ego_using_fp = ego_pc$pcq312,
                               alt_using_fp = ego$alter3_using_fp,
                               ego_know_asha = ego$know_asha,
                               ego_know_anm = ego$know_anm,
@@ -3013,7 +3019,7 @@ ego_alter_old <- rbind(tibble(ego_id = ego$woman_id,
                               alt_friends = ego$alter4_friends,
                               ego_neigh = ego$neighbours,
                               alt_neigh = ego$alter4_neighbours,
-                              ego_using_fp = ego_pc$pcq311,
+                              ego_using_fp = ego_pc$pcq312,
                               alt_using_fp = ego$alter4_using_fp,
                               ego_know_asha = ego$know_asha,
                               ego_know_anm = ego$know_anm,
@@ -3059,7 +3065,7 @@ ego_alter_old <- rbind(tibble(ego_id = ego$woman_id,
                               alt_friends = ego$alter5_friends,
                               ego_neigh = ego$neighbours,
                               alt_neigh = ego$alter5_neighbours,
-                              ego_using_fp = ego_pc$pcq311,
+                              ego_using_fp = ego_pc$pcq312,
                               alt_using_fp = ego$alter5_using_fp,
                               ego_know_asha = ego$know_asha,
                               ego_know_anm = ego$know_anm,
@@ -4712,7 +4718,7 @@ num_sub <- sapply(num_sub, function(x) length(x))
 ego_tie$num_subjects <- num_sub
 
 # add one if mentioned other subjects
-ego_tie$num_subjects[is.na(ego_tie$subjects_other) == F] <- ego_tie$num_subjects[is.na(ego_tie$subjects_other) == F] + 1
+# ego_tie$num_subjects[is.na(ego_tie$subjects_other) == F] <- ego_tie$num_subjects[is.na(ego_tie$subjects_other) == F] + 1
 
 # overall summary
 num_sub <- ego_tie %>% tabyl(num_subjects) %>%
@@ -4957,7 +4963,7 @@ num_sub <- sapply(num_sub, function(x) length(x))
 alter_tie$num_subjects <- num_sub
 
 # add one if mentioned other subjects
-alter_tie$num_subjects[is.na(alter_tie$subjects_other) == F] <- alter_tie$num_subjects[is.na(alter_tie$subjects_other) == F] + 1
+# alter_tie$num_subjects[is.na(alter_tie$subjects_other) == F] <- alter_tie$num_subjects[is.na(alter_tie$subjects_other) == F] + 1
 
 # overall summary
 num_sub <- alter_tie %>% tabyl(num_subjects) %>%

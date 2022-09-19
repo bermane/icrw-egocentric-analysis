@@ -49,7 +49,6 @@ colscale_rela <- scale_fill_manual(name = 'Relationship', values = c('Ego' = '#4
                                                                      'Key Villager' = '#BBBBBB'),
                                    limits = force)
 
-
 ########################################
 ### CREATE OUTPUT PLOTS FOR ALL EGOS ###
 ########################################
@@ -145,24 +144,24 @@ for(i in seq_along(id_ego)){
                          impl = 'create_from_scratch')
   
   # plot using ggraph
-  ggraph(gr, layout = "stress") + 
+  ggraph(gr, layout = "stress") +
     geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3', '4'))),
-                    edge_colour = "grey66", edge_width = 0.5) + 
-    geom_node_point(aes(fill = factor(rela_vals) %>% droplevels, 
+                    edge_colour = "grey66", edge_width = 0.5) +
+    geom_node_point(aes(fill = factor(rela_vals),
                         stroke = intv_stroke,
-                        shape = factor(group) %>% droplevels,
-                        size = factor(group)  %>% droplevels)) +
+                        shape = factor(group),
+                        size = factor(group))) +
     geom_node_label(aes(label = rela), nudge_y = -0.15, size = 4, label.size = 0,
-                    label.padding = unit(0.05, "lines")) + 
-    theme_graph() + 
-    scale_edge_linetype_manual(name = 'Tie Strength', 
-                               values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotdash', '4' = 'dotted'),
-                               labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager', '4' = 'Same Person')) +
+                    label.padding = unit(0.05, "lines")) +
+    theme_graph() +
+    scale_edge_linetype_manual(name = 'Tie Strength',
+                               values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotdash', '4' = 'blank'),
+                               labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager', '4' = '')) +
     theme(text = element_text(size=20)) +
     ggtitle(str_c('Network of ', eid ,' within Block of ', block[which(id == id_ego[i])], ', District of ', district[which(id == id_ego[i])])) +
     shape_group + colscale_rela + size_group +
     guides(size = "none", linetype = guide_legend(override.aes = list(size = 6)),
-           shape = guide_legend(order = 2, override.aes = list(size = 6)), 
+           shape = guide_legend(order = 2, override.aes = list(size = 6)),
            fill = guide_legend(order = 1, override.aes = list(shape = 25, size = 6)))
   
   ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results_up/', 
@@ -172,6 +171,88 @@ for(i in seq_along(id_ego)){
          units = 'px')
   
 }
+
+#############################################
+### CREATE OUTPUT PLOTS FOR SPECIFIC EGOS ###
+#############################################
+
+# "318160MAD|318161RAJ|318162PRE"
+eid = "318160MAD|318161RAJ|318162PRE"
+
+# set i
+i <- which(id_ego == "318160MAD")
+
+# subset based on nodes that contain one of the ids
+gr <- induced_subgraph(gr_kv, 
+                       vids = which(names(V(gr_kv)) %in% str_subset(names(V(gr_kv)), pattern = eid)), 
+                       impl = 'create_from_scratch')
+
+# plot using ggraph
+ggraph(gr, layout = "stress") +
+  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3', '4'))),
+                  edge_colour = "grey66", edge_width = 0.5) +
+  geom_node_point(aes(fill = factor(rela_vals),
+                      stroke = intv_stroke,
+                      shape = factor(group),
+                      size = factor(group))) +
+  geom_node_label(aes(label = rela), nudge_y = -0.15, size = 4, label.size = 0,
+                  label.padding = unit(0.05, "lines")) +
+  theme_graph() +
+  scale_edge_linetype_manual(name = 'Tie Strength',
+                             values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotdash', '4' = 'blank'),
+                             labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager', '4' = '')) +
+  theme(text = element_text(size=20)) +
+  ggtitle(str_c('Network of ', eid ,' within Block of ', block[which(id == id_ego[i])], ', District of ', district[which(id == id_ego[i])])) +
+  shape_group + colscale_rela + size_group +
+  guides(size = "none", linetype = guide_legend(override.aes = list(size = 6)),
+         shape = guide_legend(order = 2, override.aes = list(size = 6)),
+         fill = guide_legend(order = 1, override.aes = list(shape = 25, size = 6)))
+
+ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results_up/', 
+             'network_plots/general_by_ego/318160MAD_318161RAJ_318162PRE.png'),
+       width = 5920*.8,
+       height = 4000*.8,
+       units = 'px')
+
+
+
+# "415096ANK|415092MON|415093MAN|415095MAN"
+eid = "415096ANK|415092MON|415093MAN|415095MAN"
+
+# set i
+i <- which(id_ego == "415096ANK")
+
+# subset based on nodes that contain one of the ids
+gr <- induced_subgraph(gr_kv, 
+                       vids = which(names(V(gr_kv)) %in% str_subset(names(V(gr_kv)), pattern = eid)), 
+                       impl = 'create_from_scratch')
+
+# plot using ggraph
+ggraph(gr, layout = "stress") +
+  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3', '4'))),
+                  edge_colour = "grey66", edge_width = 0.5) +
+  geom_node_point(aes(fill = factor(rela_vals),
+                      stroke = intv_stroke,
+                      shape = factor(group),
+                      size = factor(group))) +
+  geom_node_label(aes(label = rela), nudge_y = -0.15, size = 4, label.size = 0,
+                  label.padding = unit(0.05, "lines")) +
+  theme_graph() +
+  scale_edge_linetype_manual(name = 'Tie Strength',
+                             values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotdash', '4' = 'blank'),
+                             labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager', '4' = '')) +
+  theme(text = element_text(size=20)) +
+  ggtitle(str_c('Network of ', eid ,' within Block of ', block[which(id == id_ego[i])], ', District of ', district[which(id == id_ego[i])])) +
+  shape_group + colscale_rela + size_group +
+  guides(size = "none", linetype = guide_legend(override.aes = list(size = 6)),
+         shape = guide_legend(order = 2, override.aes = list(size = 6)),
+         fill = guide_legend(order = 1, override.aes = list(shape = 25, size = 6)))
+
+ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results_up/', 
+             'network_plots/general_by_ego/415096ANK_415092MON_415093MAN_415095MAN.png'),
+       width = 5920,
+       height = 4000,
+       units = 'px')
 
 #########################
 ### OLDER PLOTS BELOW ###

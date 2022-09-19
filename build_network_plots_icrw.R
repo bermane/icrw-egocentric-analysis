@@ -85,32 +85,32 @@ gr <- induced_subgraph(gr,
                        vids = which(names(V(gr)) %in% str_subset(names(V(gr)), pattern = "113041KAB|113040SAV")), 
                        impl = 'create_from_scratch')
 
-# plot using ggraph
-ggraph(gr, layout = "stress") + 
-  geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3', '4'))),
-                  edge_colour = "grey66", edge_width = 0.5) + 
-  geom_node_point(aes(fill = rela_vals %>% as.factor, 
-                      stroke = intv_stroke,
-                      shape = group %>% as.factor,
-                      size = group %>% as.factor)) +
-  geom_node_label(aes(label = rela), nudge_y = -0.15, size = 4, label.size = 0,
-                  label.padding = unit(0.05, "lines")) + 
-  theme_graph() + 
-  scale_edge_linetype_manual(name = 'Tie Strength', 
-                             values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotdash', '4' = 'dotted'),
-                             labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager', '4' = 'Same Person')) +
-  theme(text = element_text(size=20)) +
-  ggtitle(str_c('Network of 113041KAB|113040SAV within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
-  shape_group + colscale_rela + size_group +
-  guides(size = "none", linetype = guide_legend(override.aes = list(size = 6)),
-         shape = guide_legend(order = 2, override.aes = list(size = 6)), 
-         fill = guide_legend(order = 1, override.aes = list(shape = 25, size = 6)))
-
-ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/',
-             'results_bihar/network_plots/manual/119060CHA-119058DRO-119061NAN-NEW-KV-3.png'),
-       width = 3862,
-       height = 2608,
-       units = 'px')
+# # plot using ggraph
+# ggraph(gr, layout = "stress") + 
+#   geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3', '4'))),
+#                   edge_colour = "grey66", edge_width = 0.5) + 
+#   geom_node_point(aes(fill = rela_vals %>% as.factor, 
+#                       stroke = intv_stroke,
+#                       shape = group %>% as.factor,
+#                       size = group %>% as.factor)) +
+#   geom_node_label(aes(label = rela), nudge_y = -0.15, size = 4, label.size = 0,
+#                   label.padding = unit(0.05, "lines")) + 
+#   theme_graph() + 
+#   scale_edge_linetype_manual(name = 'Tie Strength', 
+#                              values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotdash', '4' = 'dotted'),
+#                              labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager', '4' = 'Same Person')) +
+#   theme(text = element_text(size=20)) +
+#   ggtitle(str_c('Network of 113041KAB|113040SAV within Block of ', blocks[i], ', District of ', dist_blo$District[dist_blo$Block == blocks[i]][1])) +
+#   shape_group + colscale_rela + size_group +
+#   guides(size = "none", linetype = guide_legend(override.aes = list(size = 6)),
+#          shape = guide_legend(order = 2, override.aes = list(size = 6)), 
+#          fill = guide_legend(order = 1, override.aes = list(shape = 25, size = 6)))
+# 
+# ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/',
+#              'results_bihar/network_plots/manual/119060CHA-119058DRO-119061NAN-NEW-KV-3.png'),
+#        width = 3862,
+#        height = 2608,
+#        units = 'px')
 
 ########################################
 ### CREATE OUTPUT PLOTS FOR ALL EGOS ###
@@ -165,27 +165,48 @@ for(i in seq_along(id_ego)){
   gr <- induced_subgraph(gr_kv, 
                          vids = which(names(V(gr_kv)) %in% str_subset(names(V(gr_kv)), pattern = eid)), 
                          impl = 'create_from_scratch')
-
-# plot using ggraph
-  ggraph(gr, layout = "stress") + 
-    geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3', '4'))),
-                    edge_colour = "grey66", edge_width = 0.5) + 
-    geom_node_point(aes(fill = factor(rela_vals), 
-                        stroke = intv_stroke,
-                        shape = factor(group),
-                        size = factor(group))) +
-    geom_node_label(aes(label = rela), nudge_y = -0.15, size = 4, label.size = 0,
-                    label.padding = unit(0.05, "lines")) + 
-    theme_graph() + 
-    scale_edge_linetype_manual(name = 'Tie Strength', 
-                               values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotdash', '4' = 'dotted'),
-                               labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager', '4' = 'Same Person')) +
-  theme(text = element_text(size=20)) +
-  ggtitle(str_c('Network of ', eid ,' within Block of ', block[which(id == id_ego[i])], ', District of ', district[which(id == id_ego[i])])) +
-  shape_group + colscale_rela + size_group +
-  guides(size = "none", linetype = guide_legend(override.aes = list(size = 6)),
-         shape = guide_legend(order = 2, override.aes = list(size = 6)), 
-         fill = guide_legend(order = 1, override.aes = list(shape = 25, size = 6)))
+  
+  # plot using ggraph
+    ggraph(gr, layout = "stress") +
+      geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3', '4'))),
+                      edge_colour = "grey66", edge_width = 0.5) +
+      geom_node_point(aes(fill = factor(rela_vals),
+                          stroke = intv_stroke,
+                          shape = factor(group),
+                          size = factor(group))) +
+      geom_node_label(aes(label = rela), nudge_y = -0.15, size = 4, label.size = 0,
+                      label.padding = unit(0.05, "lines")) +
+      theme_graph() +
+      scale_edge_linetype_manual(name = 'Tie Strength',
+                                 values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotdash', '4' = 'blank'),
+                                 labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager', '4' = '')) +
+    theme(text = element_text(size=20)) +
+    ggtitle(str_c('Network of ', eid ,' within Block of ', block[which(id == id_ego[i])], ', District of ', district[which(id == id_ego[i])])) +
+    shape_group + colscale_rela + size_group +
+    guides(size = "none", linetype = guide_legend(override.aes = list(size = 6)),
+           shape = guide_legend(order = 2, override.aes = list(size = 6)),
+           fill = guide_legend(order = 1, override.aes = list(shape = 25, size = 6)))
+  
+# # plot using ggraph
+#   ggraph(gr, layout = "stress") + 
+#     geom_edge_link0(aes(edge_linetype = ordered(weight, levels = c('2', '1', '3', '4'))),
+#                     edge_colour = "grey66", edge_width = 0.5) + 
+#     geom_node_point(aes(fill = factor(rela_vals), 
+#                         stroke = intv_stroke,
+#                         shape = factor(group),
+#                         size = factor(group))) +
+#     geom_node_label(aes(label = rela), nudge_y = -0.15, size = 4, label.size = 0,
+#                     label.padding = unit(0.05, "lines")) + 
+#     theme_graph() + 
+#     scale_edge_linetype_manual(name = 'Tie Strength', 
+#                                values = c('1' = 'dashed', '2' = 'solid', '3' = 'dotdash', '4' = 'dotted'),
+#                                labels = c('1' = 'Indirect', '2' = 'Direct', '3' = 'Key Villager', '4' = 'Same Person')) +
+#   theme(text = element_text(size=20)) +
+#   ggtitle(str_c('Network of ', eid ,' within Block of ', block[which(id == id_ego[i])], ', District of ', district[which(id == id_ego[i])])) +
+#   shape_group + colscale_rela + size_group +
+#   guides(size = "none", linetype = guide_legend(override.aes = list(size = 6)),
+#          shape = guide_legend(order = 2, override.aes = list(size = 6)), 
+#          fill = guide_legend(order = 1, override.aes = list(shape = 25, size = 6)))
 
 ggsave(str_c('/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/results_bihar/', 
              'network_plots/general_by_ego/', id_ego[i],'.png'),

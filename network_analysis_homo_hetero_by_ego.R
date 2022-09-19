@@ -228,7 +228,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter1_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter1_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter1_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -273,7 +273,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter2_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter2_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter2_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -318,7 +318,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter3_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter3_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter3_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -363,7 +363,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter4_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter4_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter4_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -408,7 +408,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter5_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter5_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter5_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -568,7 +568,9 @@ homo <- homo %>%
 #####################
 
 # PC ego values
-# 1 = Yes, 2 = No
+# 1-10 are modern
+# 11, 12, 96 are traditional
+# 0 are missing
 
 # alt values
 # 1 = Yes, 2 = No, 9 = Don't Know
@@ -576,6 +578,10 @@ homo <- homo %>%
 # check unique values
 # unique(ea$ego_using_fp)
 # unique(ea$alt_using_fp)
+
+# set ego values to modern only is 1, 0 is not using any FP, so 2
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% 1:10, 1))
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(0, 11, 12), 2))
 
 # set values to numeric
 ea$alt_using_fp <- as.numeric(ea$alt_using_fp)
@@ -1916,7 +1922,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter1_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter1_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter1_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -1961,7 +1967,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter2_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter2_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter2_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -2006,7 +2012,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter3_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter3_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter3_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -2051,7 +2057,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter4_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter4_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter4_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -2096,7 +2102,7 @@ ea <- rbind(tibble(ego_id = ego$woman_id,
                    alt_friends = ego$alter5_friends,
                    ego_neigh = ego$neighbours,
                    alt_neigh = ego$alter5_neighbours,
-                   ego_using_fp = ego_pc$pcq311,
+                   ego_using_fp = ego_pc$pcq312,
                    alt_using_fp = ego$alter5_using_fp,
                    ego_know_asha = ego$know_asha,
                    ego_know_anm = ego$know_anm,
@@ -2256,7 +2262,9 @@ homo <- homo %>%
 #####################
 
 # PC ego values
-# 1 = Yes, 2 = No
+# 1-10 are modern
+# 11, 12, 96 are traditional
+# 0 are missing
 
 # alt values
 # 1 = Yes, 2 = No, 9 = Don't Know
@@ -2264,6 +2272,10 @@ homo <- homo %>%
 # check unique values
 # unique(ea$ego_using_fp)
 # unique(ea$alt_using_fp)
+
+# set ego values to modern only is 1, 0 is not using any FP, so 2
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% 1:10, 1))
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(0, 11, 12), 2))
 
 # set values to numeric
 ea$alt_using_fp <- as.numeric(ea$alt_using_fp)
@@ -3431,5 +3443,5 @@ dat[is.na(dat)] <- NA
 rm(list=setdiff(ls(), c("dat")))
 
 # save to file
-# write.csv(dat, file = '/Users/bermane/Team Braintree Dropbox/Ethan Berman/Mac (2)/Desktop/ego_homo_hetero/ego_homo_hetero.csv', row.names = F)
+write.csv(dat, file = '/Users/bermane/Team Braintree Dropbox/Ethan Berman/Mac (2)/Desktop/ego_homo_hetero/ego_homo_hetero.csv', row.names = F)
 

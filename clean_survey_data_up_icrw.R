@@ -1245,6 +1245,15 @@ v_attr$key_ppl[which(v_attr$know_shg == 1)] <- str_c(v_attr$key_ppl[which(v_attr
 # add REL
 v_attr$key_ppl[which(v_attr$know_rel == 1)] <- str_c(v_attr$key_ppl[which(v_attr$know_rel == 1)], 'R')
 
+# add symbol to end of rela if a duplicate person
+for(i in unique(dup_id$id)){
+  v_attr$rela[v_attr$id == i] <- str_c(v_attr$rela[v_attr$id == i], dup_id$symbol[dup_id$id == i][1])
+}
+
+for(i in unique(dup_id$duplicate_id)){
+  v_attr$rela[v_attr$id == i] <- str_c(v_attr$rela[v_attr$id == i], dup_id$symbol[dup_id$duplicate_id == i][1])
+}
+
 # set nodes attributes
 gr_comb %<>% set_vertex_attr(name = 'district', value = v_attr$district)
 gr_comb %<>% set_vertex_attr(name = 'block', value = v_attr$block)
