@@ -307,7 +307,10 @@ ea <- rbind(
     alt_used_fp = ego$alter1_used_fp,
     neighbors_using_fp = ego$contra_neighbour_num,
     ego_used_fp = ego_pc$ego_ever_used_fp,
-    alt_borrow_rupees = ego$alter1_borrow
+    alt_borrow_rupees = ego$alter1_borrow,
+    alt_future_sons = ego$alter1_future_sons,
+    alt_future_daughters = ego$alter1_future_daughters,
+    alt_future_children = ego$alter1_future_children
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -369,7 +372,10 @@ ea <- rbind(
     alt_used_fp = ego$alter2_used_fp,
     neighbors_using_fp = ego$contra_neighbour_num,
     ego_used_fp = ego_pc$ego_ever_used_fp,
-    alt_borrow_rupees = ego$alter2_borrow
+    alt_borrow_rupees = ego$alter2_borrow,
+    alt_future_sons = ego$alter2_future_sons,
+    alt_future_daughters = ego$alter2_future_daughters,
+    alt_future_children = ego$alter2_future_children
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -431,7 +437,10 @@ ea <- rbind(
     alt_used_fp = ego$alter3_used_fp,
     neighbors_using_fp = ego$contra_neighbour_num,
     ego_used_fp = ego_pc$ego_ever_used_fp,
-    alt_borrow_rupees = ego$alter3_borrow
+    alt_borrow_rupees = ego$alter3_borrow,
+    alt_future_sons = ego$alter3_future_sons,
+    alt_future_daughters = ego$alter3_future_daughters,
+    alt_future_children = ego$alter3_future_children
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -493,7 +502,10 @@ ea <- rbind(
     alt_used_fp = ego$alter4_used_fp,
     neighbors_using_fp = ego$contra_neighbour_num,
     ego_used_fp = ego_pc$ego_ever_used_fp,
-    alt_borrow_rupees = ego$alter4_borrow
+    alt_borrow_rupees = ego$alter4_borrow,
+    alt_future_sons = ego$alter4_future_sons,
+    alt_future_daughters = ego$alter4_future_daughters,
+    alt_future_children = ego$alter4_future_children
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -555,7 +567,10 @@ ea <- rbind(
     alt_used_fp = ego$alter5_used_fp,
     neighbors_using_fp = ego$contra_neighbour_num,
     ego_used_fp = ego_pc$ego_ever_used_fp,
-    alt_borrow_rupees = ego$alter5_borrow
+    alt_borrow_rupees = ego$alter5_borrow,
+    alt_future_sons = ego$alter5_future_sons,
+    alt_future_daughters = ego$alter5_future_daughters,
+    alt_future_children = ego$alter5_future_children
   )
 )
 
@@ -897,6 +912,10 @@ tib %<>% add_column(ego_id = unique(ea$ego_id), .before = 1)
 # create hetero output (since first var)
 hetero <- tib %>% select(-k)
 
+#######################
+### FUTURE CHILDREN ###
+#######################
+
 ####################################################
 ### TIE STRENGTH/SOCIAL PATHWAYS OF EGO'S ALTERS ###
 ####################################################
@@ -1228,6 +1247,78 @@ ts <- ts %>%
         #alt_percent_info_sideeff_fp = sum / n
       ) %>%
       select(ego_id, alt_n_info_sideeff_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#################################
+### ALTER WANTS MORE CHILDREN ###
+#################################
+
+# check unique values
+unique(ea$alt_future_sons)
+unique(ea$alt_future_daughters)
+unique(ea$alt_future_children)
+
+# change to numeric
+ea$alt_future_sons <- as.numeric(ea$alt_future_sons)
+ea$alt_future_daughters <- as.numeric(ea$alt_future_daughters)
+ea$alt_future_children <- as.numeric(ea$alt_future_children)
+
+# set 99 to NA in all
+# set 97 to 1 in future children
+# set 98 to 0 in future children
+ea %<>% mutate(alt_future_sons = replace(alt_future_sons, alt_future_sons == 99, NA)) %>%
+  mutate(alt_future_daughters = replace(alt_future_daughters, alt_future_daughters == 99, NA)) %>%
+  mutate(alt_future_children = replace(alt_future_children, alt_future_children == 99, NA)) %>%
+  mutate(alt_future_children = replace(alt_future_children, alt_future_children == 97, 1)) %>%
+  mutate(alt_future_children = replace(alt_future_children, alt_future_children == 98, 0))
+
+# set alt future children > 0 to 1
+ea %<>% mutate(alt_future_children = replace(alt_future_children, alt_future_children > 0, 1))
+
+# set alt future children where future sons OR daughters > 0 to 1
+ea %<>% mutate(alt_future_children = replace(alt_future_children, alt_future_sons > 0, 1)) %>%
+  mutate(alt_future_children = replace(alt_future_children, alt_future_daughters > 0, 1))
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        alt_n_wants_more_children = sum(alt_future_children == 1, na.rm = T),
+        n = NROW(alt_future_children[is.na(alt_future_children) == F])
+        #alt_percent_wants_more_children = sum / n
+      ) %>%
+      select(ego_id, alt_n_wants_more_children) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        alt_n_wants_more_sons = sum(alt_future_sons > 0, na.rm = T),
+        n = NROW(alt_future_sons[is.na(alt_future_sons) == F])
+        #alt_percent_wants_more_sons = sum / n
+      ) %>%
+      select(ego_id, alt_n_wants_more_sons) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        alt_n_wants_more_daughters = sum(alt_future_daughters > 0, na.rm = T),
+        n = NROW(alt_future_daughters[is.na(alt_future_daughters) == F])
+        #alt_percent_wants_more_daughters = sum / n
+      ) %>%
+      select(ego_id, alt_n_wants_more_daughters) %>%
       distinct
     ,
     by = 'ego_id'
@@ -2024,7 +2115,10 @@ ea <- rbind(
     alt_used_fp = ego$alter1_used_fp,
     neighbors_using_fp = ego$contra_neighbour_num,
     ego_used_fp = ego_pc$ego_ever_used_fp,
-    alt_borrow_rupees = ego$alter1_borrow
+    alt_borrow_rupees = ego$alter1_borrow,
+    alt_future_sons = ego$alter1_future_sons,
+    alt_future_daughters = ego$alter1_future_daughters,
+    alt_future_children = ego$alter1_future_children
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -2086,7 +2180,10 @@ ea <- rbind(
     alt_used_fp = ego$alter2_used_fp,
     neighbors_using_fp = ego$contra_neighbour_num,
     ego_used_fp = ego_pc$ego_ever_used_fp,
-    alt_borrow_rupees = ego$alter2_borrow
+    alt_borrow_rupees = ego$alter2_borrow,
+    alt_future_sons = ego$alter2_future_sons,
+    alt_future_daughters = ego$alter2_future_daughters,
+    alt_future_children = ego$alter2_future_children
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -2148,7 +2245,10 @@ ea <- rbind(
     alt_used_fp = ego$alter3_used_fp,
     neighbors_using_fp = ego$contra_neighbour_num,
     ego_used_fp = ego_pc$ego_ever_used_fp,
-    alt_borrow_rupees = ego$alter3_borrow
+    alt_borrow_rupees = ego$alter3_borrow,
+    alt_future_sons = ego$alter3_future_sons,
+    alt_future_daughters = ego$alter3_future_daughters,
+    alt_future_children = ego$alter3_future_children
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -2210,7 +2310,10 @@ ea <- rbind(
     alt_used_fp = ego$alter4_used_fp,
     neighbors_using_fp = ego$contra_neighbour_num,
     ego_used_fp = ego_pc$ego_ever_used_fp,
-    alt_borrow_rupees = ego$alter4_borrow
+    alt_borrow_rupees = ego$alter4_borrow,
+    alt_future_sons = ego$alter4_future_sons,
+    alt_future_daughters = ego$alter4_future_daughters,
+    alt_future_children = ego$alter4_future_children
   ),
   tibble(
     ego_id = ego$woman_id,
@@ -2272,7 +2375,10 @@ ea <- rbind(
     alt_used_fp = ego$alter5_used_fp,
     neighbors_using_fp = ego$contra_neighbour_num,
     ego_used_fp = ego_pc$ego_ever_used_fp,
-    alt_borrow_rupees = ego$alter5_borrow
+    alt_borrow_rupees = ego$alter5_borrow,
+    alt_future_sons = ego$alter5_future_sons,
+    alt_future_daughters = ego$alter5_future_daughters,
+    alt_future_children = ego$alter5_future_children
   )
 )
 
@@ -2950,6 +3056,78 @@ ts <- ts %>%
     by = 'ego_id'
   )
 
+#################################
+### ALTER WANTS MORE CHILDREN ###
+#################################
+
+# check unique values
+unique(ea$alt_future_sons)
+unique(ea$alt_future_daughters)
+unique(ea$alt_future_children)
+
+# change to numeric
+ea$alt_future_sons <- as.numeric(ea$alt_future_sons)
+ea$alt_future_daughters <- as.numeric(ea$alt_future_daughters)
+ea$alt_future_children <- as.numeric(ea$alt_future_children)
+
+# set 99 to NA in all
+# set 97 to 1 in future children
+# set 98 to 0 in future children
+ea %<>% mutate(alt_future_sons = replace(alt_future_sons, alt_future_sons == 99, NA)) %>%
+  mutate(alt_future_daughters = replace(alt_future_daughters, alt_future_daughters == 99, NA)) %>%
+  mutate(alt_future_children = replace(alt_future_children, alt_future_children == 99, NA)) %>%
+  mutate(alt_future_children = replace(alt_future_children, alt_future_children == 97, 1)) %>%
+  mutate(alt_future_children = replace(alt_future_children, alt_future_children == 98, 0))
+
+# set alt future children > 0 to 1
+ea %<>% mutate(alt_future_children = replace(alt_future_children, alt_future_children > 0, 1))
+
+# set alt future children where future sons OR daughters > 0 to 1
+ea %<>% mutate(alt_future_children = replace(alt_future_children, alt_future_sons > 0, 1)) %>%
+  mutate(alt_future_children = replace(alt_future_children, alt_future_daughters > 0, 1))
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        alt_n_wants_more_children = sum(alt_future_children == 1, na.rm = T),
+        n = NROW(alt_future_children[is.na(alt_future_children) == F])
+        #alt_percent_wants_more_children = sum / n
+      ) %>%
+      select(ego_id, alt_n_wants_more_children) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        alt_n_wants_more_sons = sum(alt_future_sons > 0, na.rm = T),
+        n = NROW(alt_future_sons[is.na(alt_future_sons) == F])
+        #alt_percent_wants_more_sons = sum / n
+      ) %>%
+      select(ego_id, alt_n_wants_more_sons) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        alt_n_wants_more_daughters = sum(alt_future_daughters > 0, na.rm = T),
+        n = NROW(alt_future_daughters[is.na(alt_future_daughters) == F])
+        #alt_percent_wants_more_daughters = sum / n
+      ) %>%
+      select(ego_id, alt_n_wants_more_daughters) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
 #######################################
 ### ALTER CURRENTLY USING MODERN FP ###
 #######################################
@@ -3487,7 +3665,15 @@ rm(list = setdiff(ls(), c("dat")))
 dat[is.na(dat)] <- NA
 
 # caste values of 4 should be 0
-dat %<>% mutate(caste = replace(caste, caste == 4, 0))
+dat %<>% mutate(caste = replace(caste, caste == 4, 0)) %>%
+  mutate(caste = factor(caste))
+
+# set values of wants more children
+# 0 = no
+# 1 = yes
+# 2 = can't get pregnant
+# 3 = undecided
+dat %<>% mutate(want_more_children = recode(want_more_children, `2` = 0, `1` = 1, `3` = 2, `8` = 3) %>% factor)
 
 # husband education 98 is missing
 dat %<>% mutate(husband_education = replace(husband_education, husband_education == 98, NA))
@@ -3511,8 +3697,7 @@ dat %<>% mutate(using_any_fp = factor(using_any_fp)) %>%
   mutate(using_trad_fp = factor(using_trad_fp))
 
 # switch order of couples in neighborhood using modern FP and factor
-dat %<>% mutate(neighbors_using_modern_fp = recode(neighbors_using_modern_fp, `1` = 4, `2` = 3, `3` = 2, `4` = 1)) %>%
-  mutate(neighbors_using_modern_fp = factor(neighbors_using_modern_fp))
+dat %<>% mutate(neighbors_using_modern_fp = recode(neighbors_using_modern_fp, `1` = 3, `2` = 2, `3` = 1, `4` = 0) %>% factor)
 
 #################
 ### SAVE DATA ###
