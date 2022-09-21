@@ -32,9 +32,6 @@ alter <- read_excel(path = "data/alter_clean_complete_11012022.xlsx")
 # load pc data for egos
 ego_pc <- read_excel(path = 'data/ego_pc_complete_12012022.xlsx')
 
-# load list of duplicate ids
-dup_id <- read_excel(path = 'data/duplicate_ids_02022022.xlsx')
-
 # remove first row with 'qe' names
 ego <- ego[-1, ]
 alter <- alter[-1, ]
@@ -159,6 +156,7 @@ rm(alter_know)
 
 # create single col if ego has EVER used FP from list of questions pcq303a-l
 # create df of all rows of interest
+# only MODERN FP
 ego_ever_used_fp <- ego_pc %>% select(pcq303a, pcq303b, pcq303c, pcq303d, pcq303e,
                                       pcq303f, pcq303g, pcq303h, pcq303i)
 
@@ -202,7 +200,7 @@ dat_bihar <- tibble(
   daughters = ego_pc$pcq205d,
   neighbors_using_modern_fp = ego$contra_neighbour_num,
   preg = ego_pc$pcq230,
-  using_fp = ego_pc$pcq311,
+  using_any_fp = ego_pc$pcq311,
   fp_method = ego_pc$pcq312,
   age = ego_pc$pcq102,
   education = ego_pc$pcq103,
@@ -213,12 +211,13 @@ dat_bihar <- tibble(
 
 # fix some values
 # if missing sons, daughters, parity means 0
-# if missing preg, means no (2)
+# if missing preg or "3", means no (2)
 # husband education 98 is NA
 dat_bihar %<>% mutate(sons = replace(sons, is.na(sons), 0)) %>%
   mutate(daughters = replace(daughters, is.na(daughters), 0)) %>%
   mutate(parity = replace(parity, is.na(parity), 0)) %>%
   mutate(preg = replace(preg, is.na(preg), 2)) %>%
+  mutate(preg = replace(preg, preg == 3, 2)) %>%
   mutate(husband_education = replace(husband_education, husband_education == 98, NA)) %>%
   mutate(children = sons + daughters)
 
@@ -700,7 +699,7 @@ homo <- homo %>%
 # PC ego values
 # 1-10 are modern
 # 11, 12, 96 are traditional
-# 0 are missing
+# 0 is not using any
 
 # alt values
 # 1 = Yes, 2 = No, 9 = Don't Know
@@ -710,7 +709,7 @@ homo <- homo %>%
 # unique(ea$alt_using_fp)
 
 # set ego values to modern only is 1, 0 is not using any FP, so 2
-ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% 1:10, 1))
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(1:10, 95), 1))
 ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(0, 11, 12), 2))
 
 # set values to numeric
@@ -732,9 +731,9 @@ homo <- homo %>%
         sum = sum(ego_using_fp == alt_using_fp, na.rm = T),
         n = NROW(ego_using_fp[is.na(ego_using_fp) == F &
                                 is.na(alt_using_fp) == F]),
-        homo_using_fp = sum / n
+        homo_using_mod_fp = sum / n
       ) %>% # calculate homophily
-      select(ego_id, homo_using_fp) %>% # only keep homophily
+      select(ego_id, homo_using_mod_fp) %>% # only keep homophily
       distinct %>% # remove duplicates
       arrange(ego_id) # arrange by ego id
     ,
@@ -911,7 +910,7 @@ ts <- ea %>%
 # set to numeric
 ea$alt_freq_talk_fp <- as.numeric(ea$alt_freq_talk_fp)
 
-# lets calc percent of alters talk fp at least once a week, and at least once a month
+# lets calc number of alters talk fp at least once a week, and at least once a month
 
 # summarize and join
 ts <- ts %>%
@@ -919,11 +918,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_freq_talk_fp == 1, na.rm = T),
-        n = NROW(alt_freq_talk_fp[is.na(alt_freq_talk_fp) == F]),
-        alt_percent_talk_fp_weekly = sum / n
+        alt_n_talk_fp_weekly = sum(alt_freq_talk_fp == 1, na.rm = T),
+        n = NROW(alt_freq_talk_fp[is.na(alt_freq_talk_fp) == F])
+        #alt_percent_talk_fp_weekly = sum / n
       ) %>%
-      select(ego_id, alt_percent_talk_fp_weekly) %>%
+      select(ego_id, alt_n_talk_fp_weekly) %>%
       distinct
     ,
     by = 'ego_id'
@@ -932,16 +931,15 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_freq_talk_fp %in% c(1, 2), na.rm = T),
-        n = NROW(alt_freq_talk_fp[is.na(alt_freq_talk_fp) == F]),
-        alt_percent_talk_fp_monthly = sum / n
+        alt_n_talk_fp_monthly = sum(alt_freq_talk_fp %in% c(1, 2), na.rm = T),
+        n = NROW(alt_freq_talk_fp[is.na(alt_freq_talk_fp) == F])
+        #alt_percent_talk_fp_monthly = sum / n
       ) %>%
-      select(ego_id, alt_percent_talk_fp_monthly) %>%
+      select(ego_id, alt_n_talk_fp_monthly) %>%
       distinct
     ,
     by = 'ego_id'
   )
-
 
 #########################
 ### MEAN MULTIPLEXITY ###
@@ -987,11 +985,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_talked_number_children == 1, na.rm = T),
-        n = NROW(alt_talked_number_children[is.na(alt_talked_number_children) == F]),
-        alt_percent_talked_number_children = sum / n
+        alt_n_talked_number_children = sum(alt_talked_number_children == 1, na.rm = T),
+        n = NROW(alt_talked_number_children[is.na(alt_talked_number_children) == F])
+        #alt_percent_talked_number_children = sum / n
       ) %>%
-      select(ego_id, alt_percent_talked_number_children) %>%
+      select(ego_id, alt_n_talked_number_children) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1013,11 +1011,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_discuss_fp == 1, na.rm = T),
-        n = NROW(alt_discuss_fp[is.na(alt_discuss_fp) == F]),
-        alt_percent_discuss_fp_freely = sum / n
+        alt_n_discuss_fp_freely = sum(alt_discuss_fp == 1, na.rm = T),
+        n = NROW(alt_discuss_fp[is.na(alt_discuss_fp) == F])
+        #alt_percent_discuss_fp_freely = sum / n
       ) %>%
-      select(ego_id, alt_percent_discuss_fp_freely) %>%
+      select(ego_id, alt_n_discuss_fp_freely) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1039,11 +1037,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_encourage_fp == 1, na.rm = T),
-        n = NROW(alt_encourage_fp[is.na(alt_encourage_fp) == F]),
-        alt_percent_encourage_fp = sum / n
+        alt_n_encourage_fp = sum(alt_encourage_fp == 1, na.rm = T),
+        n = NROW(alt_encourage_fp[is.na(alt_encourage_fp) == F])
+        #alt_percent_encourage_fp = sum / n
       ) %>%
-      select(ego_id, alt_percent_encourage_fp) %>%
+      select(ego_id, alt_n_encourage_fp) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1065,11 +1063,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_support_no_child == 1, na.rm = T),
-        n = NROW(alt_support_no_child[is.na(alt_support_no_child) == F]),
-        alt_percent_support_no_child = sum / n
+        alt_n_support_no_child = sum(alt_support_no_child == 1, na.rm = T),
+        n = NROW(alt_support_no_child[is.na(alt_support_no_child) == F])
+        #alt_percent_support_no_child = sum / n
       ) %>%
-      select(ego_id, alt_percent_support_no_child) %>%
+      select(ego_id, alt_n_support_no_child) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1091,11 +1089,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_say_bad_things_fp == 2, na.rm = T),
-        n = NROW(alt_say_bad_things_fp[is.na(alt_say_bad_things_fp) == F]),
-        alt_percent_not_say_bad_things_fp = sum / n
+        alt_n_not_say_bad_things_fp = sum(alt_say_bad_things_fp == 2, na.rm = T),
+        n = NROW(alt_say_bad_things_fp[is.na(alt_say_bad_things_fp) == F])
+        #alt_percent_not_say_bad_things_fp = sum / n
       ) %>%
-      select(ego_id, alt_percent_not_say_bad_things_fp) %>%
+      select(ego_id, alt_n_not_say_bad_things_fp) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1152,11 +1150,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_talked_fp_methods == 1, na.rm = T),
-        n = NROW(alt_talked_fp_methods[is.na(alt_talked_fp_methods) == F]),
-        alt_percent_talked_fp_methods = sum / n
+        alt_n_talked_fp_methods = sum(alt_talked_fp_methods == 1, na.rm = T),
+        n = NROW(alt_talked_fp_methods[is.na(alt_talked_fp_methods) == F])
+        #alt_percent_talked_fp_methods = sum / n
       ) %>%
-      select(ego_id, alt_percent_talked_fp_methods) %>%
+      select(ego_id, alt_n_talked_fp_methods) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1178,11 +1176,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_info_get_fp == 1, na.rm = T),
-        n = NROW(alt_info_get_fp[is.na(alt_info_get_fp) == F]),
-        alt_percent_info_get_fp = sum / n
+        alt_n_info_get_fp = sum(alt_info_get_fp == 1, na.rm = T),
+        n = NROW(alt_info_get_fp[is.na(alt_info_get_fp) == F])
+        #alt_percent_info_get_fp = sum / n
       ) %>%
-      select(ego_id, alt_percent_info_get_fp) %>%
+      select(ego_id, alt_n_info_get_fp) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1204,11 +1202,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_info_sideeff_fp == 1, na.rm = T),
-        n = NROW(alt_info_sideeff_fp[is.na(alt_info_sideeff_fp) == F]),
-        alt_percent_info_sideeff_fp = sum / n
+        alt_n_info_sideeff_fp = sum(alt_info_sideeff_fp == 1, na.rm = T),
+        n = NROW(alt_info_sideeff_fp[is.na(alt_info_sideeff_fp) == F])
+        #alt_percent_info_sideeff_fp = sum / n
       ) %>%
-      select(ego_id, alt_percent_info_sideeff_fp) %>%
+      select(ego_id, alt_n_info_sideeff_fp) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1221,10 +1219,10 @@ ts <- ts %>%
 # check unique values
 # unique(ea$alt_using_fp)
 
-# set NA values back to 9
-# some of these values will be 2 (or missing since not using)
-# but it doesn't matter since we are looking at the proportion of 1 vs any other answer
-ea$alt_using_fp[is.na(ea$alt_using_fp)] <- 9
+# # set NA values back to 9
+# # some of these values will be 2 (or missing since not using)
+# # but it doesn't matter since we are looking at the proportion of 1 vs any other answer
+# ea$alt_using_fp[is.na(ea$alt_using_fp)] <- 9
 
 # summarize and join
 ts <- ts %>%
@@ -1232,11 +1230,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_using_fp == 1, na.rm = T),
-        n = NROW(alt_using_fp[is.na(alt_using_fp) == F]),
-        alt_percent_using_fp = sum / n
+        alt_n_using_mod_fp = sum(alt_using_fp == 1, na.rm = T),
+        n = NROW(alt_using_fp[is.na(alt_using_fp) == F])
+        #alt_percent_using_fp = sum / n
       ) %>%
-      select(ego_id, alt_percent_using_fp) %>%
+      select(ego_id, alt_n_using_mod_fp) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1270,11 +1268,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_used_fp == 1, na.rm = T),
-        n = NROW(alt_used_fp[is.na(alt_used_fp) == F]),
-        alt_percent_used_fp = sum / n
+        alt_n_used_fp = sum(alt_used_fp == 1, na.rm = T),
+        n = NROW(alt_used_fp[is.na(alt_used_fp) == F])
+        #alt_percent_used_fp = sum / n
       ) %>%
-      select(ego_id, alt_percent_used_fp) %>%
+      select(ego_id, alt_n_used_fp) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1296,11 +1294,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_help_ego == 1, na.rm = T),
-        n = NROW(alt_help_ego[is.na(alt_help_ego) == F]),
-        alt_percent_help_ego = sum / n
+        alt_n_help_ego = sum(alt_help_ego == 1, na.rm = T),
+        n = NROW(alt_help_ego[is.na(alt_help_ego) == F])
+        #alt_percent_help_ego = sum / n
       ) %>%
-      select(ego_id, alt_percent_help_ego) %>%
+      select(ego_id, alt_n_help_ego) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1322,11 +1320,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_helped_by_ego == 1, na.rm = T),
-        n = NROW(alt_helped_by_ego[is.na(alt_helped_by_ego) == F]),
-        alt_percent_helped_by_ego = sum / n
+        alt_n_helped_by_ego = sum(alt_helped_by_ego == 1, na.rm = T),
+        n = NROW(alt_helped_by_ego[is.na(alt_helped_by_ego) == F])
+        #alt_percent_helped_by_ego = sum / n
       ) %>%
-      select(ego_id, alt_percent_helped_by_ego) %>%
+      select(ego_id, alt_n_helped_by_ego) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1348,11 +1346,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_against_advice %in% c(3, 4), na.rm = T),
-        n = NROW(alt_against_advice[is.na(alt_against_advice) == F]),
-        alt_percent_easy_follow_advice = sum / n
+        alt_n_easy_follow_advice = sum(alt_against_advice %in% c(3, 4), na.rm = T),
+        n = NROW(alt_against_advice[is.na(alt_against_advice) == F])
+        #alt_percent_easy_follow_advice = sum / n
       ) %>%
-      select(ego_id, alt_percent_easy_follow_advice) %>%
+      select(ego_id, alt_n_easy_follow_advice) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1374,11 +1372,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_borrow_rupees == 1, na.rm = T),
-        n = NROW(alt_borrow_rupees[is.na(alt_borrow_rupees) == F]),
-        alt_percent_borrow_rps_hh = sum / n
+        alt_n_borrow_rps_hh = sum(alt_borrow_rupees == 1, na.rm = T),
+        n = NROW(alt_borrow_rupees[is.na(alt_borrow_rupees) == F])
+        #alt_percent_borrow_rps_hh = sum / n
       ) %>%
-      select(ego_id, alt_percent_borrow_rps_hh) %>%
+      select(ego_id, alt_n_borrow_rps_hh) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1723,9 +1721,6 @@ alter <-
 ego_pc <-
   read_excel(path = "data/ego_pc_complete_up_08112022.xlsx")
 
-# load list of duplicate ids
-dup_id <- read_excel(path = 'data/duplicate_ids_up_07112022.xlsx')
-
 # clean column names only keep part after last "."
 ego_names <- sapply(
   colnames(ego),
@@ -1901,7 +1896,7 @@ dat_up <- tibble(
   daughters = ego_pc$pcq205d,
   neighbors_using_modern_fp = ego$contra_neighbour_num,
   preg = ego_pc$pcq230,
-  using_fp = ego_pc$pcq311,
+  using_any_fp = ego_pc$pcq311,
   fp_method = ego_pc$pcq312,
   age = ego_pc$pcq102,
   education = ego_pc$pcq103,
@@ -1918,6 +1913,7 @@ dat_up %<>% mutate(sons = replace(sons, is.na(sons), 0)) %>%
   mutate(daughters = replace(daughters, is.na(daughters), 0)) %>%
   mutate(parity = replace(parity, is.na(parity), 0)) %>%
   mutate(preg = replace(preg, is.na(preg), 2)) %>%
+  mutate(preg = replace(preg, preg == 3, 2)) %>%
   mutate(husband_education = replace(husband_education, husband_education == 98, NA)) %>%
   mutate(children = sons + daughters)
 
@@ -2409,7 +2405,7 @@ homo <- homo %>%
 # unique(ea$alt_using_fp)
 
 # set ego values to modern only is 1, 0 is not using any FP, so 2
-ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% 1:10, 1))
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(1:10, 95), 1))
 ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(0, 11, 12), 2))
 
 # set values to numeric
@@ -2431,9 +2427,9 @@ homo <- homo %>%
         sum = sum(ego_using_fp == alt_using_fp, na.rm = T),
         n = NROW(ego_using_fp[is.na(ego_using_fp) == F &
                                 is.na(alt_using_fp) == F]),
-        homo_using_fp = sum / n
+        homo_using_mod_fp = sum / n
       ) %>% # calculate homophily
-      select(ego_id, homo_using_fp) %>% # only keep homophily
+      select(ego_id, homo_using_mod_fp) %>% # only keep homophily
       distinct %>% # remove duplicates
       arrange(ego_id) # arrange by ego id
     ,
@@ -2610,7 +2606,7 @@ ts <- ea %>%
 # set to numeric
 ea$alt_freq_talk_fp <- as.numeric(ea$alt_freq_talk_fp)
 
-# lets calc percent of alters talk fp at least once a week, and at least once a month
+# lets calc number of alters talk fp at least once a week, and at least once a month
 
 # summarize and join
 ts <- ts %>%
@@ -2618,11 +2614,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_freq_talk_fp == 1, na.rm = T),
-        n = NROW(alt_freq_talk_fp[is.na(alt_freq_talk_fp) == F]),
-        alt_percent_talk_fp_weekly = sum / n
+        alt_n_talk_fp_weekly = sum(alt_freq_talk_fp == 1, na.rm = T),
+        n = NROW(alt_freq_talk_fp[is.na(alt_freq_talk_fp) == F])
+        #alt_percent_talk_fp_weekly = sum / n
       ) %>%
-      select(ego_id, alt_percent_talk_fp_weekly) %>%
+      select(ego_id, alt_n_talk_fp_weekly) %>%
       distinct
     ,
     by = 'ego_id'
@@ -2631,16 +2627,15 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_freq_talk_fp %in% c(1, 2), na.rm = T),
-        n = NROW(alt_freq_talk_fp[is.na(alt_freq_talk_fp) == F]),
-        alt_percent_talk_fp_monthly = sum / n
+        alt_n_talk_fp_monthly = sum(alt_freq_talk_fp %in% c(1, 2), na.rm = T),
+        n = NROW(alt_freq_talk_fp[is.na(alt_freq_talk_fp) == F])
+        #alt_percent_talk_fp_monthly = sum / n
       ) %>%
-      select(ego_id, alt_percent_talk_fp_monthly) %>%
+      select(ego_id, alt_n_talk_fp_monthly) %>%
       distinct
     ,
     by = 'ego_id'
   )
-
 
 #########################
 ### MEAN MULTIPLEXITY ###
@@ -2686,11 +2681,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_talked_number_children == 1, na.rm = T),
-        n = NROW(alt_talked_number_children[is.na(alt_talked_number_children) == F]),
-        alt_percent_talked_number_children = sum / n
+        alt_n_talked_number_children = sum(alt_talked_number_children == 1, na.rm = T),
+        n = NROW(alt_talked_number_children[is.na(alt_talked_number_children) == F])
+        #alt_percent_talked_number_children = sum / n
       ) %>%
-      select(ego_id, alt_percent_talked_number_children) %>%
+      select(ego_id, alt_n_talked_number_children) %>%
       distinct
     ,
     by = 'ego_id'
@@ -2712,11 +2707,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_discuss_fp == 1, na.rm = T),
-        n = NROW(alt_discuss_fp[is.na(alt_discuss_fp) == F]),
-        alt_percent_discuss_fp_freely = sum / n
+        alt_n_discuss_fp_freely = sum(alt_discuss_fp == 1, na.rm = T),
+        n = NROW(alt_discuss_fp[is.na(alt_discuss_fp) == F])
+        #alt_percent_discuss_fp_freely = sum / n
       ) %>%
-      select(ego_id, alt_percent_discuss_fp_freely) %>%
+      select(ego_id, alt_n_discuss_fp_freely) %>%
       distinct
     ,
     by = 'ego_id'
@@ -2738,11 +2733,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_encourage_fp == 1, na.rm = T),
-        n = NROW(alt_encourage_fp[is.na(alt_encourage_fp) == F]),
-        alt_percent_encourage_fp = sum / n
+        alt_n_encourage_fp = sum(alt_encourage_fp == 1, na.rm = T),
+        n = NROW(alt_encourage_fp[is.na(alt_encourage_fp) == F])
+        #alt_percent_encourage_fp = sum / n
       ) %>%
-      select(ego_id, alt_percent_encourage_fp) %>%
+      select(ego_id, alt_n_encourage_fp) %>%
       distinct
     ,
     by = 'ego_id'
@@ -2764,11 +2759,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_support_no_child == 1, na.rm = T),
-        n = NROW(alt_support_no_child[is.na(alt_support_no_child) == F]),
-        alt_percent_support_no_child = sum / n
+        alt_n_support_no_child = sum(alt_support_no_child == 1, na.rm = T),
+        n = NROW(alt_support_no_child[is.na(alt_support_no_child) == F])
+        #alt_percent_support_no_child = sum / n
       ) %>%
-      select(ego_id, alt_percent_support_no_child) %>%
+      select(ego_id, alt_n_support_no_child) %>%
       distinct
     ,
     by = 'ego_id'
@@ -2790,11 +2785,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_say_bad_things_fp == 2, na.rm = T),
-        n = NROW(alt_say_bad_things_fp[is.na(alt_say_bad_things_fp) == F]),
-        alt_percent_not_say_bad_things_fp = sum / n
+        alt_n_not_say_bad_things_fp = sum(alt_say_bad_things_fp == 2, na.rm = T),
+        n = NROW(alt_say_bad_things_fp[is.na(alt_say_bad_things_fp) == F])
+        #alt_percent_not_say_bad_things_fp = sum / n
       ) %>%
-      select(ego_id, alt_percent_not_say_bad_things_fp) %>%
+      select(ego_id, alt_n_not_say_bad_things_fp) %>%
       distinct
     ,
     by = 'ego_id'
@@ -2851,11 +2846,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_talked_fp_methods == 1, na.rm = T),
-        n = NROW(alt_talked_fp_methods[is.na(alt_talked_fp_methods) == F]),
-        alt_percent_talked_fp_methods = sum / n
+        alt_n_talked_fp_methods = sum(alt_talked_fp_methods == 1, na.rm = T),
+        n = NROW(alt_talked_fp_methods[is.na(alt_talked_fp_methods) == F])
+        #alt_percent_talked_fp_methods = sum / n
       ) %>%
-      select(ego_id, alt_percent_talked_fp_methods) %>%
+      select(ego_id, alt_n_talked_fp_methods) %>%
       distinct
     ,
     by = 'ego_id'
@@ -2877,11 +2872,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_info_get_fp == 1, na.rm = T),
-        n = NROW(alt_info_get_fp[is.na(alt_info_get_fp) == F]),
-        alt_percent_info_get_fp = sum / n
+        alt_n_info_get_fp = sum(alt_info_get_fp == 1, na.rm = T),
+        n = NROW(alt_info_get_fp[is.na(alt_info_get_fp) == F])
+        #alt_percent_info_get_fp = sum / n
       ) %>%
-      select(ego_id, alt_percent_info_get_fp) %>%
+      select(ego_id, alt_n_info_get_fp) %>%
       distinct
     ,
     by = 'ego_id'
@@ -2903,11 +2898,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_info_sideeff_fp == 1, na.rm = T),
-        n = NROW(alt_info_sideeff_fp[is.na(alt_info_sideeff_fp) == F]),
-        alt_percent_info_sideeff_fp = sum / n
+        alt_n_info_sideeff_fp = sum(alt_info_sideeff_fp == 1, na.rm = T),
+        n = NROW(alt_info_sideeff_fp[is.na(alt_info_sideeff_fp) == F])
+        #alt_percent_info_sideeff_fp = sum / n
       ) %>%
-      select(ego_id, alt_percent_info_sideeff_fp) %>%
+      select(ego_id, alt_n_info_sideeff_fp) %>%
       distinct
     ,
     by = 'ego_id'
@@ -2920,10 +2915,10 @@ ts <- ts %>%
 # check unique values
 # unique(ea$alt_using_fp)
 
-# set NA values back to 9
-# some of these values will be 2 (or missing since not using)
-# but it doesn't matter since we are looking at the proportion of 1 vs any other answer
-ea$alt_using_fp[is.na(ea$alt_using_fp)] <- 9
+# # set NA values back to 9
+# # some of these values will be 2 (or missing since not using)
+# # but it doesn't matter since we are looking at the proportion of 1 vs any other answer
+# ea$alt_using_fp[is.na(ea$alt_using_fp)] <- 9
 
 # summarize and join
 ts <- ts %>%
@@ -2931,11 +2926,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_using_fp == 1, na.rm = T),
-        n = NROW(alt_using_fp[is.na(alt_using_fp) == F]),
-        alt_percent_using_fp = sum / n
+        alt_n_using_mod_fp = sum(alt_using_fp == 1, na.rm = T),
+        n = NROW(alt_using_fp[is.na(alt_using_fp) == F])
+        #alt_percent_using_fp = sum / n
       ) %>%
-      select(ego_id, alt_percent_using_fp) %>%
+      select(ego_id, alt_n_using_mod_fp) %>%
       distinct
     ,
     by = 'ego_id'
@@ -2969,11 +2964,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_used_fp == 1, na.rm = T),
-        n = NROW(alt_used_fp[is.na(alt_used_fp) == F]),
-        alt_percent_used_fp = sum / n
+        alt_n_used_fp = sum(alt_used_fp == 1, na.rm = T),
+        n = NROW(alt_used_fp[is.na(alt_used_fp) == F])
+        #alt_percent_used_fp = sum / n
       ) %>%
-      select(ego_id, alt_percent_used_fp) %>%
+      select(ego_id, alt_n_used_fp) %>%
       distinct
     ,
     by = 'ego_id'
@@ -2995,11 +2990,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_help_ego == 1, na.rm = T),
-        n = NROW(alt_help_ego[is.na(alt_help_ego) == F]),
-        alt_percent_help_ego = sum / n
+        alt_n_help_ego = sum(alt_help_ego == 1, na.rm = T),
+        n = NROW(alt_help_ego[is.na(alt_help_ego) == F])
+        #alt_percent_help_ego = sum / n
       ) %>%
-      select(ego_id, alt_percent_help_ego) %>%
+      select(ego_id, alt_n_help_ego) %>%
       distinct
     ,
     by = 'ego_id'
@@ -3021,11 +3016,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_helped_by_ego == 1, na.rm = T),
-        n = NROW(alt_helped_by_ego[is.na(alt_helped_by_ego) == F]),
-        alt_percent_helped_by_ego = sum / n
+        alt_n_helped_by_ego = sum(alt_helped_by_ego == 1, na.rm = T),
+        n = NROW(alt_helped_by_ego[is.na(alt_helped_by_ego) == F])
+        #alt_percent_helped_by_ego = sum / n
       ) %>%
-      select(ego_id, alt_percent_helped_by_ego) %>%
+      select(ego_id, alt_n_helped_by_ego) %>%
       distinct
     ,
     by = 'ego_id'
@@ -3047,11 +3042,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_against_advice %in% c(3, 4), na.rm = T),
-        n = NROW(alt_against_advice[is.na(alt_against_advice) == F]),
-        alt_percent_easy_follow_advice = sum / n
+        alt_n_easy_follow_advice = sum(alt_against_advice %in% c(3, 4), na.rm = T),
+        n = NROW(alt_against_advice[is.na(alt_against_advice) == F])
+        #alt_percent_easy_follow_advice = sum / n
       ) %>%
-      select(ego_id, alt_percent_easy_follow_advice) %>%
+      select(ego_id, alt_n_easy_follow_advice) %>%
       distinct
     ,
     by = 'ego_id'
@@ -3073,11 +3068,11 @@ ts <- ts %>%
     ea %>%
       group_by(ego_id) %>%
       mutate(
-        sum = sum(alt_borrow_rupees == 1, na.rm = T),
-        n = NROW(alt_borrow_rupees[is.na(alt_borrow_rupees) == F]),
-        alt_percent_borrow_rps_hh = sum / n
+        alt_n_borrow_rps_hh = sum(alt_borrow_rupees == 1, na.rm = T),
+        n = NROW(alt_borrow_rupees[is.na(alt_borrow_rupees) == F])
+        #alt_percent_borrow_rps_hh = sum / n
       ) %>%
-      select(ego_id, alt_percent_borrow_rps_hh) %>%
+      select(ego_id, alt_n_borrow_rps_hh) %>%
       distinct
     ,
     by = 'ego_id'
@@ -3457,3 +3452,33 @@ dat %<>% mutate(husband_education = replace(husband_education, husband_education
 
 # set state as factor
 dat %<>% mutate(state = factor(state, levels = c('bihar', 'up')))
+
+# create columns for using modern fp and using trad fp
+dat %<>% mutate(using_mod_fp = replace(fp_method, fp_method %in% c(1:10, 95), 1)) %>%
+  mutate(using_mod_fp = replace(using_mod_fp, using_mod_fp %in% c(11, 12), 0))
+
+dat %<>% mutate(using_trad_fp = replace(fp_method, fp_method %in% c(1:10, 95), 0)) %>%
+  mutate(using_trad_fp = replace(using_trad_fp, using_trad_fp %in% c(11, 12), 1))
+
+# set using any fp no to 0
+dat %<>% mutate(using_any_fp = replace(using_any_fp, using_any_fp == 2, 0))
+
+# factor all dep vars
+dat %<>% mutate(using_any_fp = factor(using_any_fp)) %>%
+  mutate(using_mod_fp = factor(using_mod_fp)) %>%
+  mutate(using_trad_fp = factor(using_trad_fp))
+
+# switch order of couples in neighborhood using modern FP and factor
+dat %<>% mutate(neighbors_using_modern_fp = recode(neighbors_using_modern_fp, `1` = 4, `2` = 3, `3` = 2, `4` = 1)) %>%
+  mutate(neighbors_using_modern_fp = factor(neighbors_using_modern_fp))
+
+#################
+### SAVE DATA ###
+#################
+
+# as Rdata
+save.image('/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/logit_data_table.RData')
+
+# as csv
+write.csv(dat, '/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/logit_data_table.csv',
+          row.names = F)

@@ -1641,7 +1641,7 @@ homo %<>% add_row(metric = 'Number of Friends (AED)',
 # unique(ea$alt_using_fp)
 
 # set ego values to modern only is 1, 0 is not using any FP, so 2
-ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% 1:10, 1))
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(1:10, 95), 1))
 ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(0, 11, 12), 2))
 
 # set values to numeric

@@ -580,7 +580,7 @@ homo <- homo %>%
 # unique(ea$alt_using_fp)
 
 # set ego values to modern only is 1, 0 is not using any FP, so 2
-ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% 1:10, 1))
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(1:10, 95), 1))
 ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(0, 11, 12), 2))
 
 # set values to numeric
@@ -2274,7 +2274,7 @@ homo <- homo %>%
 # unique(ea$alt_using_fp)
 
 # set ego values to modern only is 1, 0 is not using any FP, so 2
-ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% 1:10, 1))
+ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(1:10, 95), 1))
 ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(0, 11, 12), 2))
 
 # set values to numeric
@@ -3443,5 +3443,5 @@ dat[is.na(dat)] <- NA
 rm(list=setdiff(ls(), c("dat")))
 
 # save to file
-write.csv(dat, file = '/Users/bermane/Team Braintree Dropbox/Ethan Berman/Mac (2)/Desktop/ego_homo_hetero/ego_homo_hetero.csv', row.names = F)
+write.csv(dat, file = '/Users/bermane/Team Braintree Dropbox/Ethan Berman/Mac (2)/Desktop/for icrw/ego_homo_hetero.csv', row.names = F)
 
