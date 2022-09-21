@@ -667,6 +667,27 @@ homo <- homo %>%
     by = 'ego_id'
   )
 
+################
+### KNOW SHG ###
+################
+
+# shg
+# recode values
+ea$ego_know_shg[ea$ego_know_shg == '9'] <- '2'
+ea$alt_know_shg[ea$alt_know_shg == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_shg == alt_know_shg, na.rm = T), 
+                     n = NROW(ego_know_shg[is.na(ego_know_shg) == F & is.na(alt_know_shg) == F]), 
+                     homo_know_shg = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_shg) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
+
 ###########
 ### AGE ###
 ###########
@@ -2362,6 +2383,27 @@ homo <- homo %>%
     ,
     by = 'ego_id'
   )
+
+################
+### KNOW SHG ###
+################
+
+# shg
+# recode values
+ea$ego_know_shg[ea$ego_know_shg == '9'] <- '2'
+ea$alt_know_shg[ea$alt_know_shg == '9'] <- NA
+
+# summarise and update homophily output
+homo <- homo %>% 
+  full_join(ea %>% 
+              group_by(ego_id) %>% # group by ego id
+              mutate(sum = sum(ego_know_shg == alt_know_shg, na.rm = T), 
+                     n = NROW(ego_know_shg[is.na(ego_know_shg) == F & is.na(alt_know_shg) == F]), 
+                     homo_know_shg = sum/n) %>% # calculate homophily
+              select(ego_id, homo_know_shg) %>% # only keep homophily
+              distinct %>% # remove duplicates
+              arrange(ego_id) # arrange by ego id
+            , by = 'ego_id')
 
 ###########
 ### AGE ###
