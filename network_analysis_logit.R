@@ -56,15 +56,14 @@ summary(glm)
 # calculate odds ratio
 exp(coef(glm))
 
-##############################
-### RUN MODEL A UNIVARIATE ###
-##############################
+#############################
+### RUN MODEL A BIVARIATE ###
+#############################
 
 # allocate output table
 univar <- tibble(model = character(),
-                 intercept_odds = numeric(),
                  var_odds = character(),
-                 intercept_p = numeric(),
+                 var_p_sig = character(),
                  var_p = character(),
                  aic = numeric())
 
@@ -80,12 +79,29 @@ for(var in colnames(dat)){
                                data = dat),
                            list(variable = as.name(var))))
     
+    # grab p valute of variable
+    var_p <- coef(summary(glm))[2:NROW(coef(summary(glm))),4]
+    
+    # calculate p val significance
+    p_sig <- sapply(var_p, function(x){
+      if(x < 0.001){
+        p_sig <- '***'
+      }else if(x < 0.01 & x >= 0.001){
+        p_sig <- '**'
+      }else if(x < 0.05 & x >= 0.01){
+        p_sig <- '*'
+      }else if(x < 0.1 & x >= 0.05){
+        p_sig <- '.'
+      }else{
+        p_sig <- ' '
+      }
+    })
+    
     # add to output table
     univar %<>% add_row(model = var,
-                        intercept_odds = exp(coef(glm))[1] %>% round(3),
                         var_odds = str_c(exp(coef(glm))[2:length(exp(coef(glm)))] %>% round(3), collapse = ', '),
-                        intercept_p = coef(summary(glm))[1,4] %>% round(4),
-                        var_p = str_c(coef(summary(glm))[2:NROW(coef(summary(glm))),4] %>% round(4), collapse = ', '),
+                        var_p_sig = str_c(p_sig, collapse = ', '),
+                        var_p = str_c(coef(summary(glm))[2:NROW(coef(summary(glm))),4] %>% round(5), collapse = ', '),
                         aic = glm$aic
     )
     
@@ -95,4 +111,118 @@ for(var in colnames(dat)){
 # output univariate table
 write.csv(univar, 
           file = '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/LOGIT_RESULTS/univar_mod_a.csv',
+          row.names = F)
+
+#############################
+### RUN MODEL B BIVARIATE ###
+#############################
+
+# allocate output table
+univar <- tibble(model = character(),
+                 var_odds = character(),
+                 var_p_sig = character(),
+                 var_p = character(),
+                 aic = numeric())
+
+# loop through all variables
+for(var in colnames(dat)){
+  # only run for indep vars
+  if(!(var %in% c('using_any_fp', 'using_mod_fp', 'using_trad_fp', 'ego_id',
+                  'preg', 'fp_method'))){
+    
+    # run model
+    glm <- eval(substitute(glm(using_trad_fp ~ variable,
+                               family = binomial(link = 'logit'),
+                               data = dat),
+                           list(variable = as.name(var))))
+    
+    # grab p valute of variable
+    var_p <- coef(summary(glm))[2:NROW(coef(summary(glm))),4]
+    
+    # calculate p val significance
+    p_sig <- sapply(var_p, function(x){
+      if(x < 0.001){
+        p_sig <- '***'
+      }else if(x < 0.01 & x >= 0.001){
+        p_sig <- '**'
+      }else if(x < 0.05 & x >= 0.01){
+        p_sig <- '*'
+      }else if(x < 0.1 & x >= 0.05){
+        p_sig <- '.'
+      }else{
+        p_sig <- ' '
+      }
+    })
+    
+    # add to output table
+    univar %<>% add_row(model = var,
+                        var_odds = str_c(exp(coef(glm))[2:length(exp(coef(glm)))] %>% round(3), collapse = ', '),
+                        var_p_sig = str_c(p_sig, collapse = ', '),
+                        var_p = str_c(coef(summary(glm))[2:NROW(coef(summary(glm))),4] %>% round(5), collapse = ', '),
+                        aic = glm$aic
+    )
+    
+  }
+}
+
+# output univariate table
+write.csv(univar, 
+          file = '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/LOGIT_RESULTS/univar_mod_b.csv',
+          row.names = F)
+
+#############################
+### RUN MODEL C BIVARIATE ###
+#############################
+
+# allocate output table
+univar <- tibble(model = character(),
+                 var_odds = character(),
+                 var_p_sig = character(),
+                 var_p = character(),
+                 aic = numeric())
+
+# loop through all variables
+for(var in colnames(dat)){
+  # only run for indep vars
+  if(!(var %in% c('using_any_fp', 'using_mod_fp', 'using_trad_fp', 'ego_id',
+                  'preg', 'fp_method'))){
+    
+    # run model
+    glm <- eval(substitute(glm(using_any_fp ~ variable,
+                               family = binomial(link = 'logit'),
+                               data = dat),
+                           list(variable = as.name(var))))
+    
+    # grab p valute of variable
+    var_p <- coef(summary(glm))[2:NROW(coef(summary(glm))),4]
+    
+    # calculate p val significance
+    p_sig <- sapply(var_p, function(x){
+      if(x < 0.001){
+        p_sig <- '***'
+      }else if(x < 0.01 & x >= 0.001){
+        p_sig <- '**'
+      }else if(x < 0.05 & x >= 0.01){
+        p_sig <- '*'
+      }else if(x < 0.1 & x >= 0.05){
+        p_sig <- '.'
+      }else{
+        p_sig <- ' '
+      }
+    })
+    
+    # add to output table
+    univar %<>% add_row(model = var,
+                        var_odds = str_c(exp(coef(glm))[2:length(exp(coef(glm)))] %>% round(3), collapse = ', '),
+                        var_p_sig = str_c(p_sig, collapse = ', '),
+                        var_p = str_c(coef(summary(glm))[2:NROW(coef(summary(glm))),4] %>% round(5), collapse = ', '),
+                        aic = glm$aic
+    )
+    
+  }
+}
+
+# output univariate table
+write.csv(univar, 
+          file = '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/LOGIT_RESULTS/univar_mod_c.csv',
           row.names = F)
