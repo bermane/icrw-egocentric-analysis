@@ -194,6 +194,7 @@ ego_pc %<>% arrange(qe6) # qe6 is woman_id
 # make sure ego_ids match
 sum(ego_pc$qe6 == ego$woman_id)
 
+# load initial data table
 dat_bihar <- tibble(
   ego_id = ego$woman_id,
   state = 'bihar',
@@ -229,6 +230,92 @@ dat_bihar$want_more_children[dat_bihar$preg %in% 1] <- ego_pc$pcq403[dat_bihar$p
 # calc diff ego and husband education
 dat_bihar$ego_husband_edu_diff <- dat_bihar$education - dat_bihar$husband_education
 
+#############################################
+### CALCULATE AGE OF EGO'S YOUNGEST CHILD ###
+#############################################
+
+# select pc vars of interest
+pc <- ego_pc %>% select(pcinvdate, pcq214dt_1)
+
+# parse date time
+pc %<>% mutate(pcinvdate = lubridate::ymd(pcinvdate), 
+               pcq214dt_1 = lubridate::ymd(pcq214dt_1))
+
+# calc difference in time between DOB of child
+# and date of interview
+pc %<>% mutate(diff = (pcinvdate - pcq214dt_1)) %>%
+  mutate(diff = diff / 30.4375) %>%
+  mutate(diff = round(diff) %>% as.numeric)
+
+# add to dat
+dat_bihar %<>% add_column(age_months_child = pc %>% select(diff))
+
+##########################################################################
+### CALCULATE NUMBER OF IMPORTANT PEOPLE SUPPORT USE OF MOD FP METHODS ###
+##########################################################################
+
+# load all people
+sup <- tibble(ego_support_asha = ego$support_asha,
+              ego_support_anm = ego$support_anm,
+              ego_support_aww = ego$support_aww,
+              ego_support_shg = ego$support_shg,
+              ego_support_pra = ego$support_pradhan,
+              ego_support_pha = ego$support_pharmacist,
+              ego_support_doc = ego$support_doctor,
+              ego_support_rel = ego$support_religious_leader)
+
+# change large (1) and somewhat (2) to (1) and 
+# missing (NA) and less (3) and not at all (4) and don't know (9) to 0
+sup %<>% mutate_all(as.numeric) %>%
+  replace(. == 2, 1) %>%
+  replace(. == 3 | . == 4 | . == 9 | is.na(.), 0)
+
+# add to dat
+dat_bihar %<>% add_column(ego_support_fp_num_ppl = rowSums(sup),
+                       ego_support_fp_num_aaa = rowSums(sup[,1:3]),
+                       ego_support_fp_num_non_aaa = rowSums(sup[,4:8]))
+rm(sup)
+
+##############################################################
+### CALCULATE NUMBER OF IMPORTANT PEOPLE ADVISE EGO MOD FP ###
+##############################################################
+
+# load all people
+advice <- tibble(ego_advice_asha = ego$advice_asha,
+                 ego_advice_anm = ego$advice_anm,
+                 ego_advice_aww = ego$advice_aww,
+                 ego_advice_shg = ego$advice_shg,
+                 ego_advice_pra = ego$advice_pradhan,
+                 ego_advice_pha = ego$advice_pharmacist,
+                 ego_advice_doc = ego$advice_doctor,
+                 ego_advice_rel = ego$advice_religious_leader)
+
+# change no (2) and missing (NA) to 0
+advice %<>% mutate_all(as.numeric) %>%
+  replace(. == 2 | is.na(.), 0)
+
+# add to dat
+dat_bihar %<>% add_column(ego_advice_num_ppl = rowSums(advice),
+                          ego_advice_num_aaa = rowSums(advice[,1:3]),
+                          ego_advice_num_non_aaa = rowSums(advice[,4:8]))
+rm(advice)
+
+###############################
+### EGO NUMBER OF RELATIONS ###
+###############################
+
+dat_bihar %<>% add_column(ego_fam = ego$family_members %>% as.numeric,
+                          ego_fam_close = ego$family_members_close %>% as.numeric,
+                          ego_friends = ego$friends %>% as.numeric,
+                          ego_neigh = ego$neighbours %>% as.numeric)
+
+###############
+### EGO SHG ###
+###############
+
+dat_bihar %<>% add_column(ego_shg = ego$shg %>% as.numeric) %>%
+  mutate(ego_shg = replace(ego_shg, ego_shg == 2, 0) %>% as.factor)
+
 ##################################
 ### CALCULATE HOMOPHILY OF EGO ###
 ##################################
@@ -260,6 +347,8 @@ ea <- rbind(
     alt_edu = NA,
     ego_fam = ego$family_members,
     alt_fam = ego$alter1_family,
+    ego_fam_close = ego$family_members_close,
+    alt_fam_close = ego$alter1_family_close,
     ego_friends = ego$friends,
     alt_friends = ego$alter1_friends,
     ego_neigh = ego$neighbours,
@@ -325,6 +414,8 @@ ea <- rbind(
     alt_edu = NA,
     ego_fam = ego$family_members,
     alt_fam = ego$alter2_family,
+    ego_fam_close = ego$family_members_close,
+    alt_fam_close = ego$alter2_family_close,
     ego_friends = ego$friends,
     alt_friends = ego$alter2_friends,
     ego_neigh = ego$neighbours,
@@ -390,6 +481,8 @@ ea <- rbind(
     alt_edu = NA,
     ego_fam = ego$family_members,
     alt_fam = ego$alter3_family,
+    ego_fam_close = ego$family_members_close,
+    alt_fam_close = ego$alter3_family_close,
     ego_friends = ego$friends,
     alt_friends = ego$alter3_friends,
     ego_neigh = ego$neighbours,
@@ -456,6 +549,8 @@ ea <- rbind(
     ego_fam = ego$family_members,
     alt_fam = ego$alter4_family,
     ego_friends = ego$friends,
+    ego_fam_close = ego$family_members_close,
+    alt_fam_close = ego$alter4_family_close,
     alt_friends = ego$alter4_friends,
     ego_neigh = ego$neighbours,
     alt_neigh = ego$alter4_neighbours,
@@ -520,6 +615,8 @@ ea <- rbind(
     alt_edu = NA,
     ego_fam = ego$family_members,
     alt_fam = ego$alter5_family,
+    ego_fam_close = ego$family_members_close,
+    alt_fam_close = ego$alter5_family_close,
     ego_friends = ego$friends,
     alt_friends = ego$alter5_friends,
     ego_neigh = ego$neighbours,
@@ -680,6 +777,99 @@ rela_key <- c(
   `Saheli` = "Friend"
 )
 
+# code relationship values in-laws
+rela_key_in_law <- c(
+  `Bhabi` = "Sister-in-law",
+  `Bhagnee` = "Other Family",
+  `Brother-in-law` = "Brother-in-law",
+  `Chacherisas` = "Other Family-in-law",
+  `Chachi` = "Other Family",
+  `Chachisash` = "Other Family-in-law",
+  `Father` = "Father",
+  `Father-in-law` = "Father-in-law",
+  `Husband` = "Husband",
+  `Mother` = "Mother",
+  `Mother-in-law` = "Mother-in-law",
+  `OtherRelative` = "Other Family-NA",
+  `Sister` = "Sister",
+  `Sister-in-law` = "Sister-in-law",
+  `ANM` = "ANM",
+  `ASHA` = "ASHA",
+  `AWW` = "AWW",
+  `BahnoiDoctor` = "Doctor",
+  `DR` = "Doctor",
+  `Dactor` = "Doctor",
+  `Docter` = "Doctor",
+  `Doctor` = "Doctor",
+  `Dr` = "Doctor",
+  `Friend` = "Friend",
+  `Landlord` = "Other Non-Family",
+  `Neighbor` = "Neighbour",
+  `Bcm` = "Other Non-Family",
+  `Bahan` = "Sister",
+  `Bahu` = "Daughter-in-law",
+  `Barebahu` = "Daughter-in-law",
+  `Barebeta` = "Son",
+  `Barebeti` = "Daughter",
+  `Beta` = "Son",
+  `Beti` = "Daughter",
+  `Bhabhi` = "Sister-in-law",
+  `Bhabi` = "Sister-in-law",
+  `Bhaganee` = "Other Family",
+  `Bhu` = "Daughter-in-law",
+  `Aunty` = "Other Family-NA",
+  `Bohu` = "Daughter-in-law",
+  `Brother` = "Brother",
+  `Brother-in-law` = "Brother-in-law",
+  `Buasas` = "Other Family-in-law",
+  `Buaa` = "Other Family",
+  `Chacha` = "Other Family",
+  `Chachaji` = "Other Family",
+  `Chachaji` = "Other Family",
+  `Chacherisash` = "Other Family-in-law",
+  `Chachi` = "Other Family",
+  `Chhotebahu` = "Daughter-in-law",
+  `Chhotebeti` = "Daughter",
+  `Chhotibeti` = "Daughter",
+  `Dadi` = "Other Family",
+  `Daughter` = "Daughter",
+  `HusbandWife` = "HusbandWife",
+  `Jethanikalarka` = "Other Family-in-law",
+  `Jija` = "Brother-in-law",
+  `Mami` = "Other Family",
+  `Mausisash` = "Other Family-in-law",
+  `Mother` = "Mother",
+  `Mother-in-law` = "Mother-in-law",
+  `Father` = "Father",
+  `Father-in-law` = "Father-in-law",
+  `OthRelative` = "Other Family-NA",
+  `Patoh` = "Other Family-NA",
+  `Sister` = "Sister",
+  `Sister-in-law` = "Sister-in-law",
+  `Son` = "Son",
+  `ANM` = "ANM",
+  `ASHA` = "ASHA",
+  `AWW` = "AWW",
+  `Shgvolentear` = "Other Health Worker",
+  `Trainer` = "Other Health Worker",
+  `VCM` = "Other Non-Family",
+  `AnmFaciletor` = "ANM",
+  `Awwsahsyika` = "AWW",
+  `Dr` = "Doctor",
+  `Doctor` = "Doctor",
+  `Dr` = "Doctor",
+  `Facilater` = "Other Health Worker",
+  `Facilator` = "Other Health Worker",
+  `Faciletor` = "Other Health Worker",
+  `Nurse` = "Other Health Worker",
+  `Acquaintance` = "Other Non-Family",
+  `Blockmanager` = "Other Non-Family",
+  `Councilor` = "Other Non-Family",
+  `Friend` = "Friend",
+  `Neighbour` = "Neighbour",
+  `Saheli` = "Friend"
+)
+
 # create key for major relationship categories
 maj_rela_key <- c(
   `Sister-in-law` = "Family",
@@ -775,6 +965,17 @@ maj_rela_key <- c(
   `Friend` = "Non-Family"
 )
 
+# recode relationship in law vals
+ea %<>% mutate(alt_relationship_in_law = recode(alt_relationship, !!!rela_key_in_law))
+ea %<>% mutate(alt_relationship_in_law = replace(alt_relationship_in_law, 
+                                                 str_detect(alt_relationship_in_law, 'in-law'), 
+                                                 'Family-in-law')) %>%
+  mutate(alt_relationship_in_law = replace(alt_relationship_in_law, 
+                                           alt_relationship_in_law %in% c('Father', 'Husband', 'Mother',
+                                                                          'Sister', 'Other Family',
+                                                                          'Brother'), 
+                                           'Family'))
+
 # recode relationship vals into relationships
 ea %<>% mutate(alt_relationship = recode(alt_relationship, !!!rela_key))
 
@@ -795,9 +996,9 @@ ea %<>% mutate(
 ea %<>% mutate(alt_is_hw = alt_relationship_cat %in% c('Health Worker',
                                                        'Other Health Worker'))
 
-####################################################
+#################################
 ### REMOVE HUSBANDS FROM DATA ###
-####################################################
+#################################
 
 # remove husbands
 ea %<>% filter(alt_relationship != 'Husband')
@@ -1206,9 +1407,9 @@ ts <- ts %>%
     by = 'ego_id'
   )
 
-#########################
-### MEAN MULTIPLEXITY ###
-#########################
+##########################################
+### MEAN MULTIPLEXITY THINGS DISCUSSED ###
+##########################################
 
 # average of number of things discussed
 
@@ -1231,6 +1432,32 @@ ts <- ts %>%
   select(ego_id, alt_mean_talk_subjects) %>%
   distinct
   , by = 'ego_id')
+
+########################################
+### MEAN MULTIPLEXITY THINGS LEARNED ###
+########################################
+
+# average of number of things learned
+
+# check unique values
+unique(ea$alt_learned)
+
+# count number of subjects
+num_sub <- str_split(ea$alt_learned, ',')
+num_sub <- sapply(num_sub, function(x) length(x))
+
+# add to tibble
+ea$alt_number_things_learned <- num_sub
+
+# summarize and join
+
+ts <- ts %>%
+  full_join(ea %>%
+              group_by(ego_id) %>% # group by ego id
+              mutate(alt_mean_things_learned = mean(alt_number_things_learned), na.rm = T) %>% 
+              select(ego_id, alt_mean_things_learned) %>%
+              distinct
+            , by = 'ego_id')
 
 #########################################
 ### TALKED ABOUT NUM CHILDREN TO HAVE ###
@@ -1472,6 +1699,35 @@ ts <- ts %>%
         alt_percent_info_sideeff_fp = sum / n
       ) %>%
       select(ego_id, alt_percent_info_sideeff_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#####################################
+### LEARNED FP METHODS FROM ALTER ###
+#####################################
+
+# check unique values
+unique(ea$alt_learned)
+
+# boolean if learned FP methods (G)
+num_sub <- str_detect(ea$alt_learned, 'G') %>% as.numeric
+
+# add to tibble
+ea$alt_learned_fp_methods <- num_sub
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_learned_fp_methods == 1, na.rm = T),
+        n = NROW(alt_learned_fp_methods[is.na(alt_learned_fp_methods) == F]),
+        alt_percent_learned_fp_methods = sum / n
+      ) %>%
+      select(ego_id, alt_percent_learned_fp_methods) %>%
       distinct
     ,
     by = 'ego_id'
@@ -1836,6 +2092,236 @@ dat_bihar %<>%
     by = 'ego_id'
   )
 
+#################
+### ALTER AGE ###
+#################
+
+# check unique values
+ea %>% tabyl(alt_age)
+
+# summarize and join median age
+dat_bihar %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_median_age = median(alt_age, na.rm = T)) %>%
+      select(ego_id, alt_median_age) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+# summarize and join mean age
+dat_bihar %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_age = mean(alt_age, na.rm = T)) %>%
+      select(ego_id, alt_mean_age) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+########################
+### ALTER NUM FAMILY ###
+########################
+
+# check unique values
+ea %>% tabyl(alt_fam)
+
+# set 99 to NA
+ea$alt_fam[ea$alt_fam == 99] <- NA
+
+# summarize and join median, mean, sum of num fam
+dat_bihar %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_median_num_fam = median(alt_fam, na.rm = T)) %>%
+      select(ego_id, alt_median_num_fam) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_num_fam = mean(alt_fam, na.rm = T)) %>%
+      select(ego_id, alt_mean_num_fam) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_sum_num_fam = sum(alt_fam, na.rm = T)) %>%
+      select(ego_id, alt_sum_num_fam) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+##############################
+### ALTER NUM FAMILY CLOSE ###
+##############################
+
+# check unique values
+ea %>% tabyl(alt_fam_close)
+
+# set to numeric
+ea %<>% mutate(alt_fam_close = as.numeric(alt_fam_close))
+
+# set 99 to NA
+ea$alt_fam_close[ea$alt_fam_close == 99] <- NA
+
+# summarize and join median, mean, sum of num fam
+dat_bihar %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_median_num_fam_close = median(alt_fam_close, na.rm = T)) %>%
+      select(ego_id, alt_median_num_fam_close) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_num_fam_close = mean(alt_fam_close, na.rm = T)) %>%
+      select(ego_id, alt_mean_num_fam_close) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_sum_num_fam_close = sum(alt_fam_close, na.rm = T)) %>%
+      select(ego_id, alt_sum_num_fam_close) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#########################
+### ALTER NUM FRIENDS ###
+#########################
+
+# check unique values
+ea %>% tabyl(alt_friends)
+
+# set 99 to NA
+ea$alt_friends[ea$alt_friends == 99] <- NA
+
+# summarize and join median, mean, sum of num fam
+dat_bihar %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_median_friends = median(alt_friends, na.rm = T)) %>%
+      select(ego_id, alt_median_friends) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_friends = mean(alt_friends, na.rm = T)) %>%
+      select(ego_id, alt_mean_friends) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_sum_friends = sum(alt_friends, na.rm = T)) %>%
+      select(ego_id, alt_sum_friends) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+###########################
+### ALTER NUM NEIGHBORS ###
+###########################
+
+# check unique values
+ea %>% tabyl(alt_neigh)
+
+# set 99 to NA
+ea$alt_neigh[ea$alt_neigh == 99] <- NA
+
+# summarize and join median, mean, sum of num fam
+dat_bihar %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_median_neigh = median(alt_neigh, na.rm = T)) %>%
+      select(ego_id, alt_median_neigh) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_neigh = mean(alt_neigh, na.rm = T)) %>%
+      select(ego_id, alt_mean_neigh) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_sum_neigh = sum(alt_neigh, na.rm = T)) %>%
+      select(ego_id, alt_sum_neigh) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+##########################################################
+### PROPORTION OF ALTERS FROM EGO'S FAMILY AND IN-LAWS ###
+##########################################################
+
+# check unique values
+ea %>% tabyl(alt_relationship_in_law)
+
+# summarize and join
+dat_bihar %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_relationship_in_law == 'Family-in-law', na.rm = T),
+        n = NROW(alt_relationship_in_law[is.na(alt_relationship_in_law) == F]),
+        alt_percent_in_laws = sum / n
+      ) %>%
+      select(ego_id, alt_percent_in_laws) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_relationship_in_law == 'Family', na.rm = T),
+        n = NROW(alt_relationship_in_law[is.na(alt_relationship_in_law) == F]),
+        alt_percent_ego_fam = sum / n
+      ) %>%
+      select(ego_id, alt_percent_ego_fam) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
 ######################################
 ### ADD ALL MEASURES TO Bihar DATA ###
 ######################################
@@ -2044,6 +2530,7 @@ ego_pc %<>% arrange(qe6) # qe6 is woman_id
 # make sure ego_ids match
 sum(ego_pc$qe6 == ego$woman_id)
 
+# create initial dat
 dat_up <- tibble(
   ego_id = ego$woman_id,
   state = 'up',
@@ -2079,6 +2566,92 @@ dat_up$want_more_children[dat_up$preg %in% 1] <- ego_pc$pcq403[dat_up$preg %in% 
 # calc diff ego and husband education
 dat_up$ego_husband_edu_diff <- dat_up$education - dat_up$husband_education
 
+#############################################
+### CALCULATE AGE OF EGO'S YOUNGEST CHILD ###
+#############################################
+
+# select pc vars of interest
+pc <- ego_pc %>% select(pcinvdate, pcq214dt_1)
+
+# parse date time
+pc %<>% mutate(pcinvdate = lubridate::ymd(pcinvdate), 
+               pcq214dt_1 = lubridate::ymd(pcq214dt_1))
+
+# calc difference in time between DOB of child
+# and date of interview
+pc %<>% mutate(diff = (pcinvdate - pcq214dt_1)) %>%
+  mutate(diff = diff / 30.4375) %>%
+  mutate(diff = round(diff) %>% as.numeric)
+
+# add to dat
+dat_up %<>% add_column(age_months_child = pc %>% select(diff))
+
+##########################################################################
+### CALCULATE NUMBER OF IMPORTANT PEOPLE SUPPORT USE OF MOD FP METHODS ###
+##########################################################################
+
+# load all people
+sup <- tibble(ego_support_asha = ego$support_asha,
+                 ego_support_anm = ego$support_anm,
+                 ego_support_aww = ego$support_aww,
+                 ego_support_shg = ego$support_shg,
+                 ego_support_pra = ego$support_pradhan,
+                 ego_support_pha = ego$support_pharmacist,
+                 ego_support_doc = ego$support_doctor,
+                 ego_support_rel = ego$support_religious_leader)
+
+# change large (1) and somewhat (2) to (1) and 
+# missing (NA) and less (3) and not at all (4) and don't know (9) to 0
+sup %<>% mutate_all(as.numeric) %>%
+  replace(. == 2, 1) %>%
+  replace(. == 3 | . == 4 | . == 9 | is.na(.), 0)
+
+# add to dat
+dat_up %<>% add_column(ego_support_fp_num_ppl = rowSums(sup),
+                          ego_support_fp_num_aaa = rowSums(sup[,1:3]),
+                          ego_support_fp_num_non_aaa = rowSums(sup[,4:8]))
+rm(sup)
+
+##############################################################
+### CALCULATE NUMBER OF IMPORTANT PEOPLE ADVISE EGO MOD FP ###
+##############################################################
+
+# load all people
+advice <- tibble(ego_advice_asha = ego$advice_asha,
+                 ego_advice_anm = ego$advice_anm,
+                 ego_advice_aww = ego$advice_aww,
+                 ego_advice_shg = ego$advice_shg,
+                 ego_advice_pra = ego$advice_pradhan,
+                 ego_advice_pha = ego$advice_pharmacist,
+                 ego_advice_doc = ego$advice_doctor,
+                 ego_advice_rel = ego$advice_religious_leader)
+
+# change no (2) and missing (NA) to 0
+advice %<>% mutate_all(as.numeric) %>%
+  replace(. == 2 | is.na(.), 0)
+
+# add to dat
+dat_up %<>% add_column(ego_advice_num_ppl = rowSums(advice),
+                          ego_advice_num_aaa = rowSums(advice[,1:3]),
+                          ego_advice_num_non_aaa = rowSums(advice[,4:8]))
+rm(advice)
+
+###############################
+### EGO NUMBER OF RELATIONS ###
+###############################
+
+dat_up %<>% add_column(ego_fam = ego$family_members %>% as.numeric,
+                          ego_fam_close = ego$family_members_close %>% as.numeric,
+                          ego_friends = ego$friends %>% as.numeric,
+                          ego_neigh = ego$neighbours %>% as.numeric)
+
+###############
+### EGO SHG ###
+###############
+
+dat_up %<>% add_column(ego_shg = ego$shg %>% as.numeric) %>%
+  mutate(ego_shg = replace(ego_shg, ego_shg == 2, 0) %>% as.factor)
+
 ##################################
 ### CALCULATE HOMOPHILY OF EGO ###
 ##################################
@@ -2110,6 +2683,8 @@ ea <- rbind(
     alt_edu = NA,
     ego_fam = ego$family_members,
     alt_fam = ego$alter1_family,
+    ego_fam_close = ego$family_members_close,
+    alt_fam_close = ego$alter1_family_close,
     ego_friends = ego$friends,
     alt_friends = ego$alter1_friends,
     ego_neigh = ego$neighbours,
@@ -2175,6 +2750,8 @@ ea <- rbind(
     alt_edu = NA,
     ego_fam = ego$family_members,
     alt_fam = ego$alter2_family,
+    ego_fam_close = ego$family_members_close,
+    alt_fam_close = ego$alter2_family_close,
     ego_friends = ego$friends,
     alt_friends = ego$alter2_friends,
     ego_neigh = ego$neighbours,
@@ -2240,6 +2817,8 @@ ea <- rbind(
     alt_edu = NA,
     ego_fam = ego$family_members,
     alt_fam = ego$alter3_family,
+    ego_fam_close = ego$family_members_close,
+    alt_fam_close = ego$alter3_family_close,
     ego_friends = ego$friends,
     alt_friends = ego$alter3_friends,
     ego_neigh = ego$neighbours,
@@ -2305,6 +2884,8 @@ ea <- rbind(
     alt_edu = NA,
     ego_fam = ego$family_members,
     alt_fam = ego$alter4_family,
+    ego_fam_close = ego$family_members_close,
+    alt_fam_close = ego$alter4_family_close,
     ego_friends = ego$friends,
     alt_friends = ego$alter4_friends,
     ego_neigh = ego$neighbours,
@@ -2370,6 +2951,8 @@ ea <- rbind(
     alt_edu = NA,
     ego_fam = ego$family_members,
     alt_fam = ego$alter5_family,
+    ego_fam_close = ego$family_members_close,
+    alt_fam_close = ego$alter5_family_close,
     ego_friends = ego$friends,
     alt_friends = ego$alter5_friends,
     ego_neigh = ego$neighbours,
@@ -2550,6 +3133,117 @@ rela_key <- c(
   `Brotherinlaw` = "Brother-in-law"
 )
 
+# create key to total in-laws
+rela_key_in_law <- c(
+  `OtherRelative` = "Other Family-NA",
+  `Sister` = "Sister",
+  `Sister-in-law` = "Sister-in-law",
+  `Brother` = "Brother",
+  `Brother-in-law` = "Brother-in-law",
+  `Chachi` = "Other Family",
+  `Chachisas` = "Other Family-in-law",
+  `Chachiyasas` = "Other Family-in-law",
+  `Dadisas` = "Other Family-in-law",
+  `Father` = "Father",
+  `Father-in-law` = "Father-in-law",
+  `Husband` = "Husband",
+  `Mother` = "Mother",
+  `Mother-in-law` = "Mother-in-law",
+  `ANM` = "ANM",
+  `ASHA` = "ASHA",
+  `AWW` = "AWW",
+  `Doctor` = "Doctor",
+  `Dr` = "Doctor",
+  `Otherchemist` = "Other Health Worker",
+  `Acquaintance` = "Other Non-Family",
+  `Friend` = "Friend",
+  `Neighbor` = "Neighbour",
+  `Brother` = "Brother",
+  `Brother-in-law` = "Brother-in-law",
+  `Father-in-law` = "Father-in-law",
+  `Friend` = "Friend",
+  `HusbandWife` = "HusbandWife",
+  `Mother` = "Mother",
+  `Mother-in-law` = "Mother-in-law",
+  `Oth Relative` = "Other Family-NA",
+  `Sister` = "Sister",
+  `Sister-in-law` = "Sister-in-law",
+  `Bhatijee` = "Other Family ",
+  `Chachi` = "Other Family ",
+  `Chachisas` = "Other Family-in-law ",
+  `Chachiyasas` = "Other Family-in-law ",
+  `ASHA` = "ASHA",
+  `AWW` = "AWW",
+  `Chemist` = "Other Health Worker",
+  `Doctor` = "Doctor",
+  `Neighbor` = "Neighbour",
+  `Neighbour` = "Neighbour",
+  `Maternalcousin` = "Other Family",
+  `Mausi` = "Other Family",
+  `Mausiasaash` = "Other Family-in-law",
+  `Mother` = "Mother",
+  `Mother-in-law` = "Mother-in-law",
+  `Nandoi` = "Brother-in-law",
+  `Father` = "Father",
+  `HusbandWife` = "HusbandWife",
+  `Jija` = "Brother-in-law",
+  `Jijaji` = "Brother-in-law",
+  `Oth Relative` = "Other Family-NA",
+  `LHV` = "Other Health Worker",
+  `Mamakaladka` = "Other Family",
+  `Saale` = "Brother-in-law",
+  `Sangani` = "ASHA",
+  `Sangini` = "ASHA",
+  `Sarita` = "Friend",
+  `Sister` = "Sister",
+  `Sister-in-law` = "Sister-in-law",
+  `Badimaa` = "Other Family",
+  `Bahu` = "Daughter-in-law",
+  `Bati` = "Daughter",
+  `Beta` = "Son",
+  `Bete` = "Son",
+  `Betha` = "Son",
+  `Bethi` = "Daughter",
+  `Beti` = "Daughter",
+  `Bhabhi` = "Sister-in-law",
+  `Bhanji` = "Other Family",
+  `Bhau` = "Daughter-in-law",
+  `Bhu` = "Daughter-in-law",
+  `Bhuakeladke` = "Other Family",
+  `Brother-in-law` = "Brother-in-law",
+  `Brother` = "Brother",
+  `Brother-in-law` = "Brother-in-law",
+  `CHO` = "Other Health Worker",
+  `Chachaji` = "Other Family",
+  `Chachi` = "Other Family",
+  `Chachijee` = "Other Family",
+  `Chachisas` = "Other Family-in-law",
+  `Dada` = "Brother",
+  `Dadisas` = "Other Family-in-law",
+  `Damand` = "Son-in-law",
+  `Daughter` = "Daughter",
+  `AshaGaneshpurki` = "ASHA",
+  `Ashasangini` = "ASHA",
+  `ANM` = "ANM",
+  `ASHA` = "ASHA",
+  `AWW` = "AWW",
+  `Doctor` = "Doctor",
+  `DoctorCMO` = "Doctor",
+  `Doctor-Patient` = "Doctor",
+  `Dr` = "Doctor",
+  `DrDevchandra` = "Doctor",
+  `Drkhalid` = "Doctor",
+  `Staffnurse` = "Doctor",
+  `Friend` = "Friend",
+  `Master` = "Other Non-Family",
+  `Neighbour` = "Neighbour",
+  `Pradhan` = "Other Non-Family",
+  `Supervisor` = "Other Non-Family",
+  `YejahakaamkartahaidukanMalik` = "Other Non-Family",
+  `Acquaintance` = "Other Non-Family",
+  `OthRelative` = "Other Family-NA",
+  `Brotherinlaw` = "Brother-in-law")
+
 # create key for major relationship categories
 maj_rela_key <- c(
   `Other Family` = "Other Family",
@@ -2661,6 +3355,17 @@ maj_rela_key <- c(
   `Other Non-Family` = "Other Non-Family",
   `Other Non-Family` = "Other Non-Family"
 )
+
+# recode relationship in law vals
+ea %<>% mutate(alt_relationship_in_law = recode(alt_relationship, !!!rela_key_in_law))
+ea %<>% mutate(alt_relationship_in_law = replace(alt_relationship_in_law, 
+                                                 str_detect(alt_relationship_in_law, 'in-law'), 
+                                                 'Family-in-law')) %>%
+  mutate(alt_relationship_in_law = replace(alt_relationship_in_law, 
+                                           alt_relationship_in_law %in% c('Father', 'Husband', 'Mother',
+                                                                          'Sister', 'Other Family',
+                                                                          'Brother'), 
+                                           'Family'))
 
 # recode relationship vals into relationships
 ea %<>% mutate(alt_relationship = recode(alt_relationship, !!!rela_key))
@@ -3089,9 +3794,9 @@ ts <- ts %>%
     by = 'ego_id'
   )
 
-#########################
-### MEAN MULTIPLEXITY ###
-#########################
+##########################################
+### MEAN MULTIPLEXITY THINGS DISCUSSED ###
+##########################################
 
 # average of number of things discussed
 
@@ -3112,6 +3817,32 @@ ts <- ts %>%
               group_by(ego_id) %>% # group by ego id
               mutate(alt_mean_talk_subjects = mean(alt_number_talk_subjects), na.rm = T) %>% 
               select(ego_id, alt_mean_talk_subjects) %>%
+              distinct
+            , by = 'ego_id')
+
+########################################
+### MEAN MULTIPLEXITY THINGS LEARNED ###
+########################################
+
+# average of number of things discussed
+
+# check unique values
+unique(ea$alt_learned)
+
+# count number of subjects
+num_sub <- str_split(ea$alt_learned, ',')
+num_sub <- sapply(num_sub, function(x) length(x))
+
+# add to tibble
+ea$alt_number_things_learned <- num_sub
+
+# summarize and join
+
+ts <- ts %>%
+  full_join(ea %>%
+              group_by(ego_id) %>% # group by ego id
+              mutate(alt_mean_things_learned = mean(alt_number_things_learned), na.rm = T) %>% 
+              select(ego_id, alt_mean_things_learned) %>%
               distinct
             , by = 'ego_id')
 
@@ -3355,6 +4086,35 @@ ts <- ts %>%
         alt_percent_info_sideeff_fp = sum / n
       ) %>%
       select(ego_id, alt_percent_info_sideeff_fp) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#####################################
+### LEARNED FP METHODS FROM ALTER ###
+#####################################
+
+# check unique values
+unique(ea$alt_learned)
+
+# boolean if learned FP methods (G)
+num_sub <- str_detect(ea$alt_learned, 'G') %>% as.numeric
+
+# add to tibble
+ea$alt_learned_fp_methods <- num_sub
+
+# summarize and join
+ts <- ts %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_learned_fp_methods == 1, na.rm = T),
+        n = NROW(alt_learned_fp_methods[is.na(alt_learned_fp_methods) == F]),
+        alt_percent_learned_fp_methods = sum / n
+      ) %>%
+      select(ego_id, alt_percent_learned_fp_methods) %>%
       distinct
     ,
     by = 'ego_id'
@@ -3714,6 +4474,236 @@ dat_up %<>%
       group_by(ego_id) %>%
       mutate(alt_mil = sum(str_detect(alt_relationship, 'Mother-in-law'), na.rm = T)) %>%
       select(ego_id, alt_mil) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#################
+### ALTER AGE ###
+#################
+
+# check unique values
+ea %>% tabyl(alt_age)
+
+# summarize and join median age
+dat_up %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_median_age = median(alt_age, na.rm = T)) %>%
+      select(ego_id, alt_median_age) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+# summarize and join mean age
+dat_up %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_age = mean(alt_age, na.rm = T)) %>%
+      select(ego_id, alt_mean_age) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+########################
+### ALTER NUM FAMILY ###
+########################
+
+# check unique values
+ea %>% tabyl(alt_fam)
+
+# set 99 to NA
+ea$alt_fam[ea$alt_fam == 99] <- NA
+
+# summarize and join median, mean, sum of num fam
+dat_up %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_median_num_fam = median(alt_fam, na.rm = T)) %>%
+      select(ego_id, alt_median_num_fam) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_num_fam = mean(alt_fam, na.rm = T)) %>%
+      select(ego_id, alt_mean_num_fam) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_sum_num_fam = sum(alt_fam, na.rm = T)) %>%
+      select(ego_id, alt_sum_num_fam) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+##############################
+### ALTER NUM FAMILY CLOSE ###
+##############################
+
+# check unique values
+ea %>% tabyl(alt_fam_close)
+
+# set to numeric
+ea %<>% mutate(alt_fam_close = as.numeric(alt_fam_close))
+
+# set 99 to NA
+ea$alt_fam_close[ea$alt_fam_close == 99] <- NA
+
+# summarize and join median, mean, sum of num fam
+dat_up %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_median_num_fam_close = median(alt_fam_close, na.rm = T)) %>%
+      select(ego_id, alt_median_num_fam_close) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_num_fam_close = mean(alt_fam_close, na.rm = T)) %>%
+      select(ego_id, alt_mean_num_fam_close) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_sum_num_fam_close = sum(alt_fam_close, na.rm = T)) %>%
+      select(ego_id, alt_sum_num_fam_close) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+#########################
+### ALTER NUM FRIENDS ###
+#########################
+
+# check unique values
+ea %>% tabyl(alt_friends)
+
+# set 99 to NA
+ea$alt_friends[ea$alt_friends == 99] <- NA
+
+# summarize and join median, mean, sum of num fam
+dat_up %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_median_friends = median(alt_friends, na.rm = T)) %>%
+      select(ego_id, alt_median_friends) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_friends = mean(alt_friends, na.rm = T)) %>%
+      select(ego_id, alt_mean_friends) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_sum_friends = sum(alt_friends, na.rm = T)) %>%
+      select(ego_id, alt_sum_friends) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+###########################
+### ALTER NUM NEIGHBORS ###
+###########################
+
+# check unique values
+ea %>% tabyl(alt_neigh)
+
+# set 99 to NA
+ea$alt_neigh[ea$alt_neigh == 99] <- NA
+
+# summarize and join median, mean, sum of num fam
+dat_up %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_median_neigh = median(alt_neigh, na.rm = T)) %>%
+      select(ego_id, alt_median_neigh) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_mean_neigh = mean(alt_neigh, na.rm = T)) %>%
+      select(ego_id, alt_mean_neigh) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(alt_sum_neigh = sum(alt_neigh, na.rm = T)) %>%
+      select(ego_id, alt_sum_neigh) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  )
+
+##########################################################
+### PROPORTION OF ALTERS FROM EGO'S FAMILY AND IN-LAWS ###
+##########################################################
+
+# check unique values
+ea %>% tabyl(alt_relationship_in_law)
+
+# summarize and join
+dat_up %<>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_relationship_in_law == 'Family-in-law', na.rm = T),
+        n = NROW(alt_relationship_in_law[is.na(alt_relationship_in_law) == F]),
+        alt_percent_in_laws = sum / n
+      ) %>%
+      select(ego_id, alt_percent_in_laws) %>%
+      distinct
+    ,
+    by = 'ego_id'
+  ) %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>%
+      mutate(
+        sum = sum(alt_relationship_in_law == 'Family', na.rm = T),
+        n = NROW(alt_relationship_in_law[is.na(alt_relationship_in_law) == F]),
+        alt_percent_ego_fam = sum / n
+      ) %>%
+      select(ego_id, alt_percent_ego_fam) %>%
       distinct
     ,
     by = 'ego_id'
