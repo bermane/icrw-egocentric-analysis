@@ -11,7 +11,7 @@ library(LogisticDx)
 
 # load data
 load(
-  '/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/logit_data_table_percent_nohus.RData'
+  '/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/logit_data_table_percent_2023_02_22.RData'
 )
 
 ##################################
@@ -106,7 +106,8 @@ cont_pro <- c(
   'alt_percent_helped_by_ego',
   'alt_percent_easy_follow_advice',
   'alt_percent_borrow_rps_hh',
-  'alt_percent_learned_fp_methods'
+  'alt_percent_learned_fp_methods',
+  'alt_percent_live_same_hh_village'
 )
 
 # center all continuous vars around the mean
@@ -174,19 +175,19 @@ dat %<>% select(-age_months_child)
 # modern only
 dat_mod <- dat %>% filter(using_trad_fp == 0)
 
-# trad only
-dat_trad <- dat %>% filter(using_mod_fp == 0)
+# # trad only
+# dat_trad <- dat %>% filter(using_mod_fp == 0)
 
-#########################################
-### SEPARATE INTO MULTINOMIAL DATASET ###
-#########################################
-
-# create fp factor
-dat_fp <- dat %>% mutate(using_fp = NA)
-dat_fp$using_fp[dat_fp$using_mod_fp == 1] <- 'modern'
-dat_fp$using_fp[dat_fp$using_trad_fp == 1] <- 'trad'
-dat_fp$using_fp[dat_fp$using_any_fp == 0] <- 'none'
-dat_fp$using_fp <- factor(dat_fp$using_fp)
+# #########################################
+# ### SEPARATE INTO MULTINOMIAL DATASET ###
+# #########################################
+# 
+# # create fp factor
+# dat_fp <- dat %>% mutate(using_fp = NA)
+# dat_fp$using_fp[dat_fp$using_mod_fp == 1] <- 'modern'
+# dat_fp$using_fp[dat_fp$using_trad_fp == 1] <- 'trad'
+# dat_fp$using_fp[dat_fp$using_any_fp == 0] <- 'none'
+# dat_fp$using_fp <- factor(dat_fp$using_fp)
 
 ###################################################
 ### CHECK DISTRIBUTION OF CATEGORICAL VARIABLES ###
@@ -210,13 +211,13 @@ dat_fp$using_fp <- factor(dat_fp$using_fp)
 # dat_trad %>% tabyl(using_trad_fp, neighbors_using_modern_fp)
 # dat_trad %>% tabyl(using_trad_fp, alt_hw)
 
-##########################
-### CHECK MISSING DATA ###
-##########################
-
-lapply(dat, function(x) {
-  sum(is.na(x))
-})
+# ##########################
+# ### CHECK MISSING DATA ###
+# ##########################
+# 
+# lapply(dat, function(x) {
+#   sum(is.na(x))
+# })
 
 ############################################
 ### RUN BIVARIATE MODELS MODERN VS. NONE ###
@@ -243,7 +244,8 @@ for (var in colnames(dat_mod)) {
       'ego_id',
       'preg',
       'fp_method',
-      'num_alt_is_hw'
+      'num_alt_is_hw',
+      'ever_used_mod_fp'
     )
   )) {
     # run model
@@ -289,83 +291,443 @@ for (var in colnames(dat_mod)) {
 
 # output univariate table
 write.csv(univar,
-          file = '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/LOGIT_RESULTS/univar_modern_none_nohus.csv',
+          file = '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/LOGIT_RESULTS/univar_using_mod_fp.csv',
           row.names = F)
 
 ##########################################
-### RUN BIVARIATE MODELS TRAD VS. NONE ###
+### RUN MODERN FP vs. NONE WITH PARITY ###
 ##########################################
 
-# allocate output table
-univar <- tibble(
-  model = character(),
-  var_odds = character(),
-  var_p_sig = character(),
-  var_p = character(),
-  aic = numeric(),
-  n = numeric()
-)
+# create final dat
+dat_mod2 <- dat_mod %>% select(c('using_mod_fp',
+                                 'state',
+                                 'parity',
+                                 'age',
+                                 'caste',
+                                 'alt_percent_live_same_hh_village',
+                                 'ego_deg_cen',
+                                 'density',
+                                 'alt_percent_talked_number_children',
+                                 'alt_percent_info_get_fp',
+                                 'alt_percent_using_fp',
+                                 'alt_percent_borrow_rps_hh',
+                                 'ego_advice_num_non_aaa'))
 
-# loop through all variables
-for (var in colnames(dat_trad)) {
-  # only run for indep vars
-  if (!(
-    var %in% c(
-      'using_any_fp',
-      'using_mod_fp',
-      'using_trad_fp',
-      'ego_id',
-      'preg',
-      'fp_method',
-      'num_alt_is_hw'
-    )
-  )) {
-    # run model
-    glm <- eval(substitute(
-      glm(
-        using_trad_fp ~ variable,
-        family = binomial(link = 'logit'),
-        data = dat_trad
-      ),
-      list(variable = as.name(var))
-    ))
-    
-    # grab p valute of variable
-    var_p <- coef(summary(glm))[2:NROW(coef(summary(glm))), 4]
-    
-    # calculate p val significance
-    p_sig <- sapply(var_p, function(x) {
-      if (x < 0.001) {
-        p_sig <- '***'
-      } else if (x < 0.01 & x >= 0.001) {
-        p_sig <- '**'
-      } else if (x < 0.05 & x >= 0.01) {
-        p_sig <- '*'
-      } else if (x < 0.1 & x >= 0.05) {
-        p_sig <- '.'
-      } else{
-        p_sig <- ' '
-      }
-    })
-    
-    # add to output table
-    univar %<>% add_row(
-      model = var,
-      var_odds = str_c(exp(coef(glm))[2:length(exp(coef(glm)))] %>% round(3), collapse = ', '),
-      var_p_sig = str_c(p_sig, collapse = ', '),
-      var_p = str_c(coef(summary(glm))[2:NROW(coef(summary(glm))), 4] %>% round(5), collapse = ', '),
-      aic = glm$aic,
-      n = nobs(glm)
-    )
-    
-  }
-}
+# # check missing data
+# lapply(dat_mod, function(x) {
+#   sum(is.na(x))
+# })
 
-# output univariate table
-write.csv(univar,
-          file = '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/LOGIT_RESULTS/univar_trad_none_nohus.csv',
-          row.names = F)
+# drop missing values
+dat_mod2 <- na.omit(dat_mod2)
 
+# run full model
+mod <- glm(formula = using_mod_fp ~ state +
+             parity +
+             age +
+             caste +
+             alt_percent_live_same_hh_village +
+             ego_deg_cen +
+             density +
+             alt_percent_talked_number_children +
+             alt_percent_info_get_fp + 
+             alt_percent_using_fp +
+             alt_percent_borrow_rps_hh +
+             ego_advice_num_non_aaa,
+           family = binomial(link = 'logit'),
+           data = dat_mod2)
+summary(mod)
+exp(coef(mod)) %>% round(3)
+confint(mod)
+
+# diagnostics
+AIC(mod) %>% round(2)
+PseudoR2(mod,
+         which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
+diag <- gof(mod, plotROC = F, g = 10)
+diag$gof$pVal %>% round(3)
+VIF(mod)
+
+#############################################
+### RUN MODERN FP vs. NONE WITHOUT PARITY ###
+#############################################
+
+# create final dat
+dat_mod2 <- dat_mod %>% select(c('using_mod_fp',
+                                 'state',
+                                 'sons',
+                                 'daughters',
+                                 'age',
+                                 'caste',
+                                 'alt_percent_live_same_hh_village',
+                                 'ego_deg_cen',
+                                 'density',
+                                 'alt_percent_talked_number_children',
+                                 'alt_percent_info_get_fp',
+                                 'alt_percent_using_fp',
+                                 'alt_percent_borrow_rps_hh',
+                                 'ego_advice_num_non_aaa'))
+
+# # check missing data
+# lapply(dat_mod, function(x) {
+#   sum(is.na(x))
+# })
+
+# drop missing values
+dat_mod2 <- na.omit(dat_mod2)
+
+# run full model
+mod <- glm(formula = using_mod_fp ~ state +
+             sons +
+             daughters +
+             age +
+             caste +
+             alt_percent_live_same_hh_village +
+             ego_deg_cen +
+             density +
+             alt_percent_talked_number_children +
+             alt_percent_info_get_fp + 
+             alt_percent_using_fp +
+             alt_percent_borrow_rps_hh +
+             ego_advice_num_non_aaa,
+           family = binomial(link = 'logit'),
+           data = dat_mod2)
+summary(mod)
+exp(coef(mod)) %>% round(3)
+confint(mod)
+
+# diagnostics
+AIC(mod) %>% round(2)
+PseudoR2(mod,
+         which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
+diag <- gof(mod, plotROC = F, g = 10)
+diag$gof$pVal %>% round(3)
+VIF(mod)
+
+# ##############################################
+# ### RUN MODERN vs. NONE MODEL STEPWISE OLD ###
+# ##############################################
+# 
+# # check missing data
+# lapply(dat_mod, function(x) {
+#   sum(is.na(x))
+# })
+# 
+# # create final dat for mod vs. non (not including indices)
+# dat_mod2 <- dat_mod %>% select(-c('using_trad_fp', 'using_any_fp',
+#                                  'preg', 'ego_id', 'fp_method',
+#                                  'want_more_children', 'hetero_discuss_fp_blau',
+#                                  'hetero_discuss_fp_iqv',
+#                                  'children',
+#                                  'alt_percent_wants_more_sons',
+#                                  'alt_percent_wants_more_daughters',
+#                                  'alt_percent_wants_more_children',
+#                                  'alt_percent_talk_fp_weekly',
+#                                  'alt_percent_talk_fp_monthly',
+#                                  'alt_total_social_influence_index',
+#                                  'alt_total_social_support_index',
+#                                  'alt_mean_social_influence_index',
+#                                  'alt_mean_social_influence_index',
+#                                  'sons',
+#                                  'daughters',
+#                                  'homo_using_mod_fp',
+#                                  'alt_median_num_fam_close',
+#                                  'alt_mean_num_fam_close'))
+# 
+# 
+# 
+# # # create final dat for mod vs. non (including indices)
+# # dat_mod2 <- dat_mod %>% select(
+# #   -c(
+# #     'using_trad_fp',
+# #     'using_any_fp',
+# #     'preg',
+# #     'ego_id',
+# #     'fp_method',
+# #     'want_more_children',
+# #     'hetero_discuss_fp_blau',
+# #     'hetero_discuss_fp_iqv',
+# #     'children',
+# #     'alt_percent_wants_more_sons',
+# #     'alt_percent_wants_more_daughters',
+# #     'alt_percent_wants_more_children',
+# #     'alt_percent_talk_fp_weekly',
+# #     'alt_percent_talk_fp_monthly',
+# #     'alt_total_social_influence_index',
+# #     'alt_total_social_support_index',
+# #     'sons',
+# #     'daughters',
+# #     'alt_percent_talked_number_children',
+# #     'alt_percent_discuss_fp_freely',
+# #     'alt_percent_encourage_fp',
+# #     'alt_percent_support_no_child',
+# #     'alt_percent_not_say_bad_things_fp',
+# #     'alt_percent_help_ego',
+# #     'alt_percent_helped_by_ego',
+# #     'alt_percent_easy_follow_advice',
+# #     'alt_percent_borrow_rps_hh',
+# #     'homo_using_mod_fp',
+# #     'alt_median_num_fam_close',
+# #     'alt_mean_num_fam_close'
+# #   )
+# # )
+# 
+# # # remove vars with strange sign
+# # dat_mod2 %<>% select(-c('alt_hw',
+# #                         'neighbors_using_modern_fp'))
+# 
+# # # check missing data
+# # lapply(dat_mod, function(x){
+# #   sum(is.na(x))
+# # })
+# 
+# # drop missing values
+# dat_mod2 <- na.omit(dat_mod2)
+# 
+# # run full model
+# all_mod <- glm(formula = using_mod_fp ~ .,
+#                family = binomial(link = 'logit'),
+#                data = dat_mod2)
+# 
+# # run intercept only
+# int_mod <- glm(formula = using_mod_fp ~ 1,
+#                family = binomial(link = 'logit'),
+#                data = dat_mod2)
+# 
+# # run forward stepwise
+# for_mod <-
+#   step(int_mod, scope = formula(all_mod), direction = 'forward')
+# summary(for_mod)
+# for_mod$anova
+# exp(coef(for_mod)) %>% round(3)
+# confint(for_mod)
+# 
+# # diagnostics
+# AIC(for_mod) %>% round(2)
+# PseudoR2(for_mod,
+#          which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
+# 
+# diag <- gof(for_mod, plotROC = F, g = 9)
+# diag$gof$pVal %>% round(3)
+# VIF(for_mod)
+# 
+# # plot residuals
+# # should have a norm dist
+# # over large enough sample size
+# d <- density(residuals(for_mod, "pearson"))
+# plot(d, main = "")
+# 
+# # create final dat for mod vs. non (final variable testing)
+# dat_mod2 <- dat_mod %>% select(c('using_mod_fp',
+#                                  'state',
+#                                  'parity',
+#                                  'age',
+#                                  'caste',
+#                                  'ego_husband_edu_diff',
+#                                  'alt_hw',
+#                                  'ego_deg_cen',
+#                                  'density',
+#                                  'alt_mean_years_known',
+#                                  'alt_mean_talk_subjects',
+#                                  'alt_percent_talked_fp_methods',
+#                                  'alt_percent_info_get_fp',
+#                                  'alt_percent_using_fp',
+#                                  'alt_percent_borrow_rps_hh',
+#                                  'ego_advice_num_ppl',
+#                                  'alt_mean_age'))
+# 
+# # drop missing values
+# dat_mod2 <- na.omit(dat_mod2)
+# 
+# # run full model
+# mod <- glm(formula = using_mod_fp ~ state +
+#              parity +
+#              age +
+#              caste +
+#              ego_husband_edu_diff +
+#              alt_hw +
+#              ego_deg_cen +
+#              density +
+#              alt_mean_years_known + 
+#              alt_mean_talk_subjects +
+#              alt_percent_talked_fp_methods +
+#              alt_percent_info_get_fp +
+#              alt_percent_using_fp +
+#              alt_percent_borrow_rps_hh +
+#              ego_advice_num_ppl +
+#              alt_mean_age,
+#                family = binomial(link = 'logit'),
+#                data = dat_mod2)
+# summary(mod)
+# exp(coef(mod)) %>% round(3)
+# confint(mod)
+# 
+# # diagnostics
+# AIC(mod) %>% round(2)
+# PseudoR2(mod,
+#          which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
+# diag <- gof(mod, plotROC = F, g = 10)
+# diag$gof$pVal %>% round(3)
+# VIF(mod)
+# 
+# # # use interaction of mil and sil (no influence and support indices)
+# # glm <- glm(
+# #   using_mod_fp ~ parity + 
+# #     alt_percent_borrow_rps_hh + 
+# #     ego_husband_edu_diff +
+# #     homo_live_another_district +
+# #     homo_friends +
+# #     homo_age +
+# #     alt_sil*alt_mil,
+# #   family = binomial(link = 'logit'),
+# #   data = dat_mod2
+# # )
+# # summary(glm)
+# # exp(coef(glm)) %>% round(3)
+# # confint(glm)
+# # 
+# # # diagnostics
+# # AIC(glm) %>% round(2)
+# # PseudoR2(glm,
+# #          which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
+# # 
+# # diag <- gof(glm, plotROC = F, g = 9)
+# # diag$gof$pVal %>% round(3)
+# # VIF(glm)
+# 
+# # # run comb of best stepwise and INDICES
+# # glm <- glm(
+# #   using_mod_fp ~ parity +
+# #     homo_using_mod_fp +
+# #     alt_percent_info_get_fp +
+# #     homo_live_another_village +
+# #     homo_age +
+# #     husband_education +
+# #     homo_friends_neigh +
+# #     alt_mean_social_influence_index +
+# #     alt_mean_social_support_index,
+# #   family = binomial(link = 'logit'),
+# #   data = dat_mod2
+# # )
+# # summary(glm)
+# # exp(coef(glm)) %>% round(3)
+# # confint(glm)
+# # 
+# # # diagnostics
+# # AIC(glm) %>% round(2)
+# # PseudoR2(glm,
+# #          which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
+# # 
+# # diag <- gof(glm, plotROC = F, g = 9)
+# # diag$gof$pVal %>% round(3)
+# # VIF(glm)
+# # 
+# # # run comb of best stepwise and support/influence (NO INDICES)
+# # glm <- glm(
+# #   using_mod_fp ~ parity + 
+# #     homo_using_mod_fp +
+# #     alt_percent_info_get_fp +
+# #     homo_live_another_village +
+# #     homo_age +
+# #     alt_percent_easy_follow_advice + 
+# #     ego_husband_edu_diff +
+# #     alt_percent_borrow_rps_hh + 
+# #     homo_live_household + 
+# #     alt_sil*alt_mil +
+# #     alt_percent_discuss_fp_freely +
+# #     alt_percent_talked_number_children + 
+# #     alt_percent_encourage_fp +
+# #     alt_percent_using_fp,
+# #   family = binomial(link = 'logit'),
+# #   data = dat_mod2
+# # )
+# # summary(glm)
+# # exp(coef(glm)) %>% round(3)
+# # confint(glm)
+# # 
+# # # diagnostics
+# # AIC(glm) %>% round(2)
+# # PseudoR2(glm,
+# #          which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
+# # 
+# # diag <- gof(glm, plotROC = F, g = 9)
+# # diag$gof$pVal %>% round(3)
+# # VIF(glm)
+# 
+# # ##########################################
+# # ### RUN BIVARIATE MODELS TRAD VS. NONE ###
+# # ##########################################
+# # 
+# # # allocate output table
+# # univar <- tibble(
+# #   model = character(),
+# #   var_odds = character(),
+# #   var_p_sig = character(),
+# #   var_p = character(),
+# #   aic = numeric(),
+# #   n = numeric()
+# # )
+# # 
+# # # loop through all variables
+# # for (var in colnames(dat_trad)) {
+# #   # only run for indep vars
+# #   if (!(
+# #     var %in% c(
+# #       'using_any_fp',
+# #       'using_mod_fp',
+# #       'using_trad_fp',
+# #       'ego_id',
+# #       'preg',
+# #       'fp_method',
+# #       'num_alt_is_hw'
+# #     )
+# #   )) {
+# #     # run model
+# #     glm <- eval(substitute(
+# #       glm(
+# #         using_trad_fp ~ variable,
+# #         family = binomial(link = 'logit'),
+# #         data = dat_trad
+# #       ),
+# #       list(variable = as.name(var))
+# #     ))
+# #     
+# #     # grab p valute of variable
+# #     var_p <- coef(summary(glm))[2:NROW(coef(summary(glm))), 4]
+# #     
+# #     # calculate p val significance
+# #     p_sig <- sapply(var_p, function(x) {
+# #       if (x < 0.001) {
+# #         p_sig <- '***'
+# #       } else if (x < 0.01 & x >= 0.001) {
+# #         p_sig <- '**'
+# #       } else if (x < 0.05 & x >= 0.01) {
+# #         p_sig <- '*'
+# #       } else if (x < 0.1 & x >= 0.05) {
+# #         p_sig <- '.'
+# #       } else{
+# #         p_sig <- ' '
+# #       }
+# #     })
+# #     
+# #     # add to output table
+# #     univar %<>% add_row(
+# #       model = var,
+# #       var_odds = str_c(exp(coef(glm))[2:length(exp(coef(glm)))] %>% round(3), collapse = ', '),
+# #       var_p_sig = str_c(p_sig, collapse = ', '),
+# #       var_p = str_c(coef(summary(glm))[2:NROW(coef(summary(glm))), 4] %>% round(5), collapse = ', '),
+# #       aic = glm$aic,
+# #       n = nobs(glm)
+# #     )
+# #     
+# #   }
+# # }
+# # 
+# # # output univariate table
+# # write.csv(univar,
+# #           file = '/Users/bermane/Team Braintree Dropbox/ETHAN - ICRW Egocentric data Analysis/Analysis/LOGIT_RESULTS/univar_trad_none_nohus.csv',
+# #           row.names = F)
+# # 
 ########################################
 ### RUN BIVARIATE MODELS MULTINOMIAL ###
 ########################################
@@ -395,429 +757,181 @@ write.csv(univar,
 # # calculate p vals
 # p <- (1 - pnorm(abs(z), 0, 1)) * 2
 
-#################################
-### RUN MODERN vs. NONE MODEL ###
-#################################
-
-# check missing data
-lapply(dat_mod, function(x) {
-  sum(is.na(x))
-})
-
-# create final dat for mod vs. non (not including indices)
-dat_mod2 <- dat_mod %>% select(-c('using_trad_fp', 'using_any_fp',
-                                 'preg', 'ego_id', 'fp_method',
-                                 'want_more_children', 'hetero_discuss_fp_blau',
-                                 'hetero_discuss_fp_iqv',
-                                 'children',
-                                 'alt_percent_wants_more_sons',
-                                 'alt_percent_wants_more_daughters',
-                                 'alt_percent_wants_more_children',
-                                 'alt_percent_talk_fp_weekly',
-                                 'alt_percent_talk_fp_monthly',
-                                 'alt_total_social_influence_index',
-                                 'alt_total_social_support_index',
-                                 'alt_mean_social_influence_index',
-                                 'alt_mean_social_influence_index',
-                                 'sons',
-                                 'daughters',
-                                 'homo_using_mod_fp',
-                                 'alt_median_num_fam_close',
-                                 'alt_mean_num_fam_close'))
-
-# # create final dat for mod vs. non (including indices)
-# dat_mod2 <- dat_mod %>% select(
-#   -c(
-#     'using_trad_fp',
-#     'using_any_fp',
-#     'preg',
-#     'ego_id',
-#     'fp_method',
-#     'want_more_children',
-#     'hetero_discuss_fp_blau',
-#     'hetero_discuss_fp_iqv',
-#     'children',
-#     'alt_percent_wants_more_sons',
-#     'alt_percent_wants_more_daughters',
-#     'alt_percent_wants_more_children',
-#     'alt_percent_talk_fp_weekly',
-#     'alt_percent_talk_fp_monthly',
-#     'alt_total_social_influence_index',
-#     'alt_total_social_support_index',
-#     'sons',
-#     'daughters',
-#     'alt_percent_talked_number_children',
-#     'alt_percent_discuss_fp_freely',
-#     'alt_percent_encourage_fp',
-#     'alt_percent_support_no_child',
-#     'alt_percent_not_say_bad_things_fp',
-#     'alt_percent_help_ego',
-#     'alt_percent_helped_by_ego',
-#     'alt_percent_easy_follow_advice',
-#     'alt_percent_borrow_rps_hh',
-#     'homo_using_mod_fp',
-#     'alt_median_num_fam_close',
-#     'alt_mean_num_fam_close'
-#   )
-# )
-
-# # remove vars with strange sign
-# dat_mod2 %<>% select(-c('alt_hw',
-#                         'neighbors_using_modern_fp'))
-
-# # check missing data
-# lapply(dat_mod, function(x){
-#   sum(is.na(x))
-# })
-
-# drop missing values
-dat_mod2 <- na.omit(dat_mod2)
-
-# run full model
-all_mod <- glm(formula = using_mod_fp ~ .,
-               family = binomial(link = 'logit'),
-               data = dat_mod2)
-
-# run intercept only
-int_mod <- glm(formula = using_mod_fp ~ 1,
-               family = binomial(link = 'logit'),
-               data = dat_mod2)
-
-# run forward stepwise
-for_mod <-
-  step(int_mod, scope = formula(all_mod), direction = 'forward')
-summary(for_mod)
-for_mod$anova
-exp(coef(for_mod)) %>% round(3)
-confint(for_mod)
-
-# diagnostics
-AIC(for_mod) %>% round(2)
-PseudoR2(for_mod,
-         which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
-
-diag <- gof(for_mod, plotROC = F, g = 9)
-diag$gof$pVal %>% round(3)
-VIF(for_mod)
-
-# plot residuals
-# should have a norm dist
-# over large enough sample size
-d <- density(residuals(for_mod, "pearson"))
-plot(d, main = "")
-
-# create final dat for mod vs. non (final variable testing)
-dat_mod2 <- dat_mod %>% select(c('using_mod_fp',
-                                 'state',
-                                 'parity',
-                                 'age',
-                                 'caste',
-                                 'ego_husband_edu_diff',
-                                 'alt_hw',
-                                 'ego_deg_cen',
-                                 'density',
-                                 'alt_mean_years_known',
-                                 'alt_mean_talk_subjects',
-                                 'alt_percent_talked_fp_methods',
-                                 'alt_percent_info_get_fp',
-                                 'alt_percent_using_fp',
-                                 'alt_percent_borrow_rps_hh',
-                                 'ego_advice_num_ppl',
-                                 'alt_mean_age'))
-
-# drop missing values
-dat_mod2 <- na.omit(dat_mod2)
-
-# run full model
-mod <- glm(formula = using_mod_fp ~ state +
-             parity +
-             age +
-             caste +
-             ego_husband_edu_diff +
-             alt_hw +
-             ego_deg_cen +
-             density +
-             alt_mean_years_known + 
-             alt_mean_talk_subjects +
-             alt_percent_talked_fp_methods +
-             alt_percent_info_get_fp +
-             alt_percent_using_fp +
-             alt_percent_borrow_rps_hh +
-             ego_advice_num_ppl +
-             alt_mean_age,
-               family = binomial(link = 'logit'),
-               data = dat_mod2)
-summary(mod)
-exp(coef(mod)) %>% round(3)
-confint(mod)
-
-# diagnostics
-AIC(mod) %>% round(2)
-PseudoR2(mod,
-         which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
-diag <- gof(mod, plotROC = F, g = 10)
-diag$gof$pVal %>% round(3)
-VIF(mod)
-
-# # use interaction of mil and sil (no influence and support indices)
-# glm <- glm(
-#   using_mod_fp ~ parity + 
-#     alt_percent_borrow_rps_hh + 
-#     ego_husband_edu_diff +
-#     homo_live_another_district +
-#     homo_friends +
-#     homo_age +
-#     alt_sil*alt_mil,
-#   family = binomial(link = 'logit'),
-#   data = dat_mod2
-# )
-# summary(glm)
-# exp(coef(glm)) %>% round(3)
-# confint(glm)
+# ###############################
+# ### RUN TRAD vs. NONE MODEL ###
+# ###############################
+# 
+# # create final dat for trad vs. non (not including indices)
+# dat_trad2 <- dat_trad %>% select(-c('using_mod_fp', 'using_any_fp',
+#                                  'preg', 'ego_id', 'fp_method',
+#                                  'want_more_children', 'hetero_discuss_fp_blau',
+#                                  'hetero_discuss_fp_iqv',
+#                                  'children',
+#                                  'alt_percent_wants_more_sons',
+#                                  'alt_percent_wants_more_daughters',
+#                                  'alt_percent_wants_more_children',
+#                                  'alt_percent_talk_fp_weekly',
+#                                  'alt_percent_talk_fp_monthly',
+#                                  'alt_total_social_influence_index',
+#                                  'alt_total_social_support_index',
+#                                  'alt_mean_social_influence_index',
+#                                  'alt_mean_social_support_index',
+#                                  'sons',
+#                                  'daughters',
+#                                  'homo_using_mod_fp'))
+# 
+# # # create final dat for trad vs. non (including indices)
+# # dat_trad2 <- dat_trad %>% select(
+# #   -c(
+# #     'using_mod_fp',
+# #     'using_any_fp',
+# #     'preg',
+# #     'ego_id',
+# #     'fp_method',
+# #     'want_more_children',
+# #     'hetero_discuss_fp_blau',
+# #     'hetero_discuss_fp_iqv',
+# #     'children',
+# #     'alt_percent_wants_more_sons',
+# #     'alt_percent_wants_more_daughters',
+# #     'alt_percent_wants_more_children',
+# #     'alt_percent_talk_fp_weekly',
+# #     'alt_percent_talk_fp_monthly',
+# #     'alt_total_social_influence_index',
+# #     'alt_total_social_support_index',
+# #     'sons',
+# #     'daughters',
+# #     'alt_percent_talked_number_children',
+# #     'alt_percent_discuss_fp_freely',
+# #     'alt_percent_encourage_fp',
+# #     'alt_percent_support_no_child',
+# #     'alt_percent_not_say_bad_things_fp',
+# #     'alt_percent_help_ego',
+# #     'alt_percent_helped_by_ego',
+# #     'alt_percent_easy_follow_advice',
+# #     'alt_percent_borrow_rps_hh',
+# #     'homo_using_mod_fp'
+# #   )
+# # )
+# 
+# # drop missing values
+# dat_trad2 <- na.omit(dat_trad2)
+# 
+# # run full model
+# all_mod <- glm(formula = using_trad_fp ~ .,
+#                family = binomial(link = 'logit'),
+#                data = dat_trad2)
+# 
+# # run intercept only
+# int_mod <- glm(formula = using_trad_fp ~ 1,
+#                family = binomial(link = 'logit'),
+#                data = dat_trad2)
+# 
+# # run forward stepwise
+# for_mod <-
+#   step(int_mod, scope = formula(all_mod), direction = 'forward')
+# summary(for_mod)
+# for_mod$anova
+# exp(coef(for_mod)) %>% round(3)
+# confint(for_mod)
 # 
 # # diagnostics
-# AIC(glm) %>% round(2)
-# PseudoR2(glm,
+# AIC(for_mod) %>% round(2)
+# PseudoR2(for_mod,
 #          which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
 # 
-# diag <- gof(glm, plotROC = F, g = 9)
+# diag <- gof(for_mod, plotROC = F, g = 9)
 # diag$gof$pVal %>% round(3)
-# VIF(glm)
-
-# # run comb of best stepwise and INDICES
-# glm <- glm(
-#   using_mod_fp ~ parity +
-#     homo_using_mod_fp +
-#     alt_percent_info_get_fp +
-#     homo_live_another_village +
-#     homo_age +
-#     husband_education +
-#     homo_friends_neigh +
-#     alt_mean_social_influence_index +
-#     alt_mean_social_support_index,
-#   family = binomial(link = 'logit'),
-#   data = dat_mod2
-# )
-# summary(glm)
-# exp(coef(glm)) %>% round(3)
-# confint(glm)
+# VIF(for_mod)
+# 
+# # plot residuals
+# # should have a norm dist
+# # over large enough sample size
+# d <- density(residuals(for_mod, "pearson"))
+# plot(d, main = "")
+# 
+# # create final dat for trad vs. non (final variable testing)
+# dat_trad2 <- dat_trad %>% select(c('using_trad_fp',
+#                                  'state',
+#                                  'parity',
+#                                  'age',
+#                                  'caste',
+#                                  'ego_husband_edu_diff',
+#                                  'alt_hw',
+#                                  'ego_deg_cen',
+#                                  'density',
+#                                  'alt_mean_years_known',
+#                                  'alt_mean_talk_subjects',
+#                                  'alt_percent_talked_fp_methods',
+#                                  'alt_percent_info_get_fp',
+#                                  'alt_percent_using_fp',
+#                                  'alt_percent_borrow_rps_hh',
+#                                  'ego_advice_num_ppl',
+#                                  'alt_mean_age'))
+# 
+# # drop missing values
+# dat_trad2 <- na.omit(dat_trad2)
+# 
+# # run full model
+# mod <- glm(formula = using_trad_fp ~ state +
+#              parity +
+#              age +
+#              caste +
+#              ego_husband_edu_diff +
+#              alt_hw +
+#              ego_deg_cen +
+#              density +
+#              alt_mean_years_known + 
+#              alt_mean_talk_subjects +
+#              alt_percent_talked_fp_methods +
+#              alt_percent_info_get_fp +
+#              alt_percent_using_fp +
+#              alt_percent_borrow_rps_hh +
+#              ego_advice_num_ppl +
+#              alt_mean_age,
+#            family = binomial(link = 'logit'),
+#            data = dat_trad2)
+# summary(mod)
+# exp(coef(mod)) %>% round(3)
+# confint(mod)
 # 
 # # diagnostics
-# AIC(glm) %>% round(2)
-# PseudoR2(glm,
+# AIC(mod) %>% round(2)
+# PseudoR2(mod,
 #          which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
-# 
-# diag <- gof(glm, plotROC = F, g = 9)
+# diag <- gof(mod, plotROC = F, g = 10)
 # diag$gof$pVal %>% round(3)
-# VIF(glm)
+# VIF(mod)
 # 
-# # run comb of best stepwise and support/influence (NO INDICES)
-# glm <- glm(
-#   using_mod_fp ~ parity + 
-#     homo_using_mod_fp +
-#     alt_percent_info_get_fp +
-#     homo_live_another_village +
-#     homo_age +
-#     alt_percent_easy_follow_advice + 
-#     ego_husband_edu_diff +
-#     alt_percent_borrow_rps_hh + 
-#     homo_live_household + 
-#     alt_sil*alt_mil +
-#     alt_percent_discuss_fp_freely +
-#     alt_percent_talked_number_children + 
-#     alt_percent_encourage_fp +
-#     alt_percent_using_fp,
-#   family = binomial(link = 'logit'),
-#   data = dat_mod2
-# )
-# summary(glm)
-# exp(coef(glm)) %>% round(3)
-# confint(glm)
+# # check correlation
+# corr <- cor(dat_trad2 %>% select(-c('using_trad_fp',
+#                                     'state', 'caste',
+#                                     'alt_hw')))
+# corrplot(corr, method = 'number')
 # 
-# # diagnostics
-# AIC(glm) %>% round(2)
-# PseudoR2(glm,
-#          which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
-# 
-# diag <- gof(glm, plotROC = F, g = 9)
-# diag$gof$pVal %>% round(3)
-# VIF(glm)
-
-#################################
-### RUN TRAD vs. NONE MODEL ###
-#################################
-
-# create final dat for trad vs. non (not including indices)
-dat_trad2 <- dat_trad %>% select(-c('using_mod_fp', 'using_any_fp',
-                                 'preg', 'ego_id', 'fp_method',
-                                 'want_more_children', 'hetero_discuss_fp_blau',
-                                 'hetero_discuss_fp_iqv',
-                                 'children',
-                                 'alt_percent_wants_more_sons',
-                                 'alt_percent_wants_more_daughters',
-                                 'alt_percent_wants_more_children',
-                                 'alt_percent_talk_fp_weekly',
-                                 'alt_percent_talk_fp_monthly',
-                                 'alt_total_social_influence_index',
-                                 'alt_total_social_support_index',
-                                 'alt_mean_social_influence_index',
-                                 'alt_mean_social_support_index',
-                                 'sons',
-                                 'daughters',
-                                 'homo_using_mod_fp'))
-
-# # create final dat for trad vs. non (including indices)
-# dat_trad2 <- dat_trad %>% select(
-#   -c(
-#     'using_mod_fp',
-#     'using_any_fp',
-#     'preg',
-#     'ego_id',
-#     'fp_method',
-#     'want_more_children',
-#     'hetero_discuss_fp_blau',
-#     'hetero_discuss_fp_iqv',
-#     'children',
-#     'alt_percent_wants_more_sons',
-#     'alt_percent_wants_more_daughters',
-#     'alt_percent_wants_more_children',
-#     'alt_percent_talk_fp_weekly',
-#     'alt_percent_talk_fp_monthly',
-#     'alt_total_social_influence_index',
-#     'alt_total_social_support_index',
-#     'sons',
-#     'daughters',
-#     'alt_percent_talked_number_children',
-#     'alt_percent_discuss_fp_freely',
-#     'alt_percent_encourage_fp',
-#     'alt_percent_support_no_child',
-#     'alt_percent_not_say_bad_things_fp',
-#     'alt_percent_help_ego',
-#     'alt_percent_helped_by_ego',
-#     'alt_percent_easy_follow_advice',
-#     'alt_percent_borrow_rps_hh',
-#     'homo_using_mod_fp'
-#   )
-# )
-
-# drop missing values
-dat_trad2 <- na.omit(dat_trad2)
-
-# run full model
-all_mod <- glm(formula = using_trad_fp ~ .,
-               family = binomial(link = 'logit'),
-               data = dat_trad2)
-
-# run intercept only
-int_mod <- glm(formula = using_trad_fp ~ 1,
-               family = binomial(link = 'logit'),
-               data = dat_trad2)
-
-# run forward stepwise
-for_mod <-
-  step(int_mod, scope = formula(all_mod), direction = 'forward')
-summary(for_mod)
-for_mod$anova
-exp(coef(for_mod)) %>% round(3)
-confint(for_mod)
-
-# diagnostics
-AIC(for_mod) %>% round(2)
-PseudoR2(for_mod,
-         which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
-
-diag <- gof(for_mod, plotROC = F, g = 9)
-diag$gof$pVal %>% round(3)
-VIF(for_mod)
-
-# plot residuals
-# should have a norm dist
-# over large enough sample size
-d <- density(residuals(for_mod, "pearson"))
-plot(d, main = "")
-
-# create final dat for trad vs. non (final variable testing)
-dat_trad2 <- dat_trad %>% select(c('using_trad_fp',
-                                 'state',
-                                 'parity',
-                                 'age',
-                                 'caste',
-                                 'ego_husband_edu_diff',
-                                 'alt_hw',
-                                 'ego_deg_cen',
-                                 'density',
-                                 'alt_mean_years_known',
-                                 'alt_mean_talk_subjects',
-                                 'alt_percent_talked_fp_methods',
-                                 'alt_percent_info_get_fp',
-                                 'alt_percent_using_fp',
-                                 'alt_percent_borrow_rps_hh',
-                                 'ego_advice_num_ppl',
-                                 'alt_mean_age'))
-
-# drop missing values
-dat_trad2 <- na.omit(dat_trad2)
-
-# run full model
-mod <- glm(formula = using_trad_fp ~ state +
-             parity +
-             age +
-             caste +
-             ego_husband_edu_diff +
-             alt_hw +
-             ego_deg_cen +
-             density +
-             alt_mean_years_known + 
-             alt_mean_talk_subjects +
-             alt_percent_talked_fp_methods +
-             alt_percent_info_get_fp +
-             alt_percent_using_fp +
-             alt_percent_borrow_rps_hh +
-             ego_advice_num_ppl +
-             alt_mean_age,
-           family = binomial(link = 'logit'),
-           data = dat_trad2)
-summary(mod)
-exp(coef(mod)) %>% round(3)
-confint(mod)
-
-# diagnostics
-AIC(mod) %>% round(2)
-PseudoR2(mod,
-         which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
-diag <- gof(mod, plotROC = F, g = 10)
-diag$gof$pVal %>% round(3)
-VIF(mod)
-
-# check correlation
-corr <- cor(dat_trad2 %>% select(-c('using_trad_fp',
-                                    'state', 'caste',
-                                    'alt_hw')))
-corrplot(corr, method = 'number')
-
-# # use interaction of mil and sil
-# glm <- glm(
-#   using_trad_fp ~ state +
-#     alt_mean_talk_subjects + 
-#     alt_mean_deg_cen + 
-#     age +
-#     alt_percent_info_sideeff_fp +
-#     alt_sil*alt_mil,
-#   family = binomial(link = 'logit'),
-#   data = dat_trad2
-# )
-# summary(glm)
-# exp(coef(glm)) %>% round(3)
-# confint(glm)
-# 
-# # diagnostics
-# AIC(glm) %>% round(2)
-# PseudoR2(glm,
-#          which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
-# 
-# diag <- gof(glm, plotROC = F, g = 8)
-# diag$gof$pVal
-# VIF(glm)
+# # # use interaction of mil and sil
+# # glm <- glm(
+# #   using_trad_fp ~ state +
+# #     alt_mean_talk_subjects + 
+# #     alt_mean_deg_cen + 
+# #     age +
+# #     alt_percent_info_sideeff_fp +
+# #     alt_sil*alt_mil,
+# #   family = binomial(link = 'logit'),
+# #   data = dat_trad2
+# # )
+# # summary(glm)
+# # exp(coef(glm)) %>% round(3)
+# # confint(glm)
+# # 
+# # # diagnostics
+# # AIC(glm) %>% round(2)
+# # PseudoR2(glm,
+# #          which = c("McFadden", "CoxSnell", "Nagelkerke", "Tjur"))
+# # 
+# # diag <- gof(glm, plotROC = F, g = 8)
+# # diag$gof$pVal
+# # VIF(glm)
 
 #############################################
 ### RUN MODERN VS (TRAD + NONE) BIVARIATE ###

@@ -158,16 +158,15 @@ rm(alter_know)
 
 # create single col if ego has EVER used FP from list of questions pcq303a-l
 # create df of all rows of interest
-# only MODERN FP
+# MODERN ONLY
 ego_ever_used_fp <- ego_pc %>% select(pcq303a, pcq303b, pcq303c, pcq303d, pcq303e,
                                       pcq303f, pcq303g, pcq303h, pcq303i)
 
-# sum if all columns are NA
-ego_ever_used_fp_na <- rowSums(is.na(ego_ever_used_fp), na.rm = T)
+# set NA to 2
+ego_ever_used_fp[is.na(ego_ever_used_fp)] <- 2
 
-# create na mask
-ego_ever_used_fp_na[ego_ever_used_fp_na < NCOL(ego_ever_used_fp)] <- 0
-ego_ever_used_fp_na[ego_ever_used_fp_na == NCOL(ego_ever_used_fp)] <- 1
+# set 2 to 0
+ego_ever_used_fp[ego_ever_used_fp == 2] <- 0
 
 # sum if ever used
 ego_ever_used_fp <- rowSums(ego_ever_used_fp == 1, na.rm = T)
@@ -175,9 +174,6 @@ ego_ever_used_fp <- rowSums(ego_ever_used_fp == 1, na.rm = T)
 # set all ever used to 1 and never used to 2
 ego_ever_used_fp[ego_ever_used_fp > 0] <- 1
 ego_ever_used_fp[ego_ever_used_fp == 0] <- 2
-
-# set to NA if all answers are NA
-ego_ever_used_fp[ego_ever_used_fp_na == 1] <- NA
 
 # put back into ego_pc
 ego_pc$ego_ever_used_fp <- ego_ever_used_fp
@@ -205,6 +201,7 @@ dat_bihar <- tibble(
   preg = ego_pc$pcq230,
   using_any_fp = ego_pc$pcq311,
   fp_method = ego_pc$pcq312,
+  ever_used_mod_fp = ego_pc$ego_ever_used_fp,
   age = ego_pc$pcq102,
   education = ego_pc$pcq103,
   caste = ego_pc$pcq111,
@@ -1001,7 +998,7 @@ ea %<>% mutate(alt_is_hw = alt_relationship_cat %in% c('Health Worker',
 #################################
 
 # remove husbands
-ea %<>% filter(alt_relationship != 'Husband')
+# ea %<>% filter(alt_relationship != 'Husband')
 
 ##############
 ### GENDER ###
@@ -1178,8 +1175,8 @@ ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(0, 11, 1
 ea$alt_using_fp <- as.numeric(ea$alt_using_fp)
 
 # if alter is husband change to same value as ego
-ea$alt_using_fp[str_detect(ea$alt_relationship, 'Husband')] <-
-  ea$ego_using_fp[str_detect(ea$alt_relationship, 'Husband')]
+# ea$alt_using_fp[str_detect(ea$alt_relationship, 'Husband')] <-
+#   ea$ego_using_fp[str_detect(ea$alt_relationship, 'Husband')]
 
 # set don't know to NA
 ea$alt_using_fp[ea$alt_using_fp == 9] <- NA
@@ -1291,6 +1288,23 @@ homo <- homo %>%
         homo_live_another_district = sum / n
       ) %>% # calculate homophily
       select(ego_id, homo_live_another_district) %>% # only keep homophily
+      distinct %>% # remove duplicates
+      arrange(ego_id) # arrange by ego id
+    ,
+    by = 'ego_id'
+  )
+
+# summarise and update homophily output
+homo <- homo %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>% # group by ego id
+      mutate(
+        sum = sum(alt_residence == 'Same Household' | alt_residence == 'Same Village', na.rm = T),
+        n = NROW(alt_residence[is.na(alt_residence) == F]),
+        alt_percent_live_same_hh_village = sum / n
+      ) %>% # calculate homophily
+      select(ego_id, alt_percent_live_same_hh_village) %>% # only keep homophily
       distinct %>% # remove duplicates
       arrange(ego_id) # arrange by ego id
     ,
@@ -1846,14 +1860,17 @@ ea$alt_used_fp <- as.numeric(ea$alt_used_fp)
 # if using fp is 1 set used fp to 1
 ea$alt_used_fp[ea$alt_using_fp == 1] <- 1
 
+# if used fp is 9 (don't know) set to NA
+ea$alt_used_fp[ea$alt_used_fp == 9] <- NA
+
 # do not set NA values to 2 (have not ever used)
 # because we don't know if that person has ever used
 # with CURRENT we assume the skipped people are not 
 # CURRENTLY USING
 
 # if alter is husband change to same value as ego
-ea$alt_used_fp[str_detect(ea$alt_relationship, 'Husband')] <-
-  ea$ego_used_fp[str_detect(ea$alt_relationship, 'Husband')]
+# ea$alt_used_fp[str_detect(ea$alt_relationship, 'Husband')] <-
+#  ea$ego_used_fp[str_detect(ea$alt_relationship, 'Husband')]
 
 # summarize and join
 ts <- ts %>%
@@ -2495,15 +2512,15 @@ rm(alter_know)
 
 # create single col if ego has EVER used FP from list of questions pcq303a-l
 # create df of all rows of interest
+# MODERN ONLY
 ego_ever_used_fp <- ego_pc %>% select(pcq303a, pcq303b, pcq303c, pcq303d, pcq303e,
                                       pcq303f, pcq303g, pcq303h, pcq303i)
 
-# sum if all columns are NA
-ego_ever_used_fp_na <- rowSums(is.na(ego_ever_used_fp), na.rm = T)
+# set NA to 2
+ego_ever_used_fp[is.na(ego_ever_used_fp)] <- 2
 
-# create na mask
-ego_ever_used_fp_na[ego_ever_used_fp_na < NCOL(ego_ever_used_fp)] <- 0
-ego_ever_used_fp_na[ego_ever_used_fp_na == NCOL(ego_ever_used_fp)] <- 1
+# set 2 to 0
+ego_ever_used_fp[ego_ever_used_fp == 2] <- 0
 
 # sum if ever used
 ego_ever_used_fp <- rowSums(ego_ever_used_fp == 1, na.rm = T)
@@ -2511,9 +2528,6 @@ ego_ever_used_fp <- rowSums(ego_ever_used_fp == 1, na.rm = T)
 # set all ever used to 1 and never used to 2
 ego_ever_used_fp[ego_ever_used_fp > 0] <- 1
 ego_ever_used_fp[ego_ever_used_fp == 0] <- 2
-
-# set to NA if all answers are NA
-ego_ever_used_fp[ego_ever_used_fp_na == 1] <- NA
 
 # put back into ego_pc
 ego_pc$ego_ever_used_fp <- ego_ever_used_fp
@@ -2541,6 +2555,7 @@ dat_up <- tibble(
   preg = ego_pc$pcq230,
   using_any_fp = ego_pc$pcq311,
   fp_method = ego_pc$pcq312,
+  ever_used_mod_fp = ego_pc$ego_ever_used_fp,
   age = ego_pc$pcq102,
   education = ego_pc$pcq103,
   caste = ego_pc$pcq111,
@@ -3392,7 +3407,7 @@ ea %<>% mutate(alt_is_hw = alt_relationship_cat %in% c('Health Worker',
 #################################
 
 # remove husbands
-ea %<>% filter(alt_relationship != 'Husband')
+# ea %<>% filter(alt_relationship != 'Husband')
 
 ##############
 ### GENDER ###
@@ -3569,8 +3584,8 @@ ea %<>% mutate(ego_using_fp = replace(ego_using_fp, ego_using_fp %in% c(0, 11, 1
 ea$alt_using_fp <- as.numeric(ea$alt_using_fp)
 
 # if alter is husband change to same value as ego
-ea$alt_using_fp[str_detect(ea$alt_relationship, 'Husband')] <-
-  ea$ego_using_fp[str_detect(ea$alt_relationship, 'Husband')]
+# ea$alt_using_fp[str_detect(ea$alt_relationship, 'Husband')] <-
+#   ea$ego_using_fp[str_detect(ea$alt_relationship, 'Husband')]
 
 # set don't know to NA
 ea$alt_using_fp[ea$alt_using_fp == 9] <- NA
@@ -3682,6 +3697,23 @@ homo <- homo %>%
         homo_live_another_district = sum / n
       ) %>% # calculate homophily
       select(ego_id, homo_live_another_district) %>% # only keep homophily
+      distinct %>% # remove duplicates
+      arrange(ego_id) # arrange by ego id
+    ,
+    by = 'ego_id'
+  )
+
+# summarise and update homophily output
+homo <- homo %>%
+  full_join(
+    ea %>%
+      group_by(ego_id) %>% # group by ego id
+      mutate(
+        sum = sum(alt_residence == 'Same Household' | alt_residence == 'Same Village', na.rm = T),
+        n = NROW(alt_residence[is.na(alt_residence) == F]),
+        alt_percent_live_same_hh_village = sum / n
+      ) %>% # calculate homophily
+      select(ego_id, alt_percent_live_same_hh_village) %>% # only keep homophily
       distinct %>% # remove duplicates
       arrange(ego_id) # arrange by ego id
     ,
@@ -4233,14 +4265,17 @@ ea$alt_used_fp <- as.numeric(ea$alt_used_fp)
 # if using fp is 1 set used fp to 1
 ea$alt_used_fp[ea$alt_using_fp == 1] <- 1
 
+# if used fp is 9 (don't know) set to NA
+ea$alt_used_fp[ea$alt_used_fp == 9] <- NA
+
 # do not set NA values to 2 (have not ever used)
 # because we don't know if that person has ever used
 # with CURRENT we assume the skipped people are not 
 # CURRENTLY USING
 
 # if alter is husband change to same value as ego
-ea$alt_used_fp[str_detect(ea$alt_relationship, 'Husband')] <-
-  ea$ego_used_fp[str_detect(ea$alt_relationship, 'Husband')]
+# ea$alt_used_fp[str_detect(ea$alt_relationship, 'Husband')] <-
+#   ea$ego_used_fp[str_detect(ea$alt_relationship, 'Husband')]
 
 # summarize and join
 ts <- ts %>%
@@ -4764,13 +4799,17 @@ dat %<>% mutate(using_mod_fp = replace(fp_method, fp_method %in% c(1:10, 95), 1)
 dat %<>% mutate(using_trad_fp = replace(fp_method, fp_method %in% c(1:10, 95), 0)) %>%
   mutate(using_trad_fp = replace(using_trad_fp, using_trad_fp %in% c(11, 12), 1))
 
+# set ever used mod fp to 0
+dat %<>% mutate(ever_used_mod_fp = replace(ever_used_mod_fp, ever_used_mod_fp == 2, 0))
+
 # set using any fp no to 0
 dat %<>% mutate(using_any_fp = replace(using_any_fp, using_any_fp == 2, 0))
 
 # factor all dep vars
 dat %<>% mutate(using_any_fp = factor(using_any_fp)) %>%
   mutate(using_mod_fp = factor(using_mod_fp)) %>%
-  mutate(using_trad_fp = factor(using_trad_fp))
+  mutate(using_trad_fp = factor(using_trad_fp)) %>%
+  mutate(ever_used_mod_fp = factor(ever_used_mod_fp))
 
 # switch order of couples in neighborhood using modern FP and factor
 dat %<>% mutate(neighbors_using_modern_fp = recode(neighbors_using_modern_fp, `1` = 3, `2` = 2, `3` = 1, `4` = 0) %>% factor)
@@ -4804,8 +4843,8 @@ dat %<>% mutate(alt_sil = factor(alt_sil),
 #################
 
 # as Rdata
-save.image('/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/logit_data_table_percent_nohus.RData')
+save.image('/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/logit_data_table_percent_2023_02_22.RData')
 
 # as csv
-write.csv(dat, '/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/logit_data_table_percent_nohus.csv',
+write.csv(dat, '/Users/bermane/Team Braintree Dropbox/Ethan Berman/R Projects/icrw-egocentric-analysis/data/logit_data_table_percent_2023_02_22.csv',
           row.names = F)
